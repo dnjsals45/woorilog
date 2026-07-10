@@ -1,0 +1,3 @@
+app:
+  auth:
+    dev-login-enabled: ${DEV_LOGIN_ENABLED:true}
