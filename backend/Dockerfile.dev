@@ -1,0 +1,7 @@
+FROM eclipse-temurin:21-jdk
+
+WORKDIR /workspace
+
+ENV GRADLE_USER_HOME=/gradle
+
+EXPOSE 8080

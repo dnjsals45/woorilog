@@ -1,0 +1,78 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: woorilog-mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-woorilog}
+      MYSQL_USER: ${MYSQL_USER:-woorilog}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-woorilog_local_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-woorilog_root_password}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: woorilog-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-woorilog}
+      MYSQL_USER: ${MYSQL_USER:-woorilog}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-woorilog_local_password}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      JWT_SECRET: ${JWT_SECRET:-woorilog-secret-key-for-development-should-be-long-enough-for-hmac-sha256}
+      JWT_ACCESS_TOKEN_TTL_SECONDS: ${JWT_ACCESS_TOKEN_TTL_SECONDS:-1800}
+      JWT_REFRESH_TOKEN_TTL_SECONDS: ${JWT_REFRESH_TOKEN_TTL_SECONDS:-1209600}
+      DEV_LOGIN_ENABLED: ${DEV_LOGIN_ENABLED:-true}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/workspace
+      - backend-gradle:/gradle
+      - backend-build:/workspace/build
+      - backend-project-gradle:/workspace/.gradle
+    entrypoint: ["/bin/sh", "/workspace/dev-entrypoint.sh"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    init: true
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: woorilog-frontend
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/workspace
+      - frontend-node-modules:/workspace/node_modules
+      - frontend-npm-cache:/root/.npm
+    entrypoint: ["/bin/sh", "/workspace/dev-entrypoint.sh"]
+    init: true
+
+volumes:
+  mysql-data:
+  backend-gradle:
+  backend-build:
+  backend-project-gradle:
+  frontend-node-modules:
+  frontend-npm-cache:
