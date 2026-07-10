@@ -7,6 +7,7 @@ import { LedgerPage } from './pages/LedgerPage'
 import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { TransactionEditPage } from './pages/TransactionEditPage'
+import { TransactionImportPage } from './pages/TransactionImportPage'
 import { StatisticsPage } from './pages/StatisticsPage'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/transactions/:transactionId" element={<TransactionEditPage />} />
       <Route path="/stats" element={<StatisticsPage />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/imports" element={<TransactionImportPage />} />
       <Route
         path="/ledgers/:ledgerId/months/:budgetMonth"
         element={<BudgetMonthPage />}
