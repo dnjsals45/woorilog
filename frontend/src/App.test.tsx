@@ -112,4 +112,37 @@ describe('App', () => {
     expect(await screen.findByText('기본 개인 장부')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '장부 만들기' })).toBeInTheDocument()
   })
+
+  it('renders monthly statistics from the authenticated ledger', async () => {
+    setAccessToken('access-token')
+    vi.spyOn(window, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            user: { id: 1, email: 'dev@woorilog.local', nickname: '개발자' },
+            currentLedger: { id: 1, name: '기본 개인 장부', type: 'PERSONAL', ownerId: 1 },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              month: '2026-07',
+              totalBudgetAmount: 500000,
+              totalExpenseAmount: 120000,
+              totalIncomeAmount: 300000,
+            },
+          ]),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+
+    renderApp('/stats')
+
+    expect(await screen.findByRole('heading', { level: 1, name: '월별 통계' })).toBeInTheDocument()
+    expect(await screen.findByText('2026-07')).toBeInTheDocument()
+    expect(screen.getByText('120,000원')).toBeInTheDocument()
+  })
 })
