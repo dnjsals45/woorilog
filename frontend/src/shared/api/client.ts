@@ -70,6 +70,10 @@ export async function apiRequest<T>(
   const data = text ? JSON.parse(text) : undefined
 
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      clearAccessToken()
+    }
+
     const errorBody: ApiErrorBody = data ?? {
       code: 'REQUEST_FAILED',
       message: '요청에 실패했습니다.',

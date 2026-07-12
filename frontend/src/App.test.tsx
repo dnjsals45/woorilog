@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import { clearAccessToken, setAccessToken } from './shared/api/client'
+import { clearAccessToken, getAccessToken, setAccessToken } from './shared/api/client'
 
 function renderApp(initialPath = '/') {
   const queryClient = new QueryClient({
@@ -45,6 +45,25 @@ describe('App', () => {
       screen.getByRole('heading', { level: 1, name: /함께 쓰는 돈을/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '개발자 로그인' })).toBeInTheDocument()
+  })
+
+  it('clears an invalid access token and renders login instead of redirecting forever', async () => {
+    setAccessToken('expired-access-token')
+    vi.spyOn(window, 'fetch').mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ code: 'UNAUTHORIZED', message: '인증이 필요합니다.' }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    )
+
+    renderApp('/dashboard')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /함께 쓰는 돈을/i }),
+    ).toBeInTheDocument()
+    expect(getAccessToken()).toBeNull()
   })
 
   it('logs in with developer login and renders the dashboard shell', async () => {
