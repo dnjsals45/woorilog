@@ -31,13 +31,14 @@ export function InvitationLinkPage() {
         <Link className="text-sm font-medium text-emerald-700" to="/dashboard">
           대시보드로 돌아가기
         </Link>
+        <p className="wl-page-header-label mt-5">Invitation</p>
         <div className="mt-2 flex items-center gap-2 text-slate-950">
-          <LinkIcon size={26} aria-hidden="true" />
-          <h1 className="text-3xl font-semibold">초대 링크</h1>
+          <LinkIcon size={26} className="text-[var(--wl-color-primary)]" aria-hidden="true" />
+          <h1 className="text-3xl font-bold tracking-tight">초대 링크</h1>
         </div>
       </header>
 
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         {previewQuery.isLoading ? (
           <p className="text-slate-500">초대를 확인하는 중입니다.</p>
         ) : null}

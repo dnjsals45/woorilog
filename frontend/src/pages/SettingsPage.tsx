@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router-dom'
-import { Check, Copy, LinkIcon, Mail, Pause, Play, Repeat, Send, Settings, X } from 'lucide-react'
+import { BookOpen, Check, Copy, LinkIcon, Mail, Pause, Play, Repeat, Send, Settings, Users, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ApiClientError } from '../shared/api/client'
 import { useMeQuery } from '../features/auth/model/authQueries'
@@ -45,6 +45,7 @@ export function SettingsPage() {
   const [categoryType, setCategoryType] = useState<TransactionType>('EXPENSE')
   const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null)
   const [asOfDate, setAsOfDate] = useState(formatDateInput())
+  const [settingsTab, setSettingsTab] = useState<'ledger' | 'quick' | 'recurring'>('ledger')
   const budgetMonth = formatBudgetMonth(new Date(asOfDate))
   const categoriesQuery = useCategoriesQuery(currentLedger?.id)
   const membersQuery = useLedgerMembersQuery(currentLedger?.id)
@@ -140,23 +141,48 @@ export function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-5 py-6 sm:px-8">
-      <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
+    <main className="mx-auto flex min-h-dvh w-full max-w-[1200px] flex-col px-4 py-4 sm:px-6 md:p-8 lg:p-10">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Link className="text-sm font-medium text-emerald-700" to="/dashboard">
-            대시보드로 돌아가기
-          </Link>
+          <p className="wl-page-header-label">Workspace</p>
           <div className="mt-2 flex items-center gap-2 text-slate-950">
-            <Settings size={26} aria-hidden="true" />
-            <h1 className="text-3xl font-semibold">설정</h1>
+            <Settings size={26} className="text-[var(--wl-color-primary)]" aria-hidden="true" />
+            <h1 className="text-3xl font-bold tracking-tight">설정</h1>
           </div>
           <p className="mt-2 text-sm text-slate-500">
             {currentLedger?.name ?? '현재 장부'}의 초대와 받은 초대를 관리합니다.
           </p>
         </div>
+        <Link className="text-sm font-bold text-[var(--wl-color-primary-dark)]" to="/dashboard">대시보드로 돌아가기</Link>
       </header>
 
-      <section className="grid gap-4 py-6 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="mt-6 rounded-xl border border-slate-200/30 bg-slate-100 p-1 shadow-inner sm:hidden" role="tablist" aria-label="설정 메뉴">
+        <div className="grid grid-cols-3 gap-1">
+          {([['ledger', '가계부'], ['quick', '빠른 입력'], ['recurring', '정기 거래']] as const).map(([value, label]) => (
+            <button aria-controls={`${value}-panel`} aria-selected={settingsTab === value} className={`min-h-10 rounded-lg text-xs font-black transition ${settingsTab === value ? 'border border-slate-200/20 bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`} key={value} onClick={() => setSettingsTab(value)} role="tab" type="button">{label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6 hidden border-b border-slate-200 sm:block" role="tablist" aria-label="설정 메뉴">
+        <nav className="-mb-px flex gap-8">
+          {([['ledger', '장부 기본 설정'], ['quick', '빠른 입력 설정'], ['recurring', '반복 거래 설정']] as const).map(([value, label]) => (
+            <button aria-controls={`${value}-panel`} aria-selected={settingsTab === value} className={`min-h-12 border-b-2 px-1.5 text-sm font-extrabold transition ${settingsTab === value ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'}`} key={value} onClick={() => setSettingsTab(value)} role="tab" type="button">{label}</button>
+          ))}
+        </nav>
+      </div>
+
+      <section aria-label="장부 기본 설정" className={`mt-6 grid gap-5 lg:grid-cols-2 ${settingsTab === 'ledger' ? '' : 'hidden'}`} id="ledger-panel" role="tabpanel">
+        <article className="rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)]">
+          <div className="flex items-center gap-2"><BookOpen className="text-[var(--wl-color-primary)]" size={21} /><h2 className="text-lg font-bold">장부 정보</h2></div>
+          <dl className="mt-6 divide-y divide-slate-100 text-sm"><div className="flex justify-between py-3"><dt className="text-slate-500">장부 이름</dt><dd className="font-bold">{currentLedger?.name ?? '현재 장부'}</dd></div><div className="flex justify-between py-3"><dt className="text-slate-500">장부 유형</dt><dd className="font-bold">{currentLedger?.type === 'GROUP' ? '공동 장부' : '개인 장부'}</dd></div></dl>
+        </article>
+        <article className="rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)]">
+          <div className="flex items-center gap-2"><Users className="text-[var(--wl-color-primary)]" size={21} /><h2 className="text-lg font-bold">함께 쓰는 멤버</h2></div>
+          <div className="mt-5 space-y-3">{membersQuery.data?.map((member) => <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3" key={member.userId}><span className="font-semibold">{member.nickname}</span><span className="text-xs font-bold text-slate-400">{member.userId === currentLedger?.ownerId ? '소유자' : '멤버'}</span></div>)}{!membersQuery.data?.length ? <p className="text-sm text-slate-500">참여 중인 멤버가 없습니다.</p> : null}</div>
+        </article>
+      </section>
+
+      <section className={`grid gap-4 py-6 lg:grid-cols-[1.05fr_0.95fr] ${settingsTab === 'ledger' ? '' : 'hidden'}`}>
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 text-slate-950">
             <Mail size={20} aria-hidden="true" />
@@ -299,7 +325,7 @@ export function SettingsPage() {
       </section>
 
       {canManageInvitations ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className={`rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-5 shadow-[var(--wl-shadow-card)] ${settingsTab === 'ledger' ? '' : 'hidden'}`}>
           <h2 className="text-lg font-semibold text-slate-950">보낸 초대</h2>
           <div className="mt-4 divide-y divide-slate-100">
             {ledgerInvitationsQuery.data?.length ? (
@@ -333,7 +359,7 @@ export function SettingsPage() {
         </section>
       ) : null}
 
-      <section className="mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section aria-label="빠른 입력 설정" className={`mt-6 rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)] ${settingsTab === 'quick' ? '' : 'hidden'}`} id="quick-panel" role="tabpanel">
         <h2 className="text-lg font-semibold text-slate-950">카테고리</h2>
         <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={handleCreateCategory}>
           <input
@@ -364,7 +390,7 @@ export function SettingsPage() {
         </p>
       </section>
 
-      <section className="mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section aria-label="반복 거래 설정" className={`mt-6 rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)] ${settingsTab === 'recurring' ? '' : 'hidden'}`} id="recurring-panel" role="tabpanel">
         <div className="flex items-center gap-2 text-slate-950">
           <Repeat size={20} aria-hidden="true" />
           <h2 className="text-lg font-semibold">반복 거래</h2>

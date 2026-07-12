@@ -1,0 +1,85 @@
+.wl-app-shell main {
+  color: var(--wl-color-text-main);
+}
+
+.wl-app-shell main > header {
+  border-color: var(--wl-color-border);
+}
+
+.wl-app-shell .border-slate-200,
+.wl-app-shell .border-slate-300 {
+  border-color: var(--wl-color-border);
+}
+
+.wl-app-shell .rounded-lg {
+  border-radius: 1.25rem;
+}
+
+.wl-app-shell .rounded-md {
+  border-radius: 0.75rem;
+}
+
+.wl-app-shell .shadow-sm {
+  box-shadow: var(--wl-shadow-card);
+}
+
+.wl-app-shell .bg-slate-50 {
+  background-color: var(--wl-color-background);
+}
+
+.wl-app-shell .bg-emerald-50 {
+  background-color: var(--wl-color-primary-soft);
+}
+
+.wl-app-shell .text-emerald-700,
+.wl-app-shell .text-emerald-800 {
+  color: var(--wl-color-primary-dark);
+}
+
+.wl-app-shell .border-emerald-700,
+.wl-app-shell .border-emerald-600 {
+  border-color: var(--wl-color-primary);
+}
+
+.wl-app-shell .bg-emerald-700,
+.wl-app-shell .bg-emerald-600 {
+  background-color: var(--wl-color-primary);
+}
+
+.wl-app-shell button.bg-emerald-700:hover,
+.wl-app-shell button.bg-emerald-600:hover {
+  background-color: var(--wl-color-primary-dark);
+}
+
+.wl-app-shell input:not([type='file']),
+.wl-app-shell select,
+.wl-app-shell textarea {
+  border-color: var(--wl-color-border);
+  border-radius: 0.75rem;
+  font-size: 1rem;
+}
+
+.wl-app-shell input:not([type='file']):focus,
+.wl-app-shell select:focus,
+.wl-app-shell textarea:focus {
+  border-color: var(--wl-color-primary);
+  box-shadow: 0 0 0 3px rgb(14 159 110 / 15%);
+}
+
+.wl-page-header-label {
+  color: var(--wl-color-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wl-stat-bar {
+  background: var(--wl-color-primary);
+  border-radius: 999px;
+  min-width: 0.5rem;
+}
+
+.wl-stat-bar-income {
+  background: var(--wl-color-income);
+}

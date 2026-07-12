@@ -75,9 +75,10 @@ export function TransactionImportPage() {
         <Link className="text-sm font-medium text-emerald-700" to="/calendar">
           거래 장부로 돌아가기
         </Link>
+        <p className="wl-page-header-label mt-5">Import</p>
         <div className="mt-2 flex items-center gap-2 text-slate-950">
-          <ScanText size={26} aria-hidden="true" />
-          <h1 className="text-3xl font-semibold">거래 가져오기</h1>
+          <ScanText size={26} className="text-[var(--wl-color-primary)]" aria-hidden="true" />
+          <h1 className="text-3xl font-bold tracking-tight">거래 가져오기</h1>
         </div>
         <p className="mt-2 text-sm text-slate-500">
           {meQuery.data?.currentLedger.name ?? '현재 장부'}에 저장할 후보를 확인합니다.

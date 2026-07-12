@@ -1,0 +1,40 @@
+:root {
+  --wl-color-primary: #0e9f6e;
+  --wl-color-primary-dark: #057a55;
+  --wl-color-primary-soft: #e7f7ef;
+  --wl-color-background: #f8faf8;
+  --wl-color-surface: #ffffff;
+  --wl-color-border: #e5ede8;
+  --wl-color-text-main: #111827;
+  --wl-color-text-secondary: #64748b;
+  --wl-color-income: #2563eb;
+  --wl-color-expense: #f97316;
+  --wl-color-danger: #ef4444;
+  --wl-shadow-card: 0 12px 32px rgba(30, 73, 53, 0.08);
+  --wl-shadow-card-hover: 0 18px 38px rgba(30, 73, 53, 0.12);
+
+  --color-primary: var(--wl-color-primary);
+  --color-primary-dark: var(--wl-color-primary-dark);
+  --color-primary-soft: var(--wl-color-primary-soft);
+  --color-background: var(--wl-color-background);
+  --color-card: var(--wl-color-surface);
+  --color-border: var(--wl-color-border);
+  --color-text-main: var(--wl-color-text-main);
+  --color-text-secondary: var(--wl-color-text-secondary);
+  --color-income: var(--wl-color-income);
+  --color-expense: var(--wl-color-expense);
+  --color-danger: var(--wl-color-danger);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 36px;
+  --spacing-xxl: 56px;
+  --shadow-sm: 0 1px 3px rgba(14, 159, 110, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 10px 25px -5px rgba(14, 159, 110, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 20px 30px -8px rgba(14, 159, 110, 0.06), 0 10px 15px -3px rgba(14, 159, 110, 0.03);
+}

@@ -1,292 +1,82 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { ChevronLeft, ChevronRight, Plus, ScanText, Search, SlidersHorizontal } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeftRight, Plus, ScanText, Wand2 } from 'lucide-react'
 import { useMeQuery } from '../features/auth/model/authQueries'
-import { useCategoriesQuery } from '../features/category/model/categoryQueries'
-import { useLedgerMembersQuery } from '../features/ledger/model/ledgerQueries'
-import {
-  useCreateTransactionMutation,
-  useMonthTransactionsQuery,
-  useQuickTransactionMutation,
-} from '../features/transaction/model/transactionQueries'
-import type { TransactionType } from '../features/transaction/api/transactionApi'
+import { useMonthTransactionsQuery } from '../features/transaction/model/transactionQueries'
 import { ApiClientError } from '../shared/api/client'
 import { formatBudgetMonth, formatDateInput } from '../shared/lib/date'
 import { formatWon } from '../shared/lib/money'
+import { CalendarGrid } from '../shared/ui/CalendarGrid'
+import { CategoryBadge } from '../shared/ui/CategoryBadge'
+import { CardHeading, EmptyState, PageHeader, SurfaceCard } from '../shared/ui/DesignPrimitives'
+import { useTransactionEntry } from '../shared/ui/TransactionEntryContext'
 
 export function LedgerPage() {
   const meQuery = useMeQuery()
+  const { openTransactionEntry } = useTransactionEntry()
   const [budgetMonth, setBudgetMonth] = useState(formatBudgetMonth())
-  const [type, setType] = useState<TransactionType>('EXPENSE')
-  const [amount, setAmount] = useState('')
-  const [transactionDate, setTransactionDate] = useState(formatDateInput())
-  const [categoryId, setCategoryId] = useState('')
-  const [memo, setMemo] = useState('')
-  const [payerUserId, setPayerUserId] = useState('')
-  const [quickText, setQuickText] = useState('')
+  const [selectedDate, setSelectedDate] = useState<string | null>(formatDateInput())
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
   const ledgerId = meQuery.data?.currentLedger.id
-  const categoriesQuery = useCategoriesQuery(ledgerId)
-  const membersQuery = useLedgerMembersQuery(ledgerId)
   const transactionsQuery = useMonthTransactionsQuery(ledgerId, budgetMonth)
-  const createTransactionMutation = useCreateTransactionMutation(ledgerId, budgetMonth)
-  const quickTransactionMutation = useQuickTransactionMutation(ledgerId, budgetMonth)
+  const transactions = useMemo(() => transactionsQuery.data?.transactions ?? [], [transactionsQuery.data?.transactions])
+  const transactionDates = useMemo(() => [...new Set(transactions.map((item) => item.transactionDate))], [transactions])
 
-  const filteredCategories = useMemo(
-    () => categoriesQuery.data?.filter((category) => category.type === type) ?? [],
-    [categoriesQuery.data, type],
-  )
+  if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) return <Navigate to="/login" replace />
 
-  if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
-    return <Navigate to="/login" replace />
+  const visibleTransactions = transactions.filter((transaction) => {
+    const matchesDate = selectedDate ? transaction.transactionDate === selectedDate : true
+    const searchTarget = `${transaction.memo ?? ''} ${transaction.category?.name ?? ''} ${transaction.payer.nickname}`.toLowerCase()
+    return matchesDate && searchTarget.includes(searchText.trim().toLowerCase())
+  })
+  const totalIncome = transactions.filter((item) => item.type === 'INCOME').reduce((sum, item) => sum + item.amount, 0)
+  const totalExpense = transactions.filter((item) => item.type === 'EXPENSE').reduce((sum, item) => sum + item.amount, 0)
+  const selectedExpense = visibleTransactions.filter((item) => item.type === 'EXPENSE').reduce((sum, item) => sum + item.amount, 0)
+
+  function moveMonth(offset: number) {
+    const [year, month] = budgetMonth.split('-').map(Number)
+    const next = new Date(year, month - 1 + offset, 1)
+    setBudgetMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`)
+    setSelectedDate(null)
   }
 
-  function handleCreateTransaction(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    createTransactionMutation.mutate(
-      {
-        type,
-        amount: Number(amount),
-        transactionDate,
-        categoryId: categoryId ? Number(categoryId) : null,
-        memo: memo || null,
-        payerUserId: payerUserId ? Number(payerUserId) : null,
-      },
-      {
-        onSuccess: () => {
-          setAmount('')
-          setMemo('')
-        },
-      },
-    )
-  }
-
-  function handleQuickTransaction(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    quickTransactionMutation.mutate(
-      { text: quickText, transactionDate },
-      {
-        onSuccess: () => setQuickText(''),
-      },
-    )
-  }
+  const selectedTitle = selectedDate
+    ? `${Number(selectedDate.slice(5, 7))}월 ${Number(selectedDate.slice(8, 10))}일 거래`
+    : `${budgetMonth.replace('-', '년 ')}월 전체 거래`
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 py-6 sm:px-8 lg:px-10">
-      <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Link className="text-sm font-medium text-emerald-700" to="/dashboard">
-            대시보드로 돌아가기
-          </Link>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-950">거래 장부</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            {meQuery.data?.currentLedger.name ?? '현재 장부'}의 거래를 기록합니다.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:items-end">
-          <Link
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-500 hover:text-slate-950"
-            to="/imports"
-          >
-            <ScanText size={18} aria-hidden="true" />
-            가져오기
-          </Link>
-          <label className="text-sm font-medium text-slate-700">
-            조회 월
-            <input
-              className="mt-2 h-10 rounded-md border border-slate-300 px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-              type="month"
-              value={budgetMonth}
-              onChange={(event) => setBudgetMonth(event.target.value)}
-            />
-          </label>
-        </div>
-      </header>
+    <main className="mx-auto min-h-dvh w-full max-w-[1240px] px-4 py-4 sm:px-6 md:p-8 lg:p-10">
+      <PageHeader
+        eyebrow="LEDGER"
+        title="가계부"
+        description="오늘 바로 입력하고 날짜별 지출과 수입을 확인합니다."
+        actions={<div className="flex gap-2"><button aria-label="거래 검색" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" onClick={() => setSearchOpen((value) => !value)} type="button"><Search size={19} /></button><button aria-label="거래 필터" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" type="button"><SlidersHorizontal size={19} /></button><Link aria-label="거래 가져오기" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" to="/imports"><ScanText size={19} /></Link><button className="hidden min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(14,159,110,0.18)] lg:flex" onClick={openTransactionEntry} type="button"><Plus size={18} />거래 추가</button></div>}
+      />
 
-      <section className="grid gap-4 py-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="space-y-4">
-          <form
-            className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-            onSubmit={handleCreateTransaction}
-          >
-            <div className="flex items-center gap-2 text-slate-950">
-              <Plus size={20} aria-hidden="true" />
-              <h2 className="text-lg font-semibold">거래 입력</h2>
-            </div>
+      {searchOpen ? <label className="mt-4 block"><span className="sr-only">거래 검색어</span><div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm"><Search className="text-slate-400" size={18} /><input autoFocus className="min-w-0 flex-1 border-0 bg-transparent text-base outline-none" onChange={(event) => setSearchText(event.target.value)} placeholder="내역, 카테고리, 결제자 검색" value={searchText} /></div></label> : null}
 
-            <div className="mt-4 grid grid-cols-2 gap-2" role="group" aria-label="거래 유형">
-              {(['EXPENSE', 'INCOME'] as const).map((candidate) => (
-                <button
-                  className="h-10 rounded-md border border-slate-300 text-sm font-medium text-slate-700 transition data-[selected=true]:border-emerald-700 data-[selected=true]:bg-emerald-50 data-[selected=true]:text-emerald-800"
-                  data-selected={type === candidate}
-                  key={candidate}
-                  onClick={() => {
-                    setType(candidate)
-                    setCategoryId('')
-                  }}
-                  type="button"
-                >
-                  {transactionTypeLabel(candidate)}
-                </button>
-              ))}
-            </div>
+      <section className="mt-5 hidden grid-cols-3 gap-5 lg:grid"><Summary label="총 수입" value={totalIncome} color="text-blue-600" /><Summary label="총 지출" value={totalExpense} color="text-orange-500" /><Summary label="잔액" value={totalIncome - totalExpense} color="text-emerald-700" /></section>
 
-            <label className="mt-4 block text-sm font-medium text-slate-700">
-              날짜
-              <input
-                className="mt-2 h-11 w-full rounded-md border border-slate-300 px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                type="date"
-                value={transactionDate}
-                onChange={(event) => setTransactionDate(event.target.value)}
-                required
-              />
-            </label>
+      <section className="mt-5 grid gap-5 xl:grid-cols-[390px_1fr]">
+        <SurfaceCard className="h-fit">
+          <div className="flex items-center justify-between"><button aria-label="이전 달" className="flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => moveMonth(-1)} type="button"><ChevronLeft size={20} /></button><label><span className="sr-only">조회 월</span><input className="w-40 border-0 bg-transparent text-center text-base font-extrabold outline-none" onChange={(event) => { setBudgetMonth(event.target.value); setSelectedDate(null) }} type="month" value={budgetMonth} /></label><button aria-label="다음 달" className="flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => moveMonth(1)} type="button"><ChevronRight size={20} /></button></div>
+          <div className="mt-5"><CalendarGrid budgetMonth={budgetMonth} onSelectDate={(date) => setSelectedDate((current) => current === date ? null : date)} selectedDate={selectedDate} transactionDates={transactionDates} /></div>
+          {selectedDate ? <button className="mt-4 w-full text-center text-xs font-bold text-emerald-700" onClick={() => setSelectedDate(null)} type="button">선택 해제하고 월 전체 보기</button> : null}
+        </SurfaceCard>
 
-            <label className="mt-4 block text-sm font-medium text-slate-700">
-              금액
-              <input
-                className="mt-2 h-11 w-full rounded-md border border-slate-300 px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                min="1"
-                type="number"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                required
-              />
-            </label>
-
-            <label className="mt-4 block text-sm font-medium text-slate-700">
-              카테고리
-              <select
-                className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
-              >
-                <option value="">선택 안 함</option>
-                {filteredCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="mt-4 block text-sm font-medium text-slate-700">
-              결제자
-              <select
-                className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => setPayerUserId(event.target.value)}
-                value={payerUserId}
-              >
-                <option value="">나</option>
-                {membersQuery.data?.map((member) => (
-                  <option key={member.userId} value={member.userId}>
-                    {member.nickname}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="mt-4 block text-sm font-medium text-slate-700">
-              메모
-              <input
-                className="mt-2 h-11 w-full rounded-md border border-slate-300 px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                value={memo}
-                onChange={(event) => setMemo(event.target.value)}
-                placeholder="예: 점심"
-              />
-            </label>
-
-            <button
-              className="mt-5 h-11 w-full rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={createTransactionMutation.isPending}
-              type="submit"
-            >
-              거래 저장
-            </button>
-          </form>
-
-          <form
-            className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-            onSubmit={handleQuickTransaction}
-          >
-            <div className="flex items-center gap-2 text-slate-950">
-              <Wand2 size={20} aria-hidden="true" />
-              <h2 className="text-lg font-semibold">빠른 입력</h2>
-            </div>
-            <label className="mt-4 block text-sm font-medium text-slate-700">
-              입력 문장
-              <input
-                className="mt-2 h-11 w-full rounded-md border border-slate-300 px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                value={quickText}
-                onChange={(event) => setQuickText(event.target.value)}
-                placeholder="예: 커피 4500"
-                required
-              />
-            </label>
-            <button
-              className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-700 transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-100"
-              disabled={quickTransactionMutation.isPending}
-              type="submit"
-            >
-              <ArrowLeftRight size={18} aria-hidden="true" />
-              빠른 거래 저장
-            </button>
-          </form>
-        </div>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-950">월별 거래</h2>
-
-          {transactionsQuery.isLoading ? (
-            <p className="mt-6 text-slate-500">거래를 불러오는 중입니다.</p>
-          ) : null}
-
-          {transactionsQuery.isError ? (
-            <p className="mt-6 text-red-700">거래를 불러오지 못했습니다.</p>
-          ) : null}
-
-          {transactionsQuery.data?.transactions.length === 0 ? (
-            <div className="mt-6 flex min-h-48 items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-6 text-center text-slate-500">
-              아직 기록된 거래가 없습니다.
-            </div>
-          ) : null}
-
-          <div className="mt-5 divide-y divide-slate-100">
-            {transactionsQuery.data?.transactions.map((transaction) => (
-              <Link
-                className="flex items-center justify-between gap-4 py-4 transition hover:bg-slate-50"
-                key={transaction.id}
-                to={`/transactions/${transaction.id}`}
-              >
-                <span>
-                  <span className="block font-medium text-slate-950">
-                    {transaction.memo || transaction.category?.name || '거래'}
-                  </span>
-                  <span className="text-sm text-slate-500">
-                    {transaction.transactionDate} ·{' '}
-                    {transaction.category?.name ?? '미분류'} · {transaction.payer.nickname}
-                  </span>
-                </span>
-                <span
-                  className={
-                    transaction.type === 'INCOME'
-                      ? 'font-semibold text-emerald-700'
-                      : 'font-semibold text-slate-950'
-                  }
-                >
-                  {transaction.type === 'INCOME' ? '+' : '-'}
-                  {formatWon(transaction.amount)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <SurfaceCard labelledBy="transaction-list-title">
+          <CardHeading eyebrow="TIMELINE" id="transaction-list-title" title={selectedTitle} trailing={<div className="text-right"><p className="text-xs font-bold text-slate-400">{visibleTransactions.length}건</p><p className="mt-1 text-sm font-black text-slate-800">{formatWon(selectedExpense)}</p></div>} />
+          {transactionsQuery.isLoading ? <div className="mt-5 space-y-3">{[1,2,3].map((item) => <div className="h-16 animate-pulse rounded-2xl bg-slate-100" key={item} />)}</div> : null}
+          {!transactionsQuery.isLoading && visibleTransactions.length ? <ul className="mt-4 divide-y divide-slate-100">{visibleTransactions.map((transaction) => <li key={transaction.id}><Link className="flex items-center gap-3 rounded-xl px-1 py-3 text-left transition hover:bg-slate-50 sm:gap-4" to={`/transactions/${transaction.id}`}><CategoryBadge name={transaction.category?.name} /><span className="min-w-0 flex-1"><strong className="block truncate text-sm font-extrabold text-slate-900 sm:text-base">{transaction.memo || transaction.category?.name || '거래 내역'}</strong><span className="mt-1 block truncate text-xs font-medium text-slate-400">{transaction.transactionDate.replaceAll('-', '.')} · {transaction.payer.nickname} · {transaction.category?.name ?? '미분류'}</span></span><strong className={`shrink-0 text-sm font-black sm:text-base ${transaction.type === 'INCOME' ? 'text-blue-600' : 'text-slate-900'}`}>{transaction.type === 'INCOME' ? '+' : '-'}{formatWon(transaction.amount)}</strong></Link></li>)}</ul> : null}
+          {!transactionsQuery.isLoading && !visibleTransactions.length ? <EmptyState title={selectedDate ? '이날의 거래 기록이 없습니다.' : '이번 달 거래가 없습니다.'} description="하단의 + 버튼을 눌러 첫 거래를 입력해보세요." /> : null}
+          <button className="mt-5 min-h-12 w-full rounded-xl bg-emerald-600 text-sm font-extrabold text-white xl:hidden" onClick={openTransactionEntry} type="button"><Plus className="mr-1 inline" size={18} />거래 추가</button>
+        </SurfaceCard>
       </section>
     </main>
   )
 }
 
-function transactionTypeLabel(type: TransactionType) {
-  return type === 'INCOME' ? '수입' : '지출'
+function Summary({ label, value, color }: { label: string; value: number; color: string }) {
+  return <SurfaceCard><p className="dashboard-eyebrow">MONTH TOTAL</p><p className="mt-1 text-sm font-bold text-slate-500">{label}</p><p className={`mt-3 text-3xl font-black tracking-[-0.04em] ${color}`}>{formatWon(value)}</p></SurfaceCard>
 }

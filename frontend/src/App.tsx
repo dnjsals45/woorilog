@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
+import { AppShell } from './components/layout/AppShell'
 import { BudgetMonthPage } from './pages/BudgetMonthPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { InvitationLinkPage } from './pages/InvitationLinkPage'
@@ -17,17 +18,19 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/calendar" element={<LedgerPage />} />
-      <Route path="/transactions/:transactionId" element={<TransactionEditPage />} />
-      <Route path="/stats" element={<StatisticsPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/imports" element={<TransactionImportPage />} />
-      <Route
-        path="/ledgers/:ledgerId/months/:budgetMonth"
-        element={<BudgetMonthPage />}
-      />
-      <Route path="/invitations/links/:token" element={<InvitationLinkPage />} />
+      <Route element={<AppShell />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/calendar" element={<LedgerPage />} />
+        <Route path="/transactions/:transactionId" element={<TransactionEditPage />} />
+        <Route path="/stats" element={<StatisticsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/imports" element={<TransactionImportPage />} />
+        <Route
+          path="/ledgers/:ledgerId/months/:budgetMonth"
+          element={<BudgetMonthPage />}
+        />
+        <Route path="/invitations/links/:token" element={<InvitationLinkPage />} />
+      </Route>
     </Routes>
   )
 }

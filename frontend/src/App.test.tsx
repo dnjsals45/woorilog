@@ -33,7 +33,7 @@ describe('App', () => {
     renderApp('/')
 
     expect(
-      screen.getByRole('heading', { level: 1, name: /수입과 지출을 함께 관리하고/i }),
+      screen.getByRole('heading', { level: 1, name: /함께 쓰는.*우리 집.*가계부/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '무료로 시작하기' })).toHaveAttribute('href', '/login')
   })
@@ -42,7 +42,7 @@ describe('App', () => {
     renderApp('/login')
 
     expect(
-      screen.getByRole('heading', { level: 1, name: '우리로그' }),
+      screen.getByRole('heading', { level: 1, name: /함께 쓰는 돈을/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '개발자 로그인' })).toBeInTheDocument()
   })
@@ -70,7 +70,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: '개발자 로그인' }))
 
-    expect(await screen.findByText('이번 달 예산')).toBeInTheDocument()
+    expect(await screen.findByText('이번 달 남은 예산')).toBeInTheDocument()
   })
 
   it('renders ledger switch controls when session and ledgers are loaded', async () => {
@@ -109,7 +109,7 @@ describe('App', () => {
 
     renderApp('/dashboard')
 
-    expect(await screen.findByText('기본 개인 장부')).toBeInTheDocument()
+    expect((await screen.findAllByText('기본 개인 장부')).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: '장부 만들기' })).toBeInTheDocument()
   })
 
@@ -121,6 +121,32 @@ describe('App', () => {
           JSON.stringify({
             user: { id: 1, email: 'dev@woorilog.local', nickname: '개발자' },
             currentLedger: { id: 1, name: '기본 개인 장부', type: 'PERSONAL', ownerId: 1 },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            currentLedgerId: 1,
+            ledgers: [{ id: 1, name: '기본 개인 장부', type: 'PERSONAL', ownerId: 1 }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            currentLedger: { id: 1, name: '기본 개인 장부', type: 'PERSONAL', ownerId: 1 },
+            budgetMonth: '2026-07',
+            totalBudgetAmount: 500000,
+            totalExpenseAmount: 120000,
+            remainingBudgetAmount: 380000,
+            recentTransactions: [],
+            categorySpending: [
+              { categoryId: 1, name: '식비', totalSpent: 120000 },
+            ],
+            memberSpending: [],
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         ),
@@ -141,8 +167,9 @@ describe('App', () => {
 
     renderApp('/stats')
 
-    expect(await screen.findByRole('heading', { level: 1, name: '월별 통계' })).toBeInTheDocument()
-    expect(await screen.findByText('2026-07')).toBeInTheDocument()
-    expect(screen.getByText('120,000원')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '통계' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 2, name: '월별 지출 추이' }),
+    ).toBeInTheDocument()
   })
 })

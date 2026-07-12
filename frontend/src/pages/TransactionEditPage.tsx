@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { Save } from 'lucide-react'
+import { ArrowLeft, Save } from 'lucide-react'
 import { useCategoriesQuery } from '../features/category/model/categoryQueries'
 import { useLedgerMembersQuery } from '../features/ledger/model/ledgerQueries'
 import { useMeQuery } from '../features/auth/model/authQueries'
@@ -51,12 +51,10 @@ export function TransactionEditPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-5 py-6 sm:px-8">
-      <header className="border-b border-slate-200 pb-6">
-        <Link className="text-sm font-medium text-emerald-700" to="/calendar">
-          장부로 돌아가기
-        </Link>
-        <h1 className="mt-2 text-3xl font-semibold text-slate-950">거래 수정</h1>
+    <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-5 pb-10 pt-8 sm:px-8 lg:justify-center lg:py-12">
+      <header className="mb-5 flex items-center gap-4">
+        <Link aria-label="장부로 돌아가기" className="flex size-11 items-center justify-center rounded-full border border-[var(--wl-color-border)] bg-white text-slate-600" to="/calendar"><ArrowLeft size={19} /></Link>
+        <div><p className="wl-page-header-label">Transaction</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">거래 상세</h1></div>
       </header>
 
       {transactionQuery.isLoading ? (
@@ -69,10 +67,12 @@ export function TransactionEditPage() {
 
       {transactionQuery.data ? (
         <form
-          className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+          className="rounded-[1.75rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)] sm:p-8"
           key={transactionQuery.data.id}
           onSubmit={handleSubmit}
         >
+          <div className="mb-8 border-b border-slate-100 pb-7 text-center"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${transactionQuery.data.type === 'EXPENSE' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{transactionQuery.data.type === 'EXPENSE' ? '지출' : '수입'}</span><p className="mt-4 text-lg font-bold">{transactionQuery.data.memo || transactionQuery.data.category?.name || '거래 내역'}</p><p className="mt-2 text-4xl font-bold tracking-tight text-[var(--wl-color-primary-dark)]">{transactionQuery.data.amount.toLocaleString('ko-KR')}원</p></div>
+
           <label className="block text-sm font-medium text-slate-700">
             거래 유형
             <select
@@ -149,7 +149,7 @@ export function TransactionEditPage() {
           </label>
 
           <button
-            className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--wl-color-primary)] px-4 text-sm font-bold text-white transition hover:bg-[var(--wl-color-primary-dark)] disabled:cursor-not-allowed disabled:bg-slate-300"
             disabled={updateMutation.isPending}
             type="submit"
           >
