@@ -3,9 +3,16 @@ package com.woorilog.service
 import com.woorilog.domain.*
 import com.woorilog.exception.ForbiddenException
 import com.woorilog.security.JwtTokenProvider
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.woorilog.exception.WoorilogException
+import org.springframework.http.HttpStatus
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.time.Clock
+import java.util.Base64
 
 @Service
 @Transactional
@@ -16,9 +23,13 @@ class AuthService(
     private val jwtTokenProvider: JwtTokenProvider,
     private val ledgerCategorySeedingService: LedgerCategorySeedingService,
     private val kakaoOAuthClient: KakaoOAuthClient,
+    private val refreshTokenRepository: RefreshTokenRepository,
+    private val clock: Clock,
     @Value("\${app.auth.dev-login-enabled}") private val devLoginEnabled: Boolean,
-    @Value("\${app.jwt.access-token-ttl-seconds}") private val accessTokenTtlSeconds: Long
+    @Value("\${app.jwt.access-token-ttl-seconds}") private val accessTokenTtlSeconds: Long,
+    @Value("\${app.jwt.refresh-token-ttl-seconds}") private val refreshTokenTtlSeconds: Long,
 ) {
+    private val secureRandom = SecureRandom()
 
     fun devLogin(email: String, nickname: String): DevLoginResponse {
         if (!devLoginEnabled) {
@@ -54,12 +65,7 @@ class AuthService(
         // 4. Generate access token
         val token = jwtTokenProvider.generateToken(user.id!!)
 
-        return DevLoginResponse(
-            accessToken = token,
-            expiresInSeconds = accessTokenTtlSeconds,
-            user = UserDto.from(user),
-            currentLedger = LedgerDto.from(currentLedger)
-        )
+        return issueSession(user, currentLedger, token)
     }
 
     fun getMe(userId: Long): MeResponse {
@@ -94,20 +100,68 @@ class AuthService(
         }
 
         val currentLedger = resolveCurrentLedger(user)
+        return issueSession(user, currentLedger)
+    }
+
+    fun refresh(rawRefreshToken: String): DevLoginResponse {
+        val now = clock.instant()
+        val storedToken = refreshTokenRepository.findByTokenHash(hashToken(rawRefreshToken))
+            ?: throw WoorilogException("INVALID_REFRESH_TOKEN", "세션을 갱신할 수 없습니다.", HttpStatus.UNAUTHORIZED)
+        if (!storedToken.isActive(now)) {
+            throw WoorilogException("INVALID_REFRESH_TOKEN", "세션이 만료되었거나 이미 사용되었습니다.", HttpStatus.UNAUTHORIZED)
+        }
+        storedToken.revokedAt = now
+        refreshTokenRepository.save(storedToken)
+        return issueSession(storedToken.user, resolveCurrentLedger(storedToken.user))
+    }
+
+    fun logout(rawRefreshToken: String?) {
+        if (rawRefreshToken.isNullOrBlank()) return
+        val storedToken = refreshTokenRepository.findByTokenHash(hashToken(rawRefreshToken)) ?: return
+        if (storedToken.revokedAt == null) {
+            storedToken.revokedAt = clock.instant()
+            refreshTokenRepository.save(storedToken)
+        }
+    }
+
+    private fun issueSession(
+        user: User,
+        currentLedger: Ledger,
+        accessToken: String = jwtTokenProvider.generateToken(user.id!!),
+    ): DevLoginResponse {
+        val refreshToken = generateRefreshToken()
+        refreshTokenRepository.save(
+            RefreshToken(
+                user = user,
+                tokenHash = hashToken(refreshToken),
+                expiresAt = clock.instant().plusSeconds(refreshTokenTtlSeconds),
+            )
+        )
         return DevLoginResponse(
-            accessToken = jwtTokenProvider.generateToken(user.id!!),
+            accessToken = accessToken,
             expiresInSeconds = accessTokenTtlSeconds,
             user = UserDto.from(user),
             currentLedger = LedgerDto.from(currentLedger),
+            refreshToken = refreshToken,
         )
     }
+
+    private fun generateRefreshToken(): String {
+        val bytes = ByteArray(48)
+        secureRandom.nextBytes(bytes)
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+    }
+
+    private fun hashToken(token: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(token.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
 
     fun resolveCurrentLedger(user: User): Ledger {
         val lastUsedId = user.lastUsedLedgerId
         if (lastUsedId != null) {
             val member = ledgerMemberRepository.findByLedgerIdAndUserId(lastUsedId, user.id!!)
             if (member != null) {
-                return member.ledger
+                if (!member.ledger.archived) return member.ledger
             }
         }
 
@@ -121,7 +175,7 @@ class AuthService(
     }
 
     private fun ensureDefaultPersonalLedger(user: User): Ledger {
-        val members = ledgerMemberRepository.findByUser(user)
+        val members = ledgerMemberRepository.findByUser(user).filter { !it.ledger.archived }
         if (members.isNotEmpty()) {
             val personalLedger = members.map { it.ledger }.firstOrNull { it.type == LedgerType.PERSONAL }
             if (personalLedger != null) {
@@ -155,7 +209,8 @@ data class DevLoginResponse(
     val accessToken: String,
     val expiresInSeconds: Long,
     val user: UserDto,
-    val currentLedger: LedgerDto
+    val currentLedger: LedgerDto,
+    @get:JsonIgnore val refreshToken: String = "",
 )
 
 data class MeResponse(

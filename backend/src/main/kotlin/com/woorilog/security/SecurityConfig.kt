@@ -31,7 +31,7 @@ class SecurityConfig(
                 auth
                     .requestMatchers("/health").permitAll()
                     .requestMatchers("/api/auth/dev-login").permitAll()
-                    .requestMatchers("/api/auth/kakao/login-url", "/api/auth/kakao/callback").permitAll()
+                    .requestMatchers("/api/auth/kakao/login-url", "/api/auth/kakao/callback", "/api/auth/refresh", "/api/auth/logout").permitAll()
                     .requestMatchers("/api/**").authenticated()
                     .anyRequest().permitAll()
             }

@@ -17,6 +17,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.transaction.annotation.Transactional
+import jakarta.servlet.http.Cookie
+import org.junit.jupiter.api.Assertions.assertNotEquals
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -134,28 +136,39 @@ class AuthAndLedgerIntegrationTest {
             .content(objectMapper.writeValueAsString(mapOf("email" to "logout-test@example.com", "nickname" to "로그아웃테스터"))))
             .andReturn()
 
-        val devLoginResponse = objectMapper.readValue(devLoginResult.response.contentAsString, DevLoginResponse::class.java)
-        val token = devLoginResponse.accessToken
+        val refreshCookie = devLoginResult.response.getCookie("woorilog.refreshToken")
+        assertNotNull(refreshCookie)
 
         mockMvc.perform(post("/api/auth/logout")
-            .header("Authorization", "Bearer $token"))
+            .cookie(refreshCookie!!))
             .andExpect(status().isNoContent)
+            .andExpect(cookie().maxAge("woorilog.refreshToken", 0))
+
+        mockMvc.perform(post("/api/auth/refresh").cookie(refreshCookie))
+            .andExpect(status().isUnauthorized)
     }
 
     @Test
-    fun should_Return501_When_Refresh() {
+    fun should_RotateRefreshToken_When_Refresh() {
         val devLoginResult = mockMvc.perform(post("/api/auth/dev-login")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(mapOf("email" to "refresh-test@example.com", "nickname" to "리프레시테스터"))))
             .andReturn()
 
-        val devLoginResponse = objectMapper.readValue(devLoginResult.response.contentAsString, DevLoginResponse::class.java)
-        val token = devLoginResponse.accessToken
+        val refreshCookie = devLoginResult.response.getCookie("woorilog.refreshToken")
+        assertNotNull(refreshCookie)
 
-        mockMvc.perform(post("/api/auth/refresh")
-            .header("Authorization", "Bearer $token"))
-            .andExpect(status().isNotImplemented)
-            .andExpect(jsonPath("$.code").value("NOT_IMPLEMENTED"))
+        val refreshed = mockMvc.perform(post("/api/auth/refresh").cookie(refreshCookie!!))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.accessToken").isNotEmpty)
+            .andExpect(cookie().exists("woorilog.refreshToken"))
+            .andReturn()
+        val rotatedCookie = refreshed.response.getCookie("woorilog.refreshToken")
+        assertNotNull(rotatedCookie)
+        assertNotEquals(refreshCookie.value, rotatedCookie!!.value)
+
+        mockMvc.perform(post("/api/auth/refresh").cookie(Cookie("woorilog.refreshToken", refreshCookie.value)))
+            .andExpect(status().isUnauthorized)
     }
 
     @Test
