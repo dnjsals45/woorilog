@@ -119,11 +119,24 @@ class LedgerService(
         return LedgerDto.from(ledger)
     }
 
-    fun renameLedger(userId: Long, ledgerId: Long, name: String): LedgerDto {
+    fun updateLedger(
+        userId: Long,
+        ledgerId: Long,
+        name: String?,
+        recurringSummaryClosingDay: Int?,
+    ): LedgerDto {
         val ledger = requireOwner(userId, ledgerId)
-        val trimmedName = name.trim()
-        if (trimmedName.isBlank()) throw BadRequestException("장부 이름은 비어 있을 수 없습니다.")
-        ledger.name = trimmedName
+        if (name != null) {
+            val trimmedName = name.trim()
+            if (trimmedName.isBlank()) throw BadRequestException("장부 이름은 비어 있을 수 없습니다.")
+            ledger.name = trimmedName
+        }
+        if (recurringSummaryClosingDay != null) {
+            ledger.recurringSummaryClosingDay = recurringSummaryClosingDay
+        }
+        if (name == null && recurringSummaryClosingDay == null) {
+            throw BadRequestException("변경할 장부 정보가 없습니다.")
+        }
         return LedgerDto.from(ledgerRepository.save(ledger))
     }
 

@@ -9,6 +9,7 @@ import {
   leaveLedger,
   removeLedgerMember,
   renameLedger,
+  updateRecurringSummaryClosingDay,
   switchLedger,
   type CreateLedgerRequest,
   type LedgerType,
@@ -73,6 +74,15 @@ function invalidateLedgerState(queryClient: ReturnType<typeof useQueryClient>) {
 export function useRenameLedgerMutation(ledgerId: number | undefined) {
   const queryClient = useQueryClient()
   return useMutation({ mutationFn: (name: string) => renameLedger(ledgerId!, name), onSuccess: () => invalidateLedgerState(queryClient) })
+}
+
+export function useUpdateRecurringSummaryClosingDayMutation(ledgerId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (recurringSummaryClosingDay: number) =>
+      updateRecurringSummaryClosingDay(ledgerId!, recurringSummaryClosingDay),
+    onSuccess: () => invalidateLedgerState(queryClient),
+  })
 }
 
 export function useArchiveLedgerMutation(ledgerId: number | undefined) {

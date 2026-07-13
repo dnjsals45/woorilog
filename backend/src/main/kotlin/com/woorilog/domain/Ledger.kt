@@ -21,4 +21,7 @@ class Ledger(
 
     @Column(nullable = false)
     var archived: Boolean = false,
+
+    @Column(name = "recurring_summary_closing_day", nullable = false)
+    var recurringSummaryClosingDay: Int = 31,
 ) : BaseEntity()

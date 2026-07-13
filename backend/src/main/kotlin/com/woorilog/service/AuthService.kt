@@ -238,14 +238,16 @@ data class LedgerDto(
     val id: Long,
     val name: String,
     val type: LedgerType,
-    val ownerId: Long
+    val ownerId: Long,
+    val recurringSummaryClosingDay: Int,
 ) {
     companion object {
         fun from(ledger: Ledger) = LedgerDto(
             id = ledger.id!!,
             name = ledger.name,
             type = ledger.type,
-            ownerId = ledger.ownerId
+            ownerId = ledger.ownerId,
+            recurringSummaryClosingDay = ledger.recurringSummaryClosingDay,
         )
     }
 }

@@ -6,6 +6,8 @@ import com.woorilog.service.LedgerMemberResponse
 import com.woorilog.service.LedgerListResponse
 import com.woorilog.service.LedgerService
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
@@ -55,11 +57,16 @@ class LedgerController(
     }
 
     @PatchMapping("/{ledgerId}")
-    fun renameLedger(
+    fun updateLedger(
         @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable ledgerId: Long,
-        @Valid @RequestBody request: RenameLedgerRequest,
-    ): LedgerDto = ledgerService.renameLedger(principal.userId, ledgerId, request.name)
+        @Valid @RequestBody request: UpdateLedgerRequest,
+    ): LedgerDto = ledgerService.updateLedger(
+        principal.userId,
+        ledgerId,
+        request.name,
+        request.recurringSummaryClosingDay,
+    )
 
     @PostMapping("/{ledgerId}/archive")
     fun archiveLedger(
@@ -92,7 +99,10 @@ data class CreateLedgerRequest(
     val name: String
 )
 
-data class RenameLedgerRequest(
-    @field:NotBlank(message = "장부 이름은 필수 입력값입니다.")
-    val name: String,
+data class UpdateLedgerRequest(
+    val name: String? = null,
+
+    @field:Min(value = 1, message = "반복 거래 집계 마감일은 1일에서 31일 사이여야 합니다.")
+    @field:Max(value = 31, message = "반복 거래 집계 마감일은 1일에서 31일 사이여야 합니다.")
+    val recurringSummaryClosingDay: Int? = null,
 )

@@ -7,6 +7,7 @@ export type LedgerSummary = {
   name: string
   type: LedgerType
   ownerId: number
+  recurringSummaryClosingDay: number
 }
 
 export type LedgerListResponse = {
@@ -54,6 +55,13 @@ export function switchLedger(ledgerId: number) {
 
 export function renameLedger(ledgerId: number, name: string) {
   return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}`, { method: 'PATCH', body: { name } })
+}
+
+export function updateRecurringSummaryClosingDay(ledgerId: number, recurringSummaryClosingDay: number) {
+  return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}`, {
+    method: 'PATCH',
+    body: { recurringSummaryClosingDay },
+  })
 }
 
 export function archiveLedger(ledgerId: number) {
