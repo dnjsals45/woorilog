@@ -51,3 +51,19 @@ export function switchLedger(ledgerId: number) {
     method: 'POST',
   })
 }
+
+export function renameLedger(ledgerId: number, name: string) {
+  return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}`, { method: 'PATCH', body: { name } })
+}
+
+export function archiveLedger(ledgerId: number) {
+  return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}/archive`, { method: 'POST' })
+}
+
+export function removeLedgerMember(ledgerId: number, userId: number) {
+  return apiRequest<void>(`/api/ledgers/${ledgerId}/members/${userId}`, { method: 'DELETE' })
+}
+
+export function leaveLedger(ledgerId: number) {
+  return apiRequest<void>(`/api/ledgers/${ledgerId}/members/me`, { method: 'DELETE' })
+}

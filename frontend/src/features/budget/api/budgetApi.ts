@@ -6,6 +6,8 @@ export type BudgetCategorySetting = {
   categoryId: number
   categoryName: string
   type: 'EXPENSE' | 'INCOME'
+  categoryGroupId: number
+  categoryGroupName: string
   amount: number
 }
 
@@ -19,6 +21,7 @@ export type BudgetMonthSettings = {
   ledgerId: number
   budgetMonth: string
   totalBudgetAmount: number
+  fixedBudgetTotalAmount: number
   closed: boolean
   categoryBudgets: BudgetCategorySetting[]
   memberAllocations: BudgetMemberAllocation[]
@@ -44,7 +47,7 @@ export type DashboardSummary = {
   remainingBudgetAmount: number
   recentTransactions: TransactionSummary[]
   categorySpending: Array<{
-    categoryId: number | null
+    categoryGroupId: number
     categoryName: string
     amount: number
   }>
@@ -60,6 +63,11 @@ export type MonthlyStatistic = {
   totalBudgetAmount: number
   expenseAmount: number
   incomeAmount: number
+  categorySpending: Array<{
+    categoryGroupId: number
+    categoryName: string
+    amount: number
+  }>
 }
 
 type BudgetMonthSettingsResponse = Omit<BudgetMonthSettings, 'categoryBudgets'> & {
@@ -67,13 +75,15 @@ type BudgetMonthSettingsResponse = Omit<BudgetMonthSettings, 'categoryBudgets'> 
     categoryId: number
     name: string
     type: 'EXPENSE' | 'INCOME'
+    categoryGroupId: number
+    categoryGroupName: string
     amount: number
   }>
 }
 
 type DashboardSummaryResponse = Omit<DashboardSummary, 'categorySpending' | 'memberSpending'> & {
   categorySpending: Array<{
-    categoryId: number
+    categoryGroupId: number
     name: string
     totalSpent: number
   }>
@@ -89,6 +99,11 @@ type MonthlyStatisticResponse = {
   totalBudgetAmount: number
   totalExpenseAmount: number
   totalIncomeAmount: number
+  categorySpending: Array<{
+    categoryGroupId: number
+    name: string
+    totalSpent: number
+  }>
 }
 
 function adaptBudgetMonth(response: BudgetMonthSettingsResponse): BudgetMonthSettings {
@@ -98,6 +113,8 @@ function adaptBudgetMonth(response: BudgetMonthSettingsResponse): BudgetMonthSet
       categoryId: categoryBudget.categoryId,
       categoryName: categoryBudget.name,
       type: categoryBudget.type,
+      categoryGroupId: categoryBudget.categoryGroupId,
+      categoryGroupName: categoryBudget.categoryGroupName,
       amount: categoryBudget.amount,
     })),
   }
@@ -107,7 +124,7 @@ function adaptDashboardSummary(response: DashboardSummaryResponse): DashboardSum
   return {
     ...response,
     categorySpending: response.categorySpending.map((spending) => ({
-      categoryId: spending.categoryId,
+      categoryGroupId: spending.categoryGroupId,
       categoryName: spending.name,
       amount: spending.totalSpent,
     })),
@@ -125,6 +142,11 @@ function adaptMonthlyStatistic(response: MonthlyStatisticResponse): MonthlyStati
     totalBudgetAmount: response.totalBudgetAmount,
     expenseAmount: response.totalExpenseAmount,
     incomeAmount: response.totalIncomeAmount,
+    categorySpending: response.categorySpending.map((item) => ({
+      categoryGroupId: item.categoryGroupId,
+      categoryName: item.name,
+      amount: item.totalSpent,
+    })),
   }
 }
 
@@ -170,8 +192,9 @@ export async function reopenBudgetMonth(ledgerId: number, budgetMonth: string) {
   return adaptBudgetMonth(response)
 }
 
-export async function getDashboardSummary() {
-  const response = await apiRequest<DashboardSummaryResponse>('/api/dashboard/current')
+export async function getDashboardSummary(budgetMonth?: string) {
+  const query = budgetMonth ? `?budgetMonth=${encodeURIComponent(budgetMonth)}` : ''
+  const response = await apiRequest<DashboardSummaryResponse>(`/api/dashboard/current${query}`)
 
   return adaptDashboardSummary(response)
 }

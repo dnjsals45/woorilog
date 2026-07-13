@@ -11,17 +11,17 @@ import {
 
 export const budgetQueryKeys = {
   all: ['budget'] as const,
-  dashboard: () => [...budgetQueryKeys.all, 'dashboard'] as const,
+  dashboard: (budgetMonth?: string) => [...budgetQueryKeys.all, 'dashboard', budgetMonth ?? 'current'] as const,
   month: (ledgerId: number, budgetMonth: string) =>
     [...budgetQueryKeys.all, ledgerId, 'month', budgetMonth] as const,
   statistics: (ledgerId: number, from: string, to: string) =>
     [...budgetQueryKeys.all, ledgerId, 'statistics', from, to] as const,
 }
 
-export function useDashboardSummaryQuery() {
+export function useDashboardSummaryQuery(budgetMonth?: string) {
   return useQuery({
-    queryKey: budgetQueryKeys.dashboard(),
-    queryFn: getDashboardSummary,
+    queryKey: budgetQueryKeys.dashboard(budgetMonth),
+    queryFn: () => getDashboardSummary(budgetMonth),
     retry: false,
   })
 }
@@ -54,7 +54,7 @@ export function useSaveBudgetMonthMutation(
         queryClient.invalidateQueries({
           queryKey: budgetQueryKeys.month(ledgerId, budgetMonth),
         })
-        queryClient.invalidateQueries({ queryKey: budgetQueryKeys.dashboard() })
+        queryClient.invalidateQueries({ queryKey: [...budgetQueryKeys.all, 'dashboard'] })
       }
     },
   })
@@ -73,7 +73,7 @@ export function useCloseBudgetMonthMutation(
         queryClient.invalidateQueries({
           queryKey: budgetQueryKeys.month(ledgerId, budgetMonth),
         })
-        queryClient.invalidateQueries({ queryKey: budgetQueryKeys.dashboard() })
+        queryClient.invalidateQueries({ queryKey: [...budgetQueryKeys.all, 'dashboard'] })
       }
     },
   })
@@ -92,7 +92,7 @@ export function useReopenBudgetMonthMutation(
         queryClient.invalidateQueries({
           queryKey: budgetQueryKeys.month(ledgerId, budgetMonth),
         })
-        queryClient.invalidateQueries({ queryKey: budgetQueryKeys.dashboard() })
+        queryClient.invalidateQueries({ queryKey: [...budgetQueryKeys.all, 'dashboard'] })
       }
     },
   })

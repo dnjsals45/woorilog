@@ -90,3 +90,7 @@ export function updateTransaction(
     body: request,
   })
 }
+
+export function deleteTransaction(transactionId: number) {
+  return apiRequest<void>(`/api/transactions/${transactionId}`, { method: 'DELETE' })
+}

@@ -3,8 +3,12 @@ import { authQueryKeys } from '../../auth/model/authQueries'
 import {
   createGroupLedger,
   createPersonalLedger,
+  archiveLedger,
   getLedgerMembers,
   getLedgers,
+  leaveLedger,
+  removeLedgerMember,
+  renameLedger,
   switchLedger,
   type CreateLedgerRequest,
   type LedgerType,
@@ -58,4 +62,30 @@ export function useSwitchLedgerMutation() {
       queryClient.invalidateQueries({ queryKey: ['budget', 'dashboard'] })
     },
   })
+}
+
+function invalidateLedgerState(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ledgerQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
+  queryClient.invalidateQueries({ queryKey: ['budget'] })
+}
+
+export function useRenameLedgerMutation(ledgerId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: (name: string) => renameLedger(ledgerId!, name), onSuccess: () => invalidateLedgerState(queryClient) })
+}
+
+export function useArchiveLedgerMutation(ledgerId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: () => archiveLedger(ledgerId!), onSuccess: () => invalidateLedgerState(queryClient) })
+}
+
+export function useRemoveLedgerMemberMutation(ledgerId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: (userId: number) => removeLedgerMember(ledgerId!, userId), onSuccess: () => invalidateLedgerState(queryClient) })
+}
+
+export function useLeaveLedgerMutation(ledgerId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: () => leaveLedger(ledgerId!), onSuccess: () => invalidateLedgerState(queryClient) })
 }

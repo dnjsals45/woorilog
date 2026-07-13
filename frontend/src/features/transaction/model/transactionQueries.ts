@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createQuickTransaction,
+  deleteTransaction,
   createTransaction,
   getMonthTransactions,
   getTransaction,
@@ -92,6 +93,19 @@ export function useUpdateTransactionMutation(transactionId: number | undefined) 
       queryClient.invalidateQueries({
         queryKey: transactionQueryKeys.detail(transaction.id),
       })
+      queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['budget'] })
+    },
+  })
+}
+
+export function useDeleteTransactionMutation(transactionId: number | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => deleteTransaction(transactionId!),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: transactionId ? transactionQueryKeys.detail(transactionId) : transactionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: ['budget'] })
     },
