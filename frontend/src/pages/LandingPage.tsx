@@ -9,7 +9,7 @@ import {
   Users,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import landingBackground from '../assets/landing/landing-desk-bg.png'
+import landingBackground from '../assets/landing/landing-desk-bg.jpg'
 import { getAccessToken } from '../shared/api/client'
 
 const recentTransactions = [
@@ -19,10 +19,10 @@ const recentTransactions = [
 ]
 
 const features = [
-  { icon: Users, title: '함께 관리', description: '실시간으로 수입과 지출을 함께 기록하고 확인해요.' },
+  { icon: Users, title: '함께 관리', description: '같은 장부에서 수입과 지출을 함께 기록하고 확인해요.' },
   { icon: CreditCard, title: '예산 설정', description: '항목별 예산을 설정하고 지출을 계획적으로 관리해요.' },
   { icon: PieChart, title: '지출 분석', description: '카테고리별 통계로 소비 패턴을 한눈에 파악할 수 있어요.' },
-  { icon: ShieldCheck, title: '안심 보안', description: '카드 등록 없이 안전하게 데이터를 보호해요.' },
+  { icon: ShieldCheck, title: '카드 연동 없이', description: '민감한 카드 정보를 등록하지 않고 직접 기록해요.' },
 ]
 
 function ProductPreview() {
@@ -95,7 +95,7 @@ export function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-[#e5ede8] bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link className="flex items-center gap-2" to="/"><House className="size-6 text-[#0e9f6e]" strokeWidth={2.5} /><strong className="text-lg tracking-tight">우리로그</strong></Link>
-          <nav aria-label="랜딩 메뉴" className="hidden items-center gap-8 md:flex"><a className="text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#features">기능</a><a className="text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#features">요금제</a><a className="text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#features">블로그</a><a className="text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#support">고객센터</a></nav>
+          <nav aria-label="랜딩 메뉴" className="hidden items-center gap-8 md:flex"><a className="text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#features">기능</a><a className="text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#support">도움말</a></nav>
           <Link className="inline-flex h-9 items-center justify-center rounded-lg border border-[#e5ede8] bg-white px-4 text-sm font-medium shadow-sm hover:border-[#0e9f6e] hover:text-[#0e9f6e]" to={startPath}>{getAccessToken() ? '내 장부' : '로그인'}</Link>
         </div>
       </header>
