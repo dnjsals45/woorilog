@@ -9,27 +9,33 @@ spring:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:woorilog}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
-    username: ${MYSQL_USER:woorilog}
-    password: ${MYSQL_PASSWORD:woorilog_local_password}
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
-    show-sql: true
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
 
 app:
   auth:
     dev-login-enabled: ${DEV_LOGIN_ENABLED:false}
+    refresh-cookie-name: woorilog.refreshToken
+    refresh-cookie-secure: ${REFRESH_COOKIE_SECURE:true}
   kakao:
     client-id: ${KAKAO_CLIENT_ID:}
     client-secret: ${KAKAO_CLIENT_SECRET:}
     redirect-uri: ${KAKAO_REDIRECT_URI:}
   jwt:
-    secret: ${JWT_SECRET:woorilog-secret-key-for-development-should-be-long-enough-for-hmac-sha256}
+    secret: ${JWT_SECRET}
     access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:1800}
     refresh-token-ttl-seconds: ${JWT_REFRESH_TOKEN_TTL_SECONDS:1209600}
   cors:

@@ -1,3 +1,11 @@
 app:
   auth:
     dev-login-enabled: ${DEV_LOGIN_ENABLED:true}
+    refresh-cookie-secure: ${REFRESH_COOKIE_SECURE:false}
+  jwt:
+    secret: ${JWT_SECRET:woorilog-secret-key-for-development-should-be-long-enough-for-hmac-sha256}
+
+spring:
+  datasource:
+    username: ${MYSQL_USER:woorilog}
+    password: ${MYSQL_PASSWORD:woorilog_local_password}

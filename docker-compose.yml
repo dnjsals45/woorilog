@@ -34,6 +34,9 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-woorilog_local_password}
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-}
       JWT_SECRET: ${JWT_SECRET:-woorilog-secret-key-for-development-should-be-long-enough-for-hmac-sha256}
       JWT_ACCESS_TOKEN_TTL_SECONDS: ${JWT_ACCESS_TOKEN_TTL_SECONDS:-1800}
       JWT_REFRESH_TOKEN_TTL_SECONDS: ${JWT_REFRESH_TOKEN_TTL_SECONDS:-1209600}
