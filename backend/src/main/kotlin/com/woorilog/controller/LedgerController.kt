@@ -9,6 +9,7 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
+import org.springframework.http.ResponseEntity
 
 @RestController
 @RequestMapping("/api/ledgers")
@@ -52,9 +53,46 @@ class LedgerController(
     ): LedgerDto {
         return ledgerService.useLedger(principal.userId, ledgerId)
     }
+
+    @PatchMapping("/{ledgerId}")
+    fun renameLedger(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable ledgerId: Long,
+        @Valid @RequestBody request: RenameLedgerRequest,
+    ): LedgerDto = ledgerService.renameLedger(principal.userId, ledgerId, request.name)
+
+    @PostMapping("/{ledgerId}/archive")
+    fun archiveLedger(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable ledgerId: Long,
+    ): LedgerDto = ledgerService.archiveLedger(principal.userId, ledgerId)
+
+    @DeleteMapping("/{ledgerId}/members/{userId}")
+    fun removeMember(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable ledgerId: Long,
+        @PathVariable userId: Long,
+    ): ResponseEntity<Void> {
+        ledgerService.removeMember(principal.userId, ledgerId, userId)
+        return ResponseEntity.noContent().build()
+    }
+
+    @DeleteMapping("/{ledgerId}/members/me")
+    fun leaveLedger(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable ledgerId: Long,
+    ): ResponseEntity<Void> {
+        ledgerService.leaveLedger(principal.userId, ledgerId)
+        return ResponseEntity.noContent().build()
+    }
 }
 
 data class CreateLedgerRequest(
     @field:NotBlank(message = "장부 이름은 필수 입력값입니다.")
     val name: String
+)
+
+data class RenameLedgerRequest(
+    @field:NotBlank(message = "장부 이름은 필수 입력값입니다.")
+    val name: String,
 )

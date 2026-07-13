@@ -17,5 +17,8 @@ class Ledger(
     var type: LedgerType,
 
     @Column(name = "owner_id", nullable = false)
-    var ownerId: Long
+    var ownerId: Long,
+
+    @Column(nullable = false)
+    var archived: Boolean = false,
 ) : BaseEntity()
