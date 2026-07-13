@@ -165,6 +165,16 @@ class RecurringTransactionService(
         template.startDate = request.startDate
         template.endDate = request.endDate
 
+        generationRepository.findByTemplateId(templateId)
+            .mapNotNull { it.transaction }
+            .forEach { transaction ->
+                transaction.type = template.type
+                transaction.amount = template.amount
+                transaction.category = template.category
+                transaction.payer = template.payer
+                transaction.memo = template.memo
+            }
+
         val saved = templateRepository.save(template)
         return saved.toResponse()
     }

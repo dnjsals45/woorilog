@@ -141,6 +141,23 @@ class RecurringTransactionIntegrationTest {
             .andExpect(jsonPath("$.startDate").value("2026-07-10"))
             .andExpect(jsonPath("$.nextDueDate").value("2026-07-10")) // reset to startDate
             .andExpect(jsonPath("$.endDate").value("2026-10-10"))
+
+        mockMvc.perform(get("/api/ledgers/$ledgerId/months/2026-07/transactions")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+            .andExpect(jsonPath("$[0].type").value("INCOME"))
+            .andExpect(jsonPath("$[0].amount").value(20000))
+            .andExpect(jsonPath("$[0].category.id").value(salaryCat.id))
+            .andExpect(jsonPath("$[0].memo").value("월급"))
+
+        mockMvc.perform(get("/api/ledgers/$ledgerId/statistics/monthly")
+            .header("Authorization", "Bearer $token")
+            .param("from", "2026-07")
+            .param("to", "2026-07"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].totalExpenseAmount").value(0))
+            .andExpect(jsonPath("$[0].totalIncomeAmount").value(20000))
     }
 
     @Test
