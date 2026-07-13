@@ -8,6 +8,7 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 import java.time.Clock
@@ -68,6 +69,15 @@ class RecurringTransactionController(
                 endDate = request.endDate
             )
         )
+    }
+
+    @DeleteMapping("/api/recurring-transactions/{templateId}")
+    fun deleteTemplate(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable templateId: Long,
+    ): ResponseEntity<Void> {
+        recurringTransactionService.deleteTemplate(principal.userId, templateId)
+        return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/api/recurring-transactions/{templateId}/pause")

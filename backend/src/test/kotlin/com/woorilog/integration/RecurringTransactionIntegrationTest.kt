@@ -19,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
@@ -311,6 +312,43 @@ class RecurringTransactionIntegrationTest {
             .param("asOf", "2026-08-01"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$", hasSize<Any>(0)))
+    }
+
+    @Test
+    fun should_DeleteTemplateAndKeepAlreadyGeneratedTransactions() {
+        val loginResponse = devLogin("delete-template@example.com", "삭제테스트")
+        val token = loginResponse.accessToken
+        val ledgerId = loginResponse.currentLedger.id
+        val createResult = mockMvc.perform(post("/api/ledgers/$ledgerId/recurring-transactions")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "EXPENSE",
+                "amount" to 15_000,
+                "categoryId" to null,
+                "memo" to "삭제할 구독",
+                "payerUserId" to null,
+                "frequency" to "MONTHLY",
+                "startDate" to "2026-07-10",
+                "endDate" to null,
+            ))))
+            .andExpect(status().isOk)
+            .andReturn()
+        val templateId = objectMapper.readTree(createResult.response.contentAsString)["id"].asLong()
+
+        mockMvc.perform(delete("/api/recurring-transactions/$templateId")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isNoContent)
+
+        mockMvc.perform(get("/api/ledgers/$ledgerId/recurring-transactions")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(0)))
+        mockMvc.perform(get("/api/ledgers/$ledgerId/months/2026-07/transactions")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+            .andExpect(jsonPath("$[0].memo").value("삭제할 구독"))
     }
 
     @Test

@@ -169,6 +169,17 @@ class RecurringTransactionService(
         return saved.toResponse()
     }
 
+    fun deleteTemplate(userId: Long, templateId: Long) {
+        val template = templateRepository.findById(templateId).orElseThrow {
+            NotFoundException("반복 거래 템플릿을 찾을 수 없습니다.")
+        }
+        ledgerMemberRepository.findByLedgerIdAndUserId(template.ledger.id!!, userId)
+            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+
+        generationRepository.deleteByTemplateId(templateId)
+        templateRepository.delete(template)
+    }
+
     fun pauseTemplate(userId: Long, templateId: Long): RecurringTransactionTemplateResponse {
         val template = templateRepository.findById(templateId).orElseThrow {
             NotFoundException("반복 거래 템플릿을 찾을 수 없습니다.")
