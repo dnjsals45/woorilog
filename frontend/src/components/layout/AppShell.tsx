@@ -8,16 +8,20 @@ import {
   PiggyBank,
   Plus,
   Settings,
+  Tags,
   WalletCards,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useLogoutMutation, useMeQuery } from '../../features/auth/model/authQueries'
-import { useLedgerMembersQuery, useLedgersQuery, useSwitchLedgerMutation } from '../../features/ledger/model/ledgerQueries'
+import { useCreateLedgerMutation, useLedgerMembersQuery, useLedgersQuery, useSwitchLedgerMutation } from '../../features/ledger/model/ledgerQueries'
+import type { LedgerType } from '../../features/ledger/api/ledgerApi'
 import { TransactionEntrySheet } from '../../features/transaction/ui/TransactionEntrySheet'
 import { formatBudgetMonth } from '../../shared/lib/date'
-import { TransactionEntryContext } from '../../shared/ui/TransactionEntryContext'
+import { TransactionEntryContext, type TransactionEntryPreset } from '../../shared/ui/TransactionEntryContext'
+import { ApiClientError } from '../../shared/api/client'
+import { ErrorState } from '../../shared/ui/DesignPrimitives'
 
 const navigation = [
   { label: '대시보드', to: '/dashboard', icon: LayoutDashboard },
@@ -42,9 +46,14 @@ export function AppShell() {
   const meQuery = useMeQuery()
   const ledgersQuery = useLedgersQuery()
   const switchLedgerMutation = useSwitchLedgerMutation()
+  const [newLedgerName, setNewLedgerName] = useState('')
+  const [newLedgerType, setNewLedgerType] = useState<LedgerType>('PERSONAL')
+  const createLedgerMutation = useCreateLedgerMutation(newLedgerType)
   const logoutMutation = useLogoutMutation()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [transactionEntryOpen, setTransactionEntryOpen] = useState(false)
+  const [transactionEntryPreset, setTransactionEntryPreset] = useState<TransactionEntryPreset>()
+  const [transactionEntryKey, setTransactionEntryKey] = useState(0)
   const currentMonth = formatBudgetMonth()
   const currentLedger = ledgersQuery.data?.ledgers?.find((ledger) => ledger.id === ledgersQuery.data?.currentLedgerId) ?? meQuery.data?.currentLedger
   const membersQuery = useLedgerMembersQuery(currentLedger?.id)
@@ -52,9 +61,29 @@ export function AppShell() {
   const resolvePath = (budget?: boolean, path?: string) => budget ? budgetPath : path ?? '/dashboard'
   const isActive = (path: string) => location.pathname === path || (path.startsWith('/ledgers/') && location.pathname.startsWith('/ledgers/'))
 
+  if (meQuery.isLoading) {
+    return <main className="flex min-h-dvh items-center justify-center bg-[var(--wl-color-background)] text-sm font-bold text-slate-500">사용자 정보를 확인하는 중입니다.</main>
+  }
+  if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
+    return <Navigate replace to="/login" />
+  }
+  if (meQuery.isError) {
+    return <main className="flex min-h-dvh items-center justify-center bg-[var(--wl-color-background)] px-5"><ErrorState onRetry={() => meQuery.refetch()} /></main>
+  }
+
   const closeAndNavigate = (path: string) => {
     setDrawerOpen(false)
     navigate(path)
+  }
+
+  const handleCreateLedger = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    createLedgerMutation.mutate({ name: newLedgerName }, {
+      onSuccess: () => {
+        setNewLedgerName('')
+        setDrawerOpen(false)
+      },
+    })
   }
 
   const sidebar = (
@@ -70,6 +99,7 @@ export function AppShell() {
           )
         })}
       </nav>
+      <button className={`mt-4 flex min-h-11 w-full items-center gap-3 rounded-[14px] px-4 text-sm font-extrabold transition ${isActive('/categories') ? 'bg-[#e7f7ef] text-emerald-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`} onClick={() => closeAndNavigate('/categories')} type="button"><Tags size={18} strokeWidth={2} />카테고리 관리</button>
 
       <div className="mt-auto space-y-4">
         {currentLedger ? (
@@ -80,6 +110,7 @@ export function AppShell() {
                 {ledgersQuery.data.ledgers.map((ledger) => <option key={ledger.id} value={ledger.id}>{ledger.name}</option>)}
               </select>
             ) : <p className="mt-1 truncate text-sm font-black">{currentLedger.name}</p>}
+            <details className="mt-3 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-xs font-extrabold text-emerald-700">+ 새 장부 만들기</summary><form className="mt-3 space-y-2" onSubmit={handleCreateLedger}><div className="grid grid-cols-2 gap-2">{(['PERSONAL', 'GROUP'] as const).map((type) => <button className={`min-h-10 rounded-lg border text-xs font-bold ${newLedgerType === type ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600'}`} key={type} onClick={() => setNewLedgerType(type)} type="button">{type === 'PERSONAL' ? '개인 장부' : '공동 장부'}</button>)}</div><label className="sr-only" htmlFor="new-ledger-name">새 장부 이름</label><input className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold" id="new-ledger-name" onChange={(event) => setNewLedgerName(event.target.value)} placeholder="새 장부 이름" required value={newLedgerName} /><button className="min-h-10 w-full rounded-lg bg-emerald-600 text-xs font-extrabold text-white disabled:bg-slate-300" disabled={createLedgerMutation.isPending} type="submit">{createLedgerMutation.isPending ? '만드는 중...' : '장부 만들기'}</button></form></details>
             <div aria-label={`장부 구성원 ${membersQuery.data?.length ?? 0}명`} className="mt-4 flex -space-x-2">
               {membersQuery.data?.slice(0, 5).map((member, index) => <span className={`flex size-9 items-center justify-center rounded-full border-2 border-white text-xs font-black ${index % 2 ? 'bg-[#ffe4d6] text-rose-700' : 'bg-[#d9f4e7] text-emerald-700'}`} key={member.userId} title={member.nickname}>{member.nickname.slice(0, 1)}</span>)}
             </div>
@@ -87,7 +118,7 @@ export function AppShell() {
         ) : null}
         <div className="border-t border-slate-100 pt-3">
           {meQuery.data ? <div className="mb-2 flex items-center gap-3 rounded-xl px-3 py-2"><span className="flex size-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">{meQuery.data.user.nickname.slice(0, 1)}</span><span className="min-w-0 truncate text-sm font-extrabold">{meQuery.data.user.nickname}</span></div> : null}
-          <button className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold text-slate-500 hover:bg-slate-50" type="button"><CircleHelp size={18} />도움말</button>
+          <button className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold text-slate-500 hover:bg-slate-50" onClick={() => closeAndNavigate('/help')} type="button"><CircleHelp size={18} />도움말</button>
           <button className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })} type="button"><LogOut size={18} />{logoutMutation.isPending ? '로그아웃 중...' : '로그아웃'}</button>
         </div>
       </div>
@@ -99,7 +130,7 @@ export function AppShell() {
     .filter((item): item is (typeof navigation)[number] => Boolean(item))
 
   return (
-    <TransactionEntryContext.Provider value={{ openTransactionEntry: () => setTransactionEntryOpen(true) }}>
+    <TransactionEntryContext.Provider value={{ openTransactionEntry: (preset) => { setTransactionEntryPreset(preset && 'nativeEvent' in preset ? undefined : preset); setTransactionEntryKey((value) => value + 1); setTransactionEntryOpen(true) } }}>
       <div className="wl-app-shell min-h-dvh bg-[#f8faf8] text-slate-950">
         <header className="fixed inset-x-0 top-0 z-40 border-b border-[#e5ede8] bg-white/95 backdrop-blur md:hidden">
           <div className="mx-auto flex h-14 max-w-[480px] items-center justify-between px-4"><Brand /><button aria-expanded={drawerOpen} aria-label="메뉴 열기" className="flex size-11 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-50" onClick={() => setDrawerOpen(true)} type="button"><Menu size={22} /></button></div>
@@ -116,7 +147,7 @@ export function AppShell() {
             <button aria-label="거래 추가" className="absolute bottom-3 left-1/2 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-600 text-white shadow-[0_8px_24px_-4px_rgba(14,159,110,0.3)] hover:bg-emerald-700" onClick={() => setTransactionEntryOpen(true)} type="button"><Plus size={28} strokeWidth={2.5} /></button>
           </div>
         </nav>
-        <TransactionEntrySheet onClose={() => setTransactionEntryOpen(false)} open={transactionEntryOpen} />
+        <TransactionEntrySheet key={transactionEntryKey} onClose={() => setTransactionEntryOpen(false)} open={transactionEntryOpen} preset={transactionEntryPreset} />
       </div>
     </TransactionEntryContext.Provider>
   )
