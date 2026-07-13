@@ -1,6 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
-const ACCESS_TOKEN_KEY = 'woorilog.accessToken'
 let memoryAccessToken: string | null = null
+let refreshPromise: Promise<string | null> | null = null
 
 export type ApiErrorBody = {
   code: string
@@ -20,41 +20,51 @@ export class ApiClientError extends Error {
 }
 
 export function getAccessToken() {
-  if (typeof window.localStorage === 'undefined') {
-    return memoryAccessToken
-  }
-
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? memoryAccessToken
+  return memoryAccessToken
 }
 
 export function setAccessToken(token: string) {
   memoryAccessToken = token
-
-  if (typeof window.localStorage !== 'undefined') {
-    window.localStorage.setItem(ACCESS_TOKEN_KEY, token)
-  }
 }
 
 export function clearAccessToken() {
   memoryAccessToken = null
-
-  if (typeof window.localStorage !== 'undefined') {
-    window.localStorage.removeItem(ACCESS_TOKEN_KEY)
-  }
 }
 
 type ApiRequestOptions = {
   method?: string
   body?: unknown
   token?: string | null
+  retryAfterRefresh?: boolean
+}
+
+async function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    }).then(async (response) => {
+      if (!response.ok) {
+        clearAccessToken()
+        return null
+      }
+      const data = await response.json() as { accessToken: string }
+      setAccessToken(data.accessToken)
+      return data.accessToken
+    }).finally(() => {
+      refreshPromise = null
+    })
+  }
+  return refreshPromise
 }
 
 export async function apiRequest<T>(
   path: string,
-  { method = 'GET', body, token = getAccessToken() }: ApiRequestOptions = {},
+  { method = 'GET', body, token = getAccessToken(), retryAfterRefresh = true }: ApiRequestOptions = {},
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
+    credentials: 'include',
     headers: {
       ...(body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -62,19 +72,31 @@ export async function apiRequest<T>(
     body: body ? JSON.stringify(body) : undefined,
   })
 
+  if (response.status === 401 && token && retryAfterRefresh && path !== '/api/auth/refresh') {
+    const refreshedToken = await refreshAccessToken()
+    if (refreshedToken) {
+      return apiRequest<T>(path, { method, body, token: refreshedToken, retryAfterRefresh: false })
+    }
+  }
+
   if (response.status === 204) {
     return undefined as T
   }
 
   const text = await response.text()
-  const data = text ? JSON.parse(text) : undefined
+  let data: unknown
+  try {
+    data = text ? JSON.parse(text) : undefined
+  } catch {
+    data = undefined
+  }
 
   if (!response.ok) {
     if (response.status === 401 && token) {
       clearAccessToken()
     }
 
-    const errorBody: ApiErrorBody = data ?? {
+    const errorBody: ApiErrorBody = (data && typeof data === 'object' ? data : undefined) as ApiErrorBody ?? {
       code: 'REQUEST_FAILED',
       message: '요청에 실패했습니다.',
     }

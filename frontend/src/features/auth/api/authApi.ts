@@ -50,6 +50,14 @@ export function getMe() {
   return apiRequest<SessionResponse>('/api/me')
 }
 
+export function refreshSession() {
+  return apiRequest<LoginResponse>('/api/auth/refresh', {
+    method: 'POST',
+    token: null,
+    retryAfterRefresh: false,
+  })
+}
+
 export function logout() {
   return apiRequest<void>('/api/auth/logout', {
     method: 'POST',
