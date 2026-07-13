@@ -23,9 +23,14 @@
 - ledger CRUD and switching
 - invitation accept/reject/link flow
 - transaction create/update/query
+- transaction delete and closed-month mutation guard
 - budget month update/close/reopen
+- category creation/update, group assignment, and group-based dashboard/statistics aggregation
+- fixed budget create/update/delete and initial monthly budget prefill
 - recurring transaction generation
 - dashboard/statistics query
+- settlement calculation/payment history and ledger/member management
+- notification creation/read state
 - transaction import preview
 
 ### Command
@@ -46,6 +51,13 @@ cd backend
 - ledger month settings save behavior
 - invitation decision behavior
 - recurring transaction settings behavior
+- month navigation, quick-entry preset, period category aggregation
+- notification and settlement interaction
+
+### Browser E2E
+
+- desktop and mobile viewport smoke test
+- login, protected navigation, dashboard month movement, quick-entry preset
 
 ### Command
 
@@ -54,6 +66,7 @@ cd frontend
 npm run lint
 npm run test
 npm run build
+npm run test:e2e
 ```
 
 ## CI
@@ -65,6 +78,7 @@ Initial CI should run on pull request and main push:
 - frontend lint
 - frontend test
 - frontend build
+- Playwright Chromium smoke test
 
 ## Test Data
 

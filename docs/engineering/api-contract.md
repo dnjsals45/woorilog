@@ -132,7 +132,7 @@ Body:
 
 ### Auth
 
-- authenticated
+- refresh cookie가 있으면 해당 세션을 폐기합니다. access token이 만료된 상태에서도 호출할 수 있습니다.
 
 ### Response
 
@@ -142,22 +142,42 @@ Body:
 
 ## POST /api/auth/refresh
 
-### Current Status
+### Purpose
 
-- refresh token rotation is not implemented yet.
+- HttpOnly refresh cookie로 새 access token을 발급하고 refresh token을 회전합니다.
+- 사용한 refresh token은 즉시 폐기되며 재사용할 수 없습니다.
 
 ### Response
 
-```text
-501 Not Implemented
-```
+Success status: `200 OK`
 
 ```json
 {
-  "code": "NOT_IMPLEMENTED",
-  "message": "토큰 재발급 기능은 아직 지원하지 않습니다."
+  "accessToken": "jwt-access-token",
+  "expiresInSeconds": 1800,
+  "user": {
+    "id": 1,
+    "email": "dev@woorilog.local",
+    "nickname": "우리로그 개발자",
+    "lastUsedLedgerId": 1
+  },
+  "currentLedger": {
+    "id": 1,
+    "name": "우리로그 개발자의 개인 장부",
+    "type": "PERSONAL",
+    "ownerId": 1
+  }
 }
 ```
+
+응답은 회전된 `woorilog.refreshToken` HttpOnly, SameSite=Lax cookie를 함께 설정합니다. 운영 HTTPS 환경에서는 `REFRESH_COOKIE_SECURE=true`를 사용합니다.
+
+### Errors
+
+| status | code | when |
+| --- | --- | --- |
+| 401 | REFRESH_TOKEN_REQUIRED | refresh cookie가 없음 |
+| 401 | INVALID_REFRESH_TOKEN | token이 유효하지 않거나 만료·폐기·재사용됨 |
 
 ## GET /api/auth/kakao/login-url
 
@@ -362,6 +382,8 @@ Body:
     "ledgerId": 1,
     "name": "식비",
     "type": "EXPENSE",
+    "categoryGroupId": 1,
+    "categoryGroupName": "식비",
     "sortOrder": 1,
     "defaultCategory": true
   }
@@ -384,7 +406,8 @@ Body:
 ```json
 {
   "name": "여행",
-  "type": "EXPENSE"
+  "type": "EXPENSE",
+  "categoryGroupId": 1
 }
 ```
 
@@ -396,10 +419,134 @@ Body:
   "ledgerId": 1,
   "name": "여행",
   "type": "EXPENSE",
+  "categoryGroupId": 1,
+  "categoryGroupName": "식비",
   "sortOrder": 6,
   "defaultCategory": false
 }
 ```
+
+## GET/POST /api/ledgers/{ledgerId}/category-groups
+
+### Purpose
+
+- 거래 세부 카테고리를 묶어 통계와 대시보드에 표시할 대분류를 조회하거나 생성합니다.
+
+### Auth
+
+- authenticated
+- current user must be a ledger member.
+
+### POST Request
+
+```json
+{
+  "name": "주거·통신",
+  "type": "EXPENSE"
+}
+```
+
+### Response
+
+```json
+{
+  "id": 7,
+  "ledgerId": 1,
+  "name": "주거·통신",
+  "type": "EXPENSE"
+}
+```
+
+세부 카테고리를 생성할 때는 같은 `type`의 `categoryGroupId`를 지정해야 합니다.
+
+## PATCH /api/categories/{categoryId}
+
+### Purpose
+
+- 기존 카테고리의 이름과 통계 대분류를 수정합니다. 카테고리의 수입/지출 유형은 기존 거래의 일관성을 위해 수정하지 않습니다.
+
+### Auth
+
+- authenticated
+- current user must be a member of the category's ledger.
+
+### Request
+
+```json
+{
+  "name": "외식",
+  "categoryGroupId": 1
+}
+```
+
+### Response
+
+- `POST /api/ledgers/{ledgerId}/categories`와 같은 category response.
+
+## DELETE /api/categories/{categoryId}
+
+### Purpose
+
+- 미사용 카테고리를 삭제합니다.
+- 거래, 월 예산, 고정 예산 또는 반복 거래 템플릿에서 사용 중인 카테고리는 과거 내역과 예산 계획을 보존하기 위해 삭제할 수 없습니다.
+
+### Auth
+
+- authenticated
+- current user must be a member of the category's ledger.
+
+### Response
+
+- `204 No Content`
+
+### Errors
+
+- `400 BAD_REQUEST`: 사용 중인 카테고리를 삭제하려는 경우.
+- `404 NOT_FOUND`: 카테고리가 없는 경우.
+
+## GET/POST /api/ledgers/{ledgerId}/fixed-budgets
+
+### Purpose
+
+- 장부의 월 고정비 예산 템플릿을 조회하거나 생성합니다. 고정비는 실제 거래를 생성하지 않습니다.
+
+### Auth
+
+- authenticated
+- current user must be a ledger member.
+
+### POST Request
+
+```json
+{
+  "name": "월세",
+  "categoryId": 3,
+  "amount": 700000,
+  "active": true
+}
+```
+
+### Response
+
+```json
+{
+  "id": 1,
+  "ledgerId": 1,
+  "name": "월세",
+  "categoryId": 3,
+  "categoryName": "주거",
+  "amount": 700000,
+  "active": true
+}
+```
+
+`categoryId`는 해당 장부의 `EXPENSE` 카테고리여야 하며 `amount`는 양수입니다.
+
+## PUT/DELETE /api/fixed-budgets/{fixedBudgetId}
+
+- `PUT`은 생성 요청과 같은 body로 이름, 카테고리, 금액, 사용 여부를 수정합니다.
+- `DELETE`는 고정비 템플릿을 삭제하고 `204 No Content`를 반환합니다.
+- authenticated; current user must be a member of the fixed budget's ledger.
 
 ## POST /api/ledgers/{ledgerId}/transactions
 
@@ -577,7 +724,7 @@ Body:
 ### Purpose
 
 - 장부의 월 예산 설정, 카테고리별 예산, 멤버별 할당을 조회합니다.
-- 저장된 월 설정이 없어도 장부 카테고리와 멤버를 기준으로 0원 기본값을 반환합니다.
+- 저장된 월 설정이 없어도 장부 카테고리와 멤버를 기준으로 반환합니다. 활성 고정비가 있으면 해당 카테고리 예산은 합계 금액으로 미리 채웁니다.
 
 ### Auth
 
@@ -591,12 +738,15 @@ Body:
   "ledgerId": 1,
   "budgetMonth": "2026-07",
   "totalBudgetAmount": 1000000,
+  "fixedBudgetTotalAmount": 700000,
   "closed": false,
   "categoryBudgets": [
     {
       "categoryId": 1,
       "name": "식비",
       "type": "EXPENSE",
+      "categoryGroupId": 1,
+      "categoryGroupName": "식비",
       "amount": 400000
     }
   ],
@@ -687,11 +837,17 @@ Body:
 
 ### Purpose
 
-- 현재 사용 장부의 이번 달 예산, 지출 합계, 남은 예산, 최근 거래, 카테고리별/멤버별 지출을 조회합니다.
+- 현재 사용 장부의 선택 월 예산, 지출 합계, 남은 예산, 최근 거래, 카테고리별/멤버별 지출을 조회합니다.
 
 ### Auth
 
 - authenticated
+
+### Query
+
+| name | required | example | notes |
+| --- | --- | --- | --- |
+| budgetMonth | no | `2026-07` | 생략하면 서버 clock의 현재 월 |
 
 ### Response
 
@@ -728,7 +884,7 @@ Body:
   ],
   "categorySpending": [
     {
-      "categoryId": 1,
+      "categoryGroupId": 1,
       "name": "식비",
       "totalSpent": 30000
     }
@@ -745,8 +901,8 @@ Body:
 
 ### Notes
 
-- 집계 기준 월은 서버 clock의 현재 `YearMonth`입니다.
-- `totalExpenseAmount`, `categorySpending`, `memberSpending`은 `EXPENSE` 거래만 합산합니다.
+- `budgetMonth`가 없으면 집계 기준 월은 서버 clock의 현재 `YearMonth`입니다.
+- `totalExpenseAmount`, `categorySpending`, `memberSpending`은 `EXPENSE` 거래만 합산합니다. `categorySpending`은 세부 카테고리가 아닌 통계 대분류 기준입니다.
 - `recentTransactions`는 현재 월 거래를 `transactionDate desc, id desc` 순서로 최대 5개 반환합니다.
 
 ## GET /api/ledgers/{ledgerId}/statistics/monthly
@@ -775,7 +931,10 @@ Body:
     "month": "2026-06",
     "totalBudgetAmount": 500000,
     "totalExpenseAmount": 80000,
-    "totalIncomeAmount": 40000
+    "totalIncomeAmount": 40000,
+    "categorySpending": [
+      { "categoryGroupId": 1, "name": "식비", "totalSpent": 50000 }
+    ]
   },
   {
     "month": "2026-07",
@@ -1240,6 +1399,10 @@ Body:
 - `POST /api/ledgers/personal`
 - `POST /api/ledgers/group`
 - `POST /api/ledgers/{ledgerId}/use`
+- `PATCH /api/ledgers/{ledgerId}`
+- `POST /api/ledgers/{ledgerId}/archive`
+- `DELETE /api/ledgers/{ledgerId}/members/{userId}`
+- `DELETE /api/ledgers/{ledgerId}/members/me`
 - `PUT /api/ledgers/{ledgerId}/months/{budgetMonth}`
 - `POST /api/ledgers/{ledgerId}/months/{budgetMonth}/close`
 - `POST /api/ledgers/{ledgerId}/months/{budgetMonth}/reopen`
@@ -1251,6 +1414,7 @@ Body:
 - `GET /api/ledgers/{ledgerId}/months/{budgetMonth}/transactions`
 - `GET /api/transactions/{transactionId}`
 - `PUT /api/transactions/{transactionId}`
+- `DELETE /api/transactions/{transactionId}`
 
 ### Transaction Import
 
@@ -1316,7 +1480,7 @@ V1 OCR uses Tesseract.js in the web layer. The import preview API should accept 
 
 ### Dashboard
 
-- `GET /api/dashboard/current`
+- `GET /api/dashboard/current?budgetMonth=YYYY-MM`
 
 ### Statistics
 
@@ -1344,6 +1508,89 @@ V1 OCR uses Tesseract.js in the web layer. The import preview API should accept 
 - `POST /api/recurring-transactions/{templateId}/resume`
 - `GET /api/ledgers/{ledgerId}/recurring-transactions/due`
 - `POST /api/ledgers/{ledgerId}/recurring-transactions/generate`
+
+### Settlement
+
+- `GET /api/ledgers/{ledgerId}/months/{budgetMonth}/settlements`
+- `POST /api/ledgers/{ledgerId}/months/{budgetMonth}/settlements`
+- `DELETE /api/settlements/{paymentId}`
+
+### Notification
+
+- `GET /api/notifications`
+- `POST /api/notifications/{notificationId}/read`
+- `POST /api/notifications/read-all`
+
+## Ledger Management APIs
+
+- `PATCH /api/ledgers/{ledgerId}` body: `{ "name": "새 장부 이름" }`; 공동 장부 OWNER만 변경할 수 있습니다.
+- `POST /api/ledgers/{ledgerId}/archive`; 공동 장부 OWNER만 보관할 수 있고 보관된 장부는 목록에서 제외됩니다.
+- `DELETE /api/ledgers/{ledgerId}/members/{userId}`; OWNER가 일반 멤버를 내보냅니다.
+- `DELETE /api/ledgers/{ledgerId}/members/me`; 일반 멤버가 공동 장부에서 탈퇴합니다.
+- 성공한 삭제 요청은 `204 No Content`, 이름 변경과 보관은 `LedgerDto`를 반환합니다.
+
+## Transaction Mutation Guard
+
+- `DELETE /api/transactions/{transactionId}`는 성공 시 `204 No Content`를 반환합니다.
+- 마감된 월의 거래 생성·빠른 입력·수정·삭제와 반복 거래 생성은 `409 MONTH_CLOSED`를 반환합니다.
+
+## GET/POST /api/ledgers/{ledgerId}/months/{budgetMonth}/settlements
+
+### Purpose
+
+- 멤버별 실제 지출, 할당 비율에 따른 부담액, 잔액, 필요한 송금과 기존 송금 기록을 조회합니다.
+- `POST`는 송금을 일부 또는 전액 기록한 뒤 다시 계산된 동일 응답을 반환합니다.
+
+### POST Request
+
+```json
+{ "fromUserId": 2, "toUserId": 1, "amount": 35000 }
+```
+
+### Response
+
+```json
+{
+  "ledgerId": 10,
+  "budgetMonth": "2026-07",
+  "totalExpenseAmount": 100000,
+  "members": [
+    { "userId": 1, "nickname": "민지", "paidAmount": 85000, "owedAmount": 50000, "balanceAmount": 35000 },
+    { "userId": 2, "nickname": "현우", "paidAmount": 15000, "owedAmount": 50000, "balanceAmount": -35000 }
+  ],
+  "transfers": [
+    { "fromUserId": 2, "fromNickname": "현우", "toUserId": 1, "toNickname": "민지", "amount": 35000 }
+  ],
+  "payments": []
+}
+```
+
+- 송금액은 0보다 커야 하며 현재 남은 송금액을 초과할 수 없습니다.
+- `DELETE /api/settlements/{paymentId}`는 기록을 취소하고 `204 No Content`를 반환합니다.
+
+## Notification APIs
+
+`GET /api/notifications` response:
+
+```json
+{
+  "unreadCount": 1,
+  "notifications": [
+    {
+      "id": 3,
+      "type": "INVITATION",
+      "title": "새 장부 초대",
+      "message": "생활비 장부에 초대받았습니다.",
+      "targetPath": "/settings",
+      "readAt": null,
+      "createdAt": "2026-07-12T03:00:00Z"
+    }
+  ]
+}
+```
+
+- `POST /api/notifications/{notificationId}/read`는 읽음 처리된 알림을 반환합니다.
+- `POST /api/notifications/read-all`은 모든 알림을 읽음 처리하고 `204 No Content`를 반환합니다.
 
 ## Endpoint Template
 

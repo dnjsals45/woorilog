@@ -127,19 +127,19 @@ npm run build
 
 ## V1 Implementation Status
 
-- Auth/Ledger: developer login, protected session, personal/group ledger creation and switching.
-- Transaction: categories, transaction create/update/detail/month list, quick transaction.
-- Budget/Dashboard: month budget settings, close/reopen, dashboard summary, monthly statistics.
+- Auth/Ledger: developer login, rotating refresh-cookie session, personal/group ledger creation, switching, rename, archive, member removal/leave.
+- Transaction: categories, transaction create/update/delete/detail/month list, quick transaction, closed-month mutation guard.
+- Budget/Dashboard: month budget settings, close/reopen, selected-month dashboard summary, category-aware monthly statistics.
 - Invitation: direct invitation, link invitation, pending invitations, accept/reject/cancel.
 - Recurring Transaction: weekly/monthly templates, pause/resume, due query, duplicate-safe generation.
-- Transaction Import: Tesseract.js web OCR entry point and backend text preview candidates.
+- Transaction Import: Tesseract.js web OCR, editable preview candidates, and confirmed transaction persistence.
+- Settlement/Notification: monthly member settlement with reversible payment history, event notifications and read state.
 
 ## Known Limitations
 
-- Refresh token rotation currently returns an explicit not-implemented response.
 - Kakao login requires a Kakao Developers REST API key, client secret, and registered redirect URI in the deployment environment.
 - Invitation links are single-use in the current V1 implementation.
-- Transaction import preview creates candidates only; confirmed persistence uses the normal transaction create API.
+- OCR accuracy depends on image quality; candidates must be reviewed before saving.
 
 ## Development Plan
 

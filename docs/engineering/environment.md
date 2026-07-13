@@ -55,6 +55,7 @@ frontend 소스 변경은 Vite HMR로 반영됩니다. backend 소스 변경은 
 | `JWT_SECRET` | auth | `woorilog-secret-key-for-development-should-be-long-enough-for-hmac-sha256` | local-only JWT signing secret example |
 | `JWT_ACCESS_TOKEN_TTL_SECONDS` | auth | `1800` | access token lifetime |
 | `JWT_REFRESH_TOKEN_TTL_SECONDS` | auth | `1209600` | refresh token lifetime |
+| `REFRESH_COOKIE_SECURE` | auth | local `false`, production `true` | HTTPS에서만 refresh cookie를 전송할지 여부 |
 | `DEV_LOGIN_ENABLED` | local/test | `true` | local/test-only developer login toggle |
 | `CORS_ALLOWED_ORIGINS` | local | `http://localhost:5173` | backend CORS allowed origins |
 

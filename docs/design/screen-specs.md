@@ -42,6 +42,14 @@
 - States: no invitation, no recurring transaction, save error.
 - Reference Asset: `assets/design/Mobile/05_settings.png`, `assets/design/Desktop/05_settings.png`
 
+## Category Management
+
+- Goal: 거래에 쓸 카테고리를 생성·수정·삭제하고 통계 대분류를 연결합니다.
+- Primary Action: 카테고리 추가, 수정 저장 또는 삭제.
+- Key Information: 카테고리 이름, 수입/지출 유형, 통계 대분류.
+- States: 카테고리 없음, 대분류 없음, 저장 실패, 사용 중인 카테고리 삭제 불가.
+- Entry: 앱 보조 메뉴와 거래 입력 시트의 `카테고리 관리`.
+
 ## Transaction Edit
 
 - Goal: 기존 거래를 확인하고 수정합니다.
