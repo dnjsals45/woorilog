@@ -9,4 +9,5 @@ interface RecurringTransactionTemplateRepository : JpaRepository<RecurringTransa
 
     fun findByLedgerIdOrderByIdDesc(ledgerId: Long): List<RecurringTransactionTemplate>
     fun findByLedgerIdAndPausedFalse(ledgerId: Long): List<RecurringTransactionTemplate>
+    fun findByPausedFalse(): List<RecurringTransactionTemplate>
 }

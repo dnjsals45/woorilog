@@ -94,13 +94,19 @@ class RecurringTransactionIntegrationTest {
             .andExpect(jsonPath("$.memo").value("주간 식비"))
             .andExpect(jsonPath("$.frequency").value("WEEKLY"))
             .andExpect(jsonPath("$.startDate").value("2026-07-01"))
-            .andExpect(jsonPath("$.nextDueDate").value("2026-07-01"))
+            .andExpect(jsonPath("$.nextDueDate").value("2026-07-08"))
             .andExpect(jsonPath("$.endDate").value("2026-08-01"))
             .andExpect(jsonPath("$.paused").value(false))
             .andReturn()
 
         val templateResponse = objectMapper.readValue(createResult.response.contentAsString, RecurringTransactionTemplateResponse::class.java)
         val templateId = templateResponse.id
+
+        mockMvc.perform(get("/api/ledgers/$ledgerId/months/2026-07/transactions")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+            .andExpect(jsonPath("$[0].transactionDate").value("2026-07-01"))
 
         // 2. List templates
         mockMvc.perform(get("/api/ledgers/$ledgerId/recurring-transactions")
@@ -200,23 +206,21 @@ class RecurringTransactionIntegrationTest {
             .content(objectMapper.writeValueAsString(requestBody)))
             .andExpect(status().isOk)
 
-        // Query due up to 2026-07-10 -> occurrences should be 2026-07-01, 2026-07-08
+        // The start occurrence is registered immediately, so only 2026-07-08 remains due.
         val result = mockMvc.perform(get("/api/ledgers/$ledgerId/recurring-transactions/due")
             .header("Authorization", "Bearer $token")
             .param("asOf", "2026-07-10"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$", hasSize<Any>(2)))
-            .andExpect(jsonPath("$[0].dueDate").value("2026-07-01"))
-            .andExpect(jsonPath("$[1].dueDate").value("2026-07-08"))
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+            .andExpect(jsonPath("$[0].dueDate").value("2026-07-08"))
             .andReturn()
 
         val dueOccurrences: List<RecurringTransactionDueResponse> = objectMapper.readValue(
             result.response.contentAsString,
             objectMapper.typeFactory.constructCollectionType(List::class.java, RecurringTransactionDueResponse::class.java)
         )
-        assertEquals(2, dueOccurrences.size)
-        assertEquals("2026-07-01", dueOccurrences[0].dueDate.toString())
-        assertEquals("2026-07-08", dueOccurrences[1].dueDate.toString())
+        assertEquals(1, dueOccurrences.size)
+        assertEquals("2026-07-08", dueOccurrences[0].dueDate.toString())
 
         // Pause template and verify no due templates are returned
         val templateId = dueOccurrences[0].template.id
@@ -259,21 +263,20 @@ class RecurringTransactionIntegrationTest {
         val template = objectMapper.readValue(createRes.response.contentAsString, RecurringTransactionTemplateResponse::class.java)
         val templateId = template.id
 
-        // 2. Generate transactions up to 2026-07-10 (expect 2026-07-01, 2026-07-08)
+        // 2. The start occurrence is already recorded; generate the next occurrence up to 2026-07-10.
         val genResult = mockMvc.perform(post("/api/ledgers/$ledgerId/recurring-transactions/generate")
             .header("Authorization", "Bearer $token")
             .param("asOf", "2026-07-10"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$", hasSize<Any>(2)))
-            .andExpect(jsonPath("$[0].transactionDate").value("2026-07-01"))
-            .andExpect(jsonPath("$[1].transactionDate").value("2026-07-08"))
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+            .andExpect(jsonPath("$[0].transactionDate").value("2026-07-08"))
             .andReturn()
 
         val generatedList: List<TransactionResponse> = objectMapper.readValue(
             genResult.response.contentAsString,
             objectMapper.typeFactory.constructCollectionType(List::class.java, TransactionResponse::class.java)
         )
-        assertEquals(2, generatedList.size)
+        assertEquals(1, generatedList.size)
 
         // Verify nextDueDate is advanced to 2026-07-15
         mockMvc.perform(get("/api/ledgers/$ledgerId/recurring-transactions")

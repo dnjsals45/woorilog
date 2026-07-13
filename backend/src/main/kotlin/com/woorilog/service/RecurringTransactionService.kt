@@ -7,6 +7,7 @@ import com.woorilog.exception.WoorilogException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -21,6 +22,7 @@ class RecurringTransactionService(
     private val templateRepository: RecurringTransactionTemplateRepository,
     private val generationRepository: RecurringTransactionGenerationRepository,
     private val ledgerMonthRepository: LedgerMonthRepository,
+    private val clock: Clock,
 ) {
 
     fun createTemplate(userId: Long, ledgerId: Long, request: CreateRecurringTemplateRequest): RecurringTransactionTemplateResponse {
@@ -87,6 +89,7 @@ class RecurringTransactionService(
         )
 
         val saved = templateRepository.save(template)
+        generateTransactionsForLedger(ledgerId, request.startDate)
         return saved.toResponse()
     }
 
@@ -224,6 +227,18 @@ class RecurringTransactionService(
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
             ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
 
+        return generateTransactionsForLedger(ledgerId, asOf)
+    }
+
+    fun generateDueTransactions() {
+        val asOf = LocalDate.now(clock)
+        templateRepository.findByPausedFalse()
+            .map { it.ledger.id!! }
+            .distinct()
+            .forEach { ledgerId -> generateTransactionsForLedger(ledgerId, asOf) }
+    }
+
+    private fun generateTransactionsForLedger(ledgerId: Long, asOf: LocalDate): List<TransactionResponse> {
         val activeTemplates = templateRepository.findByLedgerIdAndPausedFalse(ledgerId)
         val generatedResponses = mutableListOf<TransactionResponse>()
 
