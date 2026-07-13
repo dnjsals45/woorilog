@@ -1,9 +1,9 @@
-import { Link, Navigate } from 'react-router-dom'
-import { BookOpen, Check, Copy, LinkIcon, Mail, Pause, Play, Repeat, Send, Settings, Users, X } from 'lucide-react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Archive, BookOpen, Check, Copy, LinkIcon, Mail, Pause, Play, Repeat, Send, Settings, UserMinus, Users, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ApiClientError } from '../shared/api/client'
 import { useMeQuery } from '../features/auth/model/authQueries'
-import { useLedgerMembersQuery, useLedgersQuery } from '../features/ledger/model/ledgerQueries'
+import { useArchiveLedgerMutation, useLeaveLedgerMutation, useLedgerMembersQuery, useLedgersQuery, useRemoveLedgerMemberMutation, useRenameLedgerMutation } from '../features/ledger/model/ledgerQueries'
 import {
   useCancelInvitationMutation,
   useCreateInvitationLinkMutation,
@@ -14,7 +14,7 @@ import {
   usePendingInvitationsQuery,
 } from '../features/invitation/model/invitationQueries'
 import type { InvitationStatus, InvitationType } from '../features/invitation/api/invitationApi'
-import { useCategoriesQuery, useCreateCategoryMutation } from '../features/category/model/categoryQueries'
+import { useCategoriesQuery } from '../features/category/model/categoryQueries'
 import {
   useCreateRecurringTemplateMutation,
   useGenerateRecurringTransactionsMutation,
@@ -29,6 +29,7 @@ import { formatBudgetMonth, formatDateInput } from '../shared/lib/date'
 import { formatWon } from '../shared/lib/money'
 
 export function SettingsPage() {
+  const navigate = useNavigate()
   const meQuery = useMeQuery()
   const ledgersQuery = useLedgersQuery()
   const currentLedger =
@@ -41,14 +42,16 @@ export function SettingsPage() {
   const [searchedEmail, setSearchedEmail] = useState('')
   const [createdLinkToken, setCreatedLinkToken] = useState<string | null>(null)
   const [recurringType, setRecurringType] = useState<TransactionType>('EXPENSE')
-  const [categoryName, setCategoryName] = useState('')
-  const [categoryType, setCategoryType] = useState<TransactionType>('EXPENSE')
   const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null)
   const [asOfDate, setAsOfDate] = useState(formatDateInput())
-  const [settingsTab, setSettingsTab] = useState<'ledger' | 'quick' | 'recurring'>('ledger')
+  const [settingsTab, setSettingsTab] = useState<'ledger' | 'recurring'>('ledger')
   const budgetMonth = formatBudgetMonth(new Date(asOfDate))
   const categoriesQuery = useCategoriesQuery(currentLedger?.id)
   const membersQuery = useLedgerMembersQuery(currentLedger?.id)
+  const renameLedgerMutation = useRenameLedgerMutation(currentLedger?.id)
+  const archiveLedgerMutation = useArchiveLedgerMutation(currentLedger?.id)
+  const removeMemberMutation = useRemoveLedgerMemberMutation(currentLedger?.id)
+  const leaveLedgerMutation = useLeaveLedgerMutation(currentLedger?.id)
   const invitableUserQuery = useInvitableUserQuery(
     currentLedger?.id,
     searchedEmail,
@@ -72,7 +75,6 @@ export function SettingsPage() {
     currentLedger?.id,
     budgetMonth,
   )
-  const createCategoryMutation = useCreateCategoryMutation(currentLedger?.id)
   const updateRecurringMutation = useUpdateRecurringTemplateMutation(editingTemplateId ?? undefined)
   const editingTemplate = recurringTemplatesQuery.data?.find((template) => template.id === editingTemplateId)
 
@@ -124,12 +126,29 @@ export function SettingsPage() {
     }
   }
 
-  function handleCreateCategory(event: FormEvent<HTMLFormElement>) {
+  function handleRenameLedger(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    createCategoryMutation.mutate(
-      { name: categoryName, type: categoryType },
-      { onSuccess: () => setCategoryName('') },
-    )
+    const name = String(new FormData(event.currentTarget).get('ledgerName') ?? '').trim()
+    if (name) renameLedgerMutation.mutate(name)
+  }
+
+  function handleArchiveLedger() {
+    if (!window.confirm('이 장부를 보관할까요? 보관하면 장부 목록에서 더 이상 보이지 않습니다.')) return
+    archiveLedgerMutation.mutate(undefined, {
+      onSuccess: () => navigate('/dashboard', { replace: true }),
+    })
+  }
+
+  function handleLeaveLedger() {
+    if (!window.confirm('이 공동 장부에서 나갈까요? 다시 참여하려면 새 초대가 필요합니다.')) return
+    leaveLedgerMutation.mutate(undefined, {
+      onSuccess: () => navigate('/dashboard', { replace: true }),
+    })
+  }
+
+  function handleRemoveMember(userId: number, nickname: string) {
+    if (!window.confirm(`${nickname} 님을 이 장부에서 내보낼까요?`)) return
+    removeMemberMutation.mutate(userId)
   }
 
   function startRecurringEdit(templateId: number) {
@@ -157,15 +176,15 @@ export function SettingsPage() {
       </header>
 
       <div className="mt-6 rounded-xl border border-slate-200/30 bg-slate-100 p-1 shadow-inner sm:hidden" role="tablist" aria-label="설정 메뉴">
-        <div className="grid grid-cols-3 gap-1">
-          {([['ledger', '가계부'], ['quick', '빠른 입력'], ['recurring', '정기 거래']] as const).map(([value, label]) => (
+        <div className="grid grid-cols-2 gap-1">
+          {([['ledger', '가계부'], ['recurring', '정기 거래']] as const).map(([value, label]) => (
             <button aria-controls={`${value}-panel`} aria-selected={settingsTab === value} className={`min-h-10 rounded-lg text-xs font-black transition ${settingsTab === value ? 'border border-slate-200/20 bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`} key={value} onClick={() => setSettingsTab(value)} role="tab" type="button">{label}</button>
           ))}
         </div>
       </div>
       <div className="mt-6 hidden border-b border-slate-200 sm:block" role="tablist" aria-label="설정 메뉴">
         <nav className="-mb-px flex gap-8">
-          {([['ledger', '장부 기본 설정'], ['quick', '빠른 입력 설정'], ['recurring', '반복 거래 설정']] as const).map(([value, label]) => (
+          {([['ledger', '장부 기본 설정'], ['recurring', '반복 거래 설정']] as const).map(([value, label]) => (
             <button aria-controls={`${value}-panel`} aria-selected={settingsTab === value} className={`min-h-12 border-b-2 px-1.5 text-sm font-extrabold transition ${settingsTab === value ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'}`} key={value} onClick={() => setSettingsTab(value)} role="tab" type="button">{label}</button>
           ))}
         </nav>
@@ -175,10 +194,11 @@ export function SettingsPage() {
         <article className="rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)]">
           <div className="flex items-center gap-2"><BookOpen className="text-[var(--wl-color-primary)]" size={21} /><h2 className="text-lg font-bold">장부 정보</h2></div>
           <dl className="mt-6 divide-y divide-slate-100 text-sm"><div className="flex justify-between py-3"><dt className="text-slate-500">장부 이름</dt><dd className="font-bold">{currentLedger?.name ?? '현재 장부'}</dd></div><div className="flex justify-between py-3"><dt className="text-slate-500">장부 유형</dt><dd className="font-bold">{currentLedger?.type === 'GROUP' ? '공동 장부' : '개인 장부'}</dd></div></dl>
+          {currentLedger ? currentLedger.ownerId === meQuery.data?.user.id ? <><form className="mt-5 flex gap-2" key={currentLedger.id} onSubmit={handleRenameLedger}><label className="sr-only" htmlFor="ledger-name">장부 이름 변경</label><input className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-base" defaultValue={currentLedger.name} id="ledger-name" name="ledgerName" required /><button className="rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white disabled:bg-slate-300" disabled={renameLedgerMutation.isPending} type="submit">이름 저장</button></form><button className="mt-3 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-red-600" disabled={archiveLedgerMutation.isPending} onClick={handleArchiveLedger} type="button"><Archive size={17} />장부 보관</button></> : <button className="mt-5 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-red-600" disabled={leaveLedgerMutation.isPending} onClick={handleLeaveLedger} type="button"><UserMinus size={17} />공동 장부 나가기</button> : null}
         </article>
         <article className="rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)]">
           <div className="flex items-center gap-2"><Users className="text-[var(--wl-color-primary)]" size={21} /><h2 className="text-lg font-bold">함께 쓰는 멤버</h2></div>
-          <div className="mt-5 space-y-3">{membersQuery.data?.map((member) => <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3" key={member.userId}><span className="font-semibold">{member.nickname}</span><span className="text-xs font-bold text-slate-400">{member.userId === currentLedger?.ownerId ? '소유자' : '멤버'}</span></div>)}{!membersQuery.data?.length ? <p className="text-sm text-slate-500">참여 중인 멤버가 없습니다.</p> : null}</div>
+          <div className="mt-5 space-y-3">{membersQuery.data?.map((member) => <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3" key={member.userId}><span className="font-semibold">{member.nickname}</span><span className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400">{member.userId === currentLedger?.ownerId ? '소유자' : '멤버'}</span>{currentLedger && currentLedger.ownerId === meQuery.data?.user.id && member.userId !== currentLedger.ownerId ? <button aria-label={`${member.nickname} 내보내기`} className="flex size-9 items-center justify-center rounded-lg text-red-500 hover:bg-red-50" disabled={removeMemberMutation.isPending} onClick={() => handleRemoveMember(member.userId, member.nickname)} type="button"><UserMinus size={16} /></button> : null}</span></div>)}{!membersQuery.data?.length ? <p className="text-sm text-slate-500">참여 중인 멤버가 없습니다.</p> : null}</div>
         </article>
       </section>
 
@@ -358,37 +378,6 @@ export function SettingsPage() {
           </div>
         </section>
       ) : null}
-
-      <section aria-label="빠른 입력 설정" className={`mt-6 rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)] ${settingsTab === 'quick' ? '' : 'hidden'}`} id="quick-panel" role="tabpanel">
-        <h2 className="text-lg font-semibold text-slate-950">카테고리</h2>
-        <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={handleCreateCategory}>
-          <input
-            className="h-11 flex-1 rounded-md border border-slate-300 px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-            onChange={(event) => setCategoryName(event.target.value)}
-            placeholder="새 카테고리 이름"
-            required
-            value={categoryName}
-          />
-          <select
-            className="h-11 rounded-md border border-slate-300 px-3 text-slate-950"
-            onChange={(event) => setCategoryType(event.target.value as TransactionType)}
-            value={categoryType}
-          >
-            <option value="EXPENSE">지출</option>
-            <option value="INCOME">수입</option>
-          </select>
-          <button
-            className="h-11 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white disabled:bg-slate-300"
-            disabled={createCategoryMutation.isPending}
-            type="submit"
-          >
-            추가
-          </button>
-        </form>
-        <p className="mt-3 text-sm text-slate-500">
-          {categoriesQuery.data?.map((category) => category.name).join(' · ') || '카테고리가 없습니다.'}
-        </p>
-      </section>
 
       <section aria-label="반복 거래 설정" className={`mt-6 rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)] ${settingsTab === 'recurring' ? '' : 'hidden'}`} id="recurring-panel" role="tabpanel">
         <div className="flex items-center gap-2 text-slate-950">
