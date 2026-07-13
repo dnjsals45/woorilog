@@ -7,6 +7,7 @@ import {
   Menu,
   PiggyBank,
   Plus,
+  Repeat,
   Settings,
   Tags,
   WalletCards,
@@ -28,6 +29,7 @@ const navigation = [
   { label: '가계부', to: '/calendar', icon: BookOpen },
   { label: '통계', to: '/stats', icon: BarChart3 },
   { label: '예산·정산', to: '/budget', icon: PiggyBank, budget: true },
+  { label: '정기 거래', to: '/recurring', icon: Repeat },
   { label: '설정', to: '/settings', icon: Settings },
 ]
 
@@ -105,9 +107,10 @@ export function AppShell() {
         {currentLedger ? (
           <section className="rounded-[20px] border border-slate-200 bg-slate-50/70 p-4">
             <p className="text-xs font-bold text-slate-400">현재 장부</p>
+            <p className="mt-2 text-xs font-extrabold text-emerald-700">{currentLedger.type === 'GROUP' ? `공동 장부 · ${membersQuery.data?.length ?? 0}명` : '개인 장부'}</p>
             {ledgersQuery.data?.ledgers?.length ? (
               <select aria-label="현재 장부 선택" className="mt-1 w-full bg-transparent text-sm font-black text-slate-900 outline-none" disabled={switchLedgerMutation.isPending} onChange={(event) => switchLedgerMutation.mutate(Number(event.target.value))} value={currentLedger.id}>
-                {ledgersQuery.data.ledgers.map((ledger) => <option key={ledger.id} value={ledger.id}>{ledger.name}</option>)}
+                {ledgersQuery.data.ledgers.map((ledger) => <option key={ledger.id} value={ledger.id}>{ledger.name} · {ledger.type === 'GROUP' ? '공동' : '개인'}</option>)}
               </select>
             ) : <p className="mt-1 truncate text-sm font-black">{currentLedger.name}</p>}
             <details className="mt-3 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-xs font-extrabold text-emerald-700">+ 새 장부 만들기</summary><form className="mt-3 space-y-2" onSubmit={handleCreateLedger}><div className="grid grid-cols-2 gap-2">{(['PERSONAL', 'GROUP'] as const).map((type) => <button className={`min-h-10 rounded-lg border text-xs font-bold ${newLedgerType === type ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600'}`} key={type} onClick={() => setNewLedgerType(type)} type="button">{type === 'PERSONAL' ? '개인 장부' : '공동 장부'}</button>)}</div><label className="sr-only" htmlFor="new-ledger-name">새 장부 이름</label><input className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold" id="new-ledger-name" onChange={(event) => setNewLedgerName(event.target.value)} placeholder="새 장부 이름" required value={newLedgerName} /><button className="min-h-10 w-full rounded-lg bg-emerald-600 text-xs font-extrabold text-white disabled:bg-slate-300" disabled={createLedgerMutation.isPending} type="submit">{createLedgerMutation.isPending ? '만드는 중...' : '장부 만들기'}</button></form></details>

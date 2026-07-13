@@ -71,6 +71,12 @@ export function updateRecurringTemplate(
   )
 }
 
+export function deleteRecurringTemplate(templateId: number) {
+  return apiRequest<void>(`/api/recurring-transactions/${templateId}`, {
+    method: 'DELETE',
+  })
+}
+
 export function pauseRecurringTemplate(templateId: number) {
   return apiRequest<RecurringTemplate>(
     `/api/recurring-transactions/${templateId}/pause`,

@@ -12,6 +12,7 @@ import { TransactionEditPage } from './pages/TransactionEditPage'
 import { TransactionImportPage } from './pages/TransactionImportPage'
 import { StatisticsPage } from './pages/StatisticsPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { RecurringTransactionPage } from './pages/RecurringTransactionPage'
 import { HelpPage } from './pages/HelpPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { NotificationsPage } from './pages/NotificationsPage'
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/transactions/:transactionId" element={<TransactionEditPage />} />
           <Route path="/stats" element={<StatisticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/recurring" element={<RecurringTransactionPage />} />
           <Route path="/categories" element={<CategoryManagementPage />} />
           <Route path="/imports" element={<TransactionImportPage />} />
           <Route path="/help" element={<HelpPage />} />

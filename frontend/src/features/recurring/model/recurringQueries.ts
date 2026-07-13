@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { budgetQueryKeys } from '../../budget/model/budgetQueries'
 import { transactionQueryKeys } from '../../transaction/model/transactionQueries'
 import {
   createRecurringTemplate,
+  deleteRecurringTemplate,
   generateRecurringTransactions,
   getRecurringDue,
   getRecurringTemplates,
@@ -60,6 +62,19 @@ export function useUpdateRecurringTemplateMutation(templateId: number | undefine
   return useMutation({
     mutationFn: (request: SaveRecurringTemplateRequest) =>
       updateRecurringTemplate(templateId!, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recurringQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: budgetQueryKeys.all })
+    },
+  })
+}
+
+export function useDeleteRecurringTemplateMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (templateId: number) => deleteRecurringTemplate(templateId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: recurringQueryKeys.all }),
   })
 }
