@@ -1,11 +1,12 @@
-import type { FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, Trash2 } from 'lucide-react'
 import { useCategoriesQuery } from '../features/category/model/categoryQueries'
 import { useLedgerMembersQuery } from '../features/ledger/model/ledgerQueries'
 import { useMeQuery } from '../features/auth/model/authQueries'
 import {
   useTransactionQuery,
+  useDeleteTransactionMutation,
   useUpdateTransactionMutation,
 } from '../features/transaction/model/transactionQueries'
 import type { TransactionType } from '../features/transaction/api/transactionApi'
@@ -23,6 +24,13 @@ export function TransactionEditPage() {
   const categoriesQuery = useCategoriesQuery(ledgerId)
   const membersQuery = useLedgerMembersQuery(ledgerId)
   const updateMutation = useUpdateTransactionMutation(transactionId)
+  const deleteMutation = useDeleteTransactionMutation(transactionId)
+  const [editedType, setEditedType] = useState<TransactionType | null>(null)
+  const [editedCategoryId, setEditedCategoryId] = useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const type = editedType ?? transactionQuery.data?.type ?? 'EXPENSE'
+  const categoryId = editedCategoryId ?? transactionQuery.data?.category?.id.toString() ?? ''
+  const visibleCategories = categoriesQuery.data?.filter((category) => category.type === type) ?? []
 
   if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
     return <Navigate to="/login" replace />
@@ -32,15 +40,15 @@ export function TransactionEditPage() {
     event.preventDefault()
 
     const formData = new FormData(event.currentTarget)
-    const categoryId = String(formData.get('categoryId') ?? '')
+    const submittedCategoryId = String(formData.get('categoryId') ?? '')
     const memo = String(formData.get('memo') ?? '')
 
     updateMutation.mutate(
       {
-        type: String(formData.get('type')) as TransactionType,
+        type,
         amount: Number(formData.get('amount')),
         transactionDate: String(formData.get('transactionDate')),
-        categoryId: categoryId ? Number(categoryId) : null,
+        categoryId: submittedCategoryId ? Number(submittedCategoryId) : null,
         memo: memo || null,
         payerUserId: Number(formData.get('payerUserId')) || null,
       },
@@ -77,8 +85,12 @@ export function TransactionEditPage() {
             거래 유형
             <select
               className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-              defaultValue={transactionQuery.data.type}
               name="type"
+              onChange={(event) => {
+                setEditedType(event.target.value as TransactionType)
+                setEditedCategoryId('')
+              }}
+              value={type}
             >
               <option value="EXPENSE">지출</option>
               <option value="INCOME">수입</option>
@@ -112,11 +124,12 @@ export function TransactionEditPage() {
             카테고리
             <select
               className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-              defaultValue={transactionQuery.data.category?.id ?? ''}
               name="categoryId"
+              onChange={(event) => setEditedCategoryId(event.target.value)}
+              value={categoryId}
             >
               <option value="">선택 안 함</option>
-              {categoriesQuery.data?.map((category) => (
+              {visibleCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
@@ -156,6 +169,9 @@ export function TransactionEditPage() {
             <Save size={18} aria-hidden="true" />
             수정 저장
           </button>
+          {updateMutation.isError ? <p className="mt-3 text-center text-sm font-medium text-red-600" role="alert">거래를 수정하지 못했습니다. 마감 여부와 입력값을 확인해주세요.</p> : null}
+          <button className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50" onClick={() => setDeleteConfirmOpen(true)} type="button"><Trash2 size={17} />거래 삭제</button>
+          {deleteConfirmOpen ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-4"><p className="text-sm font-bold text-red-800">이 거래를 삭제할까요?</p><p className="mt-1 text-xs text-red-600">삭제한 거래는 복구할 수 없습니다.</p><div className="mt-3 grid grid-cols-2 gap-2"><button className="min-h-10 rounded-lg border border-red-200 bg-white text-sm font-bold text-red-700" onClick={() => setDeleteConfirmOpen(false)} type="button">취소</button><button className="min-h-10 rounded-lg bg-red-600 text-sm font-bold text-white disabled:bg-slate-300" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(undefined, { onSuccess: () => navigate('/calendar', { replace: true }) })} type="button">{deleteMutation.isPending ? '삭제 중' : '삭제'}</button></div>{deleteMutation.isError ? <p className="mt-2 text-xs font-bold text-red-700" role="alert">거래를 삭제하지 못했습니다.</p> : null}</div> : null}
         </form>
       ) : null}
     </main>

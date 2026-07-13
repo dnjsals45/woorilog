@@ -5,9 +5,10 @@ import { useMeQuery } from '../features/auth/model/authQueries'
 import { useTransactionImportPreviewMutation } from '../features/import/model/transactionImportQueries'
 import type { TransactionImportCandidate } from '../features/import/api/transactionImportApi'
 import { useCreateTransactionMutation } from '../features/transaction/model/transactionQueries'
+import { useCategoriesQuery } from '../features/category/model/categoryQueries'
+import type { TransactionType } from '../features/transaction/api/transactionApi'
 import { ApiClientError } from '../shared/api/client'
 import { formatBudgetMonth, formatDateInput } from '../shared/lib/date'
-import { formatWon } from '../shared/lib/money'
 
 export function TransactionImportPage() {
   const meQuery = useMeQuery()
@@ -16,11 +17,13 @@ export function TransactionImportPage() {
   const [transactionDate, setTransactionDate] = useState(formatDateInput())
   const [isOcrRunning, setIsOcrRunning] = useState(false)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+  const [ocrError, setOcrError] = useState(false)
   const previewMutation = useTransactionImportPreviewMutation(ledgerId)
   const createTransactionMutation = useCreateTransactionMutation(
     ledgerId,
     formatBudgetMonth(new Date(transactionDate)),
   )
+  const categoriesQuery = useCategoriesQuery(ledgerId)
 
   if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
     return <Navigate to="/login" replace />
@@ -40,23 +43,29 @@ export function TransactionImportPage() {
     if (!file) return
 
     setIsOcrRunning(true)
+    setOcrError(false)
     try {
       const tesseract = await import('tesseract.js')
       const result = await tesseract.recognize(file, 'kor+eng')
       setText(result.data.text.trim())
+    } catch {
+      setOcrError(true)
     } finally {
       setIsOcrRunning(false)
     }
   }
 
-  function handleSaveCandidate(candidate: TransactionImportCandidate) {
+  function handleSaveCandidate(candidate: TransactionImportCandidate, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    const categoryId = Number(formData.get('categoryId'))
     createTransactionMutation.mutate(
       {
-        type: candidate.type,
-        amount: candidate.amount,
-        transactionDate: candidate.transactionDate,
-        categoryId: candidate.categoryId,
-        memo: candidate.memo,
+        type: String(formData.get('type')) as TransactionType,
+        amount: Number(formData.get('amount')),
+        transactionDate: String(formData.get('transactionDate')),
+        categoryId: categoryId || null,
+        memo: String(formData.get('memo')) || null,
       },
       {
         onSuccess: () =>
@@ -104,6 +113,7 @@ export function TransactionImportPage() {
               type="file"
             />
           </label>
+          {ocrError ? <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">이미지에서 글자를 읽지 못했습니다. 다른 이미지를 선택하거나 텍스트를 직접 입력해주세요.</p> : null}
 
           <label className="mt-4 block text-sm font-medium text-slate-700">
             기준 날짜
@@ -134,6 +144,7 @@ export function TransactionImportPage() {
             <ScanText size={18} aria-hidden="true" />
             {isOcrRunning ? 'OCR 실행 중' : '후보 만들기'}
           </button>
+          {previewMutation.isError ? <p className="mt-3 text-sm font-medium text-red-600" role="alert">거래 후보를 만들지 못했습니다. 텍스트 형식을 확인해주세요.</p> : null}
         </form>
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -147,31 +158,27 @@ export function TransactionImportPage() {
           <div className="mt-4 divide-y divide-slate-100">
             {previewMutation.data?.candidates.length ? (
               previewMutation.data.candidates.map((candidate) => (
-                <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between" key={candidate.id}>
-                  <span>
-                    <span className="block font-medium text-slate-950">
-                      {candidate.memo}
-                    </span>
-                    <span className="text-sm text-slate-500">
-                      {candidate.transactionDate} · {candidate.categoryName ?? '미분류'} ·{' '}
-                      {formatWon(candidate.amount)}
-                    </span>
-                  </span>
+                <form className="grid gap-3 py-4 sm:grid-cols-2" key={candidate.id} onSubmit={(event) => handleSaveCandidate(candidate, event)}>
+                  <label className="text-xs font-bold text-slate-500">유형<select className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm" defaultValue={candidate.type} name="type"><option value="EXPENSE">지출</option><option value="INCOME">수입</option></select></label>
+                  <label className="text-xs font-bold text-slate-500">날짜<input className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" defaultValue={candidate.transactionDate} name="transactionDate" required type="date" /></label>
+                  <label className="text-xs font-bold text-slate-500">금액<input className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" defaultValue={candidate.amount} min="1" name="amount" required type="number" /></label>
+                  <label className="text-xs font-bold text-slate-500">카테고리<select className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm" defaultValue={candidate.categoryId ?? ''} name="categoryId"><option value="">미분류</option>{categoriesQuery.data?.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+                  <label className="text-xs font-bold text-slate-500 sm:col-span-2">메모<input className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" defaultValue={candidate.memo} name="memo" /></label>
                   <button
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white disabled:bg-slate-300"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white disabled:bg-slate-300 sm:col-span-2"
                     disabled={createTransactionMutation.isPending || savedIds.has(candidate.id)}
-                    onClick={() => handleSaveCandidate(candidate)}
-                    type="button"
+                    type="submit"
                   >
                     <Save size={18} aria-hidden="true" />
                     {savedIds.has(candidate.id) ? '저장됨' : '저장'}
                   </button>
-                </div>
+                </form>
               ))
             ) : (
               <p className="py-6 text-sm text-slate-500">아직 후보가 없습니다.</p>
             )}
           </div>
+          {createTransactionMutation.isError ? <p className="mt-3 text-sm font-medium text-red-600" role="alert">후보를 저장하지 못했습니다. 마감된 월인지 확인해주세요.</p> : null}
         </section>
       </section>
     </main>

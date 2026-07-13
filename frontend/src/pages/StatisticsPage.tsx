@@ -2,25 +2,33 @@ import { ArrowDownRight, ArrowUpRight, Lightbulb, PieChart } from 'lucide-react'
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useMeQuery } from '../features/auth/model/authQueries'
-import { useDashboardSummaryQuery, useMonthlyStatisticsQuery } from '../features/budget/model/budgetQueries'
+import { useMonthlyStatisticsQuery } from '../features/budget/model/budgetQueries'
 import { ApiClientError } from '../shared/api/client'
 import { formatBudgetMonth } from '../shared/lib/date'
 import { formatWon } from '../shared/lib/money'
-import { CardHeading, EmptyState, PageHeader, SurfaceCard } from '../shared/ui/DesignPrimitives'
+import { CardHeading, EmptyState, ErrorState, PageHeader, SurfaceCard } from '../shared/ui/DesignPrimitives'
 
 const colors = ['#0e9f6e', '#5b8def', '#f97316', '#9b7bd8']
 function monthOffset(offset: number) { const date = new Date(); date.setMonth(date.getMonth() + offset); return formatBudgetMonth(date) }
 
 export function StatisticsPage() {
   const meQuery = useMeQuery()
-  const dashboardQuery = useDashboardSummaryQuery()
   const [from, setFrom] = useState(monthOffset(-5))
   const [to, setTo] = useState(monthOffset(0))
   const statisticsQuery = useMonthlyStatisticsQuery(meQuery.data?.currentLedger.id, from, to)
 
   if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) return <Navigate to="/login" replace />
 
-  const categories = dashboardQuery.data?.categorySpending.filter((item) => item.amount > 0).slice(0, 4) ?? []
+  const categories = Array.from(
+    (statisticsQuery.data ?? []).reduce((totals, statistic) => {
+      statistic.categorySpending.forEach((item) => {
+        const current = totals.get(item.categoryGroupId) ?? { ...item, amount: 0 }
+        current.amount += item.amount
+        totals.set(item.categoryGroupId, current)
+      })
+      return totals
+    }, new Map<number, { categoryGroupId: number; categoryName: string; amount: number }>()),
+  ).map(([, item]) => item).filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount).slice(0, 4)
   const categoryTotal = categories.reduce((sum, item) => sum + item.amount, 0)
   const stats = statisticsQuery.data ?? []
   const currentExpense = stats.at(-1)?.expenseAmount ?? 0
@@ -35,7 +43,8 @@ export function StatisticsPage() {
       <PageHeader eyebrow="ANALYTICS" title="통계" description="소비 흐름과 카테고리 비중을 한눈에 확인합니다." actions={<div className="grid grid-cols-2 gap-2"><MonthField label="시작 월" onChange={setFrom} value={from} /><MonthField label="종료 월" onChange={setTo} value={to} /></div>} />
 
       {statisticsQuery.isLoading ? <div className="mt-5 grid gap-5 lg:grid-cols-2"><div className="h-40 animate-pulse rounded-[18px] bg-slate-100" /><div className="h-40 animate-pulse rounded-[18px] bg-slate-100" /></div> : null}
-      {!statisticsQuery.isLoading ? (
+      {statisticsQuery.isError ? <div className="mt-5"><ErrorState onRetry={() => statisticsQuery.refetch()} /></div> : null}
+      {statisticsQuery.isSuccess ? (
         <>
           <section className="mt-5 grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
             <SurfaceCard className="relative overflow-hidden bg-[linear-gradient(135deg,#ffffff,#effbf5)]">

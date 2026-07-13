@@ -1,26 +1,30 @@
 import { X } from 'lucide-react'
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMeQuery } from '../../auth/model/authQueries'
 import { useCategoriesQuery } from '../../category/model/categoryQueries'
 import { useLedgerMembersQuery } from '../../ledger/model/ledgerQueries'
 import type { TransactionType } from '../api/transactionApi'
 import { useCreateTransactionMutation } from '../model/transactionQueries'
 import { formatBudgetMonth, formatDateInput } from '../../../shared/lib/date'
+import type { TransactionEntryPreset } from '../../../shared/ui/TransactionEntryContext'
 
 type TransactionEntrySheetProps = {
   open: boolean
   onClose: () => void
+  preset?: TransactionEntryPreset
 }
 
-export function TransactionEntrySheet({ open, onClose }: TransactionEntrySheetProps) {
+export function TransactionEntrySheet({ open, onClose, preset }: TransactionEntrySheetProps) {
+  const navigate = useNavigate()
   const meQuery = useMeQuery()
   const ledgerId = meQuery.data?.currentLedger.id
-  const [type, setType] = useState<TransactionType>('EXPENSE')
+  const [type, setType] = useState<TransactionType>(preset?.type ?? 'EXPENSE')
   const [transactionDate, setTransactionDate] = useState(formatDateInput())
   const [categoryId, setCategoryId] = useState('')
-  const [amount, setAmount] = useState('')
+  const [amount, setAmount] = useState(preset?.amount ?? '')
   const [payerUserId, setPayerUserId] = useState('')
-  const [memo, setMemo] = useState('')
+  const [memo, setMemo] = useState(preset?.memo ?? '')
   const categoriesQuery = useCategoriesQuery(ledgerId)
   const membersQuery = useLedgerMembersQuery(ledgerId)
   const mutation = useCreateTransactionMutation(ledgerId, formatBudgetMonth(new Date(transactionDate)))
@@ -28,6 +32,7 @@ export function TransactionEntrySheet({ open, onClose }: TransactionEntrySheetPr
     () => categoriesQuery.data?.filter((category) => category.type === type) ?? [],
     [categoriesQuery.data, type],
   )
+  const selectedCategoryId = categoryId || categories.find((category) => category.name === preset?.categoryName)?.id.toString() || ''
 
   if (!open) return null
 
@@ -37,7 +42,7 @@ export function TransactionEntrySheet({ open, onClose }: TransactionEntrySheetPr
       {
         type,
         transactionDate,
-        categoryId: categoryId ? Number(categoryId) : null,
+        categoryId: selectedCategoryId ? Number(selectedCategoryId) : null,
         amount: Number(amount),
         payerUserId: payerUserId ? Number(payerUserId) : null,
         memo: memo || null,
@@ -69,10 +74,11 @@ export function TransactionEntrySheet({ open, onClose }: TransactionEntrySheetPr
           </div>
           <div className="mt-5 divide-y divide-[var(--wl-color-border)] border-y border-[var(--wl-color-border)]">
             <SheetField label="날짜"><input className="w-40 border-0 bg-transparent text-right" onChange={(event) => setTransactionDate(event.target.value)} required type="date" value={transactionDate} /></SheetField>
-            <SheetField label="카테고리"><select className="w-40 border-0 bg-transparent text-right" onChange={(event) => setCategoryId(event.target.value)} value={categoryId}><option value="">선택</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></SheetField>
+            <SheetField label="카테고리"><select className="w-40 border-0 bg-transparent text-right" onChange={(event) => setCategoryId(event.target.value)} value={selectedCategoryId}><option value="">선택</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></SheetField>
             <SheetField label="금액"><input className="w-40 border-0 bg-transparent text-right" inputMode="numeric" min="1" onChange={(event) => setAmount(event.target.value)} placeholder="0원" required type="number" value={amount} /></SheetField>
             <SheetField label="결제자"><select className="w-40 border-0 bg-transparent text-right" onChange={(event) => setPayerUserId(event.target.value)} value={payerUserId}><option value="">나</option>{membersQuery.data?.map((member) => <option key={member.userId} value={member.userId}>{member.nickname}</option>)}</select></SheetField>
           </div>
+          <button aria-label="거래 입력에서 카테고리 관리 열기" className="mt-3 text-sm font-extrabold text-emerald-700" onClick={() => { onClose(); navigate('/categories') }} type="button">카테고리 관리</button>
           <label className="mt-5 block text-sm font-semibold text-slate-500">메모<textarea className="mt-2 min-h-24 w-full rounded-2xl border border-[var(--wl-color-border)] bg-[var(--wl-color-background)] p-4 text-base" onChange={(event) => setMemo(event.target.value)} placeholder="메모를 입력하세요" value={memo} /></label>
           {mutation.isError ? <p className="mt-3 text-sm text-red-600">거래를 저장하지 못했습니다.</p> : null}
           <button className="mt-5 h-14 w-full rounded-xl bg-[var(--wl-color-primary)] text-base font-bold text-white disabled:bg-slate-300" disabled={mutation.isPending} type="submit">{mutation.isPending ? '저장 중' : '저장하기'}</button>

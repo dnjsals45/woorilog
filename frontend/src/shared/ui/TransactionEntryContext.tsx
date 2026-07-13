@@ -1,7 +1,14 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, type MouseEvent } from 'react'
 
 type TransactionEntryContextValue = {
-  openTransactionEntry: () => void
+  openTransactionEntry: (preset?: TransactionEntryPreset | MouseEvent<HTMLElement>) => void
+}
+
+export type TransactionEntryPreset = {
+  type?: 'EXPENSE' | 'INCOME'
+  categoryName?: string
+  amount?: string
+  memo?: string
 }
 
 export const TransactionEntryContext = createContext<TransactionEntryContextValue | null>(null)
