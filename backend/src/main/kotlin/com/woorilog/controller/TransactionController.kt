@@ -7,6 +7,7 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 
@@ -86,6 +87,15 @@ class TransactionController(
                 payerUserId = request.payerUserId
             )
         )
+    }
+
+    @DeleteMapping("/api/transactions/{transactionId}")
+    fun deleteTransaction(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable transactionId: Long,
+    ): ResponseEntity<Void> {
+        transactionService.deleteTransaction(principal.userId, transactionId)
+        return ResponseEntity.noContent().build()
     }
 }
 

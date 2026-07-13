@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.Clock
 import java.time.YearMonth
 import java.time.format.DateTimeParseException
 
@@ -18,7 +19,10 @@ class TransactionService(
     private val ledgerMemberRepository: LedgerMemberRepository,
     private val ledgerCategoryRepository: LedgerCategoryRepository,
     private val userRepository: UserRepository,
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val ledgerMonthRepository: LedgerMonthRepository,
+    private val notificationService: NotificationService,
+    private val clock: Clock,
 ) {
 
     fun createTransaction(userId: Long, ledgerId: Long, request: CreateTransactionRequest): TransactionResponse {
@@ -28,6 +32,7 @@ class TransactionService(
         // Verify user is a member
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
             ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+        ensureMonthIsOpen(ledgerId, request.transactionDate)
 
         // Validate amount
         if (request.amount <= 0) {
@@ -75,6 +80,7 @@ class TransactionService(
             memo = request.memo
         )
         val saved = transactionRepository.save(transaction)
+        notifyBudgetIfExceeded(ledgerId, request.transactionDate)
         return saved.toResponse()
     }
 
@@ -96,7 +102,8 @@ class TransactionService(
             .filter { it.type == CategoryType.EXPENSE }
         val category = expenseCategories.firstOrNull()
 
-        val transactionDate = request.transactionDate ?: LocalDate.now()
+        val transactionDate = request.transactionDate ?: LocalDate.now(clock)
+        ensureMonthIsOpen(ledgerId, transactionDate)
 
         val transaction = Transaction(
             ledger = ledger,
@@ -108,6 +115,7 @@ class TransactionService(
             memo = request.text
         )
         val saved = transactionRepository.save(transaction)
+        notifyBudgetIfExceeded(ledgerId, transactionDate)
         return saved.toResponse()
     }
 
@@ -150,6 +158,10 @@ class TransactionService(
         // Verify user is member of transaction's ledger
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
             ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+        ensureMonthIsOpen(ledgerId, transaction.transactionDate)
+        if (request.transactionDate != transaction.transactionDate) {
+            ensureMonthIsOpen(ledgerId, request.transactionDate)
+        }
 
         // Validate amount
         if (request.amount <= 0) {
@@ -191,7 +203,49 @@ class TransactionService(
         transaction.memo = request.memo
 
         val saved = transactionRepository.save(transaction)
+        notifyBudgetIfExceeded(ledgerId, request.transactionDate)
         return saved.toResponse()
+    }
+
+    fun deleteTransaction(userId: Long, transactionId: Long) {
+        val transaction = transactionRepository.findById(transactionId).orElseThrow {
+            NotFoundException("거래를 찾을 수 없습니다.")
+        }
+        val ledgerId = transaction.ledger.id!!
+        ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
+            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+        ensureMonthIsOpen(ledgerId, transaction.transactionDate)
+        transactionRepository.delete(transaction)
+    }
+
+    private fun ensureMonthIsOpen(ledgerId: Long, transactionDate: LocalDate) {
+        val budgetMonth = YearMonth.from(transactionDate).toString()
+        if (ledgerMonthRepository.findByLedgerIdAndBudgetMonth(ledgerId, budgetMonth)?.closed == true) {
+            throw WoorilogException("MONTH_CLOSED", "마감된 월의 거래는 변경할 수 없습니다.", HttpStatus.CONFLICT)
+        }
+    }
+
+    private fun notifyBudgetIfExceeded(ledgerId: Long, transactionDate: LocalDate) {
+        val budgetMonth = YearMonth.from(transactionDate)
+        val budget = ledgerMonthRepository.findByLedgerIdAndBudgetMonth(ledgerId, budgetMonth.toString())
+            ?.totalBudgetAmount ?: return
+        if (budget <= 0) return
+        val expense = transactionRepository
+            .findByLedgerIdAndTransactionDateBetweenOrderByTransactionDateDescIdDesc(
+                ledgerId, budgetMonth.atDay(1), budgetMonth.atEndOfMonth(),
+            )
+            .filter { it.type == CategoryType.EXPENSE }
+            .sumOf { it.amount }
+        if (expense > budget) {
+            notificationService.notifyLedgerMembers(
+                ledgerId,
+                NotificationType.BUDGET,
+                "${budgetMonth} 예산을 초과했습니다.",
+                "현재 지출이 월 예산보다 ${expense - budget}원 많습니다.",
+                "/ledgers/$ledgerId/months/$budgetMonth",
+                "budget-over-$ledgerId-$budgetMonth",
+            )
+        }
     }
 
     private fun parseAmountFromText(text: String): Long {

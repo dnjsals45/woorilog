@@ -44,12 +44,12 @@ class Invitation(
     var respondedAt: Instant? = null
 ) : BaseEntity() {
 
-    fun isExpired(now: Instant = Instant.now()): Boolean {
+    fun isExpired(now: Instant): Boolean {
         if (status == InvitationStatus.EXPIRED) return true
         return expiresAt != null && expiresAt!!.isBefore(now)
     }
 
-    fun getEffectiveStatus(now: Instant = Instant.now()): InvitationStatus {
+    fun getEffectiveStatus(now: Instant): InvitationStatus {
         if (status == InvitationStatus.PENDING && isExpired(now)) {
             return InvitationStatus.EXPIRED
         }

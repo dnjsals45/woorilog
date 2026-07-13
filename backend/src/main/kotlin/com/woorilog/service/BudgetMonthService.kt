@@ -18,7 +18,9 @@ class BudgetMonthService(
     private val categoryBudgetRepository: CategoryBudgetRepository,
     private val memberAllocationRepository: MemberAllocationRepository,
     private val ledgerCategoryRepository: LedgerCategoryRepository,
-    private val userRepository: UserRepository
+    private val fixedBudgetTemplateRepository: FixedBudgetTemplateRepository,
+    private val userRepository: UserRepository,
+    private val notificationService: NotificationService,
 ) {
 
     @Transactional(readOnly = true)
@@ -45,12 +47,19 @@ class BudgetMonthService(
             memberAllocationRepository.findByLedgerMonthId(it.id!!).associateBy { ma -> ma.user.id!! }
         } ?: emptyMap()
 
+        val fixedBudgets = fixedBudgetTemplateRepository.findByLedgerIdAndActiveTrue(ledgerId)
+        val fixedBudgetByCategoryId = fixedBudgets.groupBy { it.category.id!! }
+            .mapValues { (_, templates) -> templates.sumOf { it.amount } }
+
         val categoryBudgetDtos = categories.map { cat ->
             CategoryBudgetResponseDto(
                 categoryId = cat.id!!,
                 name = cat.name,
                 type = cat.type,
-                amount = savedCategoryBudgets[cat.id]?.amount ?: 0L
+                categoryGroupId = cat.categoryGroup.id!!,
+                categoryGroupName = cat.categoryGroup.name,
+                amount = savedCategoryBudgets[cat.id]?.amount
+                    ?: if (ledgerMonth == null) fixedBudgetByCategoryId[cat.id] ?: 0L else 0L
             )
         }
 
@@ -66,6 +75,7 @@ class BudgetMonthService(
             ledgerId = ledgerId,
             budgetMonth = budgetMonth,
             totalBudgetAmount = totalBudgetAmount,
+            fixedBudgetTotalAmount = fixedBudgets.sumOf { it.amount },
             closed = closed,
             categoryBudgets = categoryBudgetDtos,
             memberAllocations = memberAllocationDtos
@@ -175,6 +185,14 @@ class BudgetMonthService(
             ledgerMonth.closed = true
         }
         ledgerMonthRepository.save(ledgerMonth)
+        notificationService.notifyLedgerMembers(
+            ledgerId,
+            NotificationType.MONTH_CLOSED,
+            "${budgetMonth} 월이 마감되었습니다.",
+            "마감된 월의 예산과 거래는 다시 열기 전까지 변경할 수 없습니다.",
+            "/ledgers/$ledgerId/months/$budgetMonth",
+            "month-closed-$ledgerId-$budgetMonth",
+        )
 
         return getBudgetMonthSettings(userId, ledgerId, budgetMonth)
     }
@@ -235,6 +253,7 @@ data class BudgetMonthSettingsResponse(
     val ledgerId: Long,
     val budgetMonth: String,
     val totalBudgetAmount: Long,
+    val fixedBudgetTotalAmount: Long,
     val closed: Boolean,
     val categoryBudgets: List<CategoryBudgetResponseDto>,
     val memberAllocations: List<MemberAllocationResponseDto>
@@ -244,6 +263,8 @@ data class CategoryBudgetResponseDto(
     val categoryId: Long,
     val name: String,
     val type: CategoryType,
+    val categoryGroupId: Long,
+    val categoryGroupName: String,
     val amount: Long
 )
 

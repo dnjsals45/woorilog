@@ -18,6 +18,10 @@ class LedgerCategory(
     @JoinColumn(name = "ledger_id", nullable = false)
     var ledger: Ledger,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_group_id", nullable = false)
+    var categoryGroup: LedgerCategoryGroup,
+
     @Column(nullable = false)
     var name: String,
 

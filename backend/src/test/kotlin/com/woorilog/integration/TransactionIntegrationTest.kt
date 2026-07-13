@@ -15,6 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
@@ -86,6 +88,7 @@ class TransactionIntegrationTest {
         val foodCat = categories.first { it.name == "식비" }
         assertEquals(CategoryType.EXPENSE, foodCat.type)
         assertEquals(true, foodCat.defaultCategory)
+        assertEquals("식비", foodCat.categoryGroupName)
 
         val salaryCat = categories.first { it.name == "급여" }
         assertEquals(CategoryType.INCOME, salaryCat.type)
@@ -98,9 +101,19 @@ class TransactionIntegrationTest {
         val token = loginResponse.accessToken
         val ledgerId = loginResponse.currentLedger.id
 
+        val groupResult = mockMvc.perform(post("/api/ledgers/$ledgerId/category-groups")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("name" to "여가", "type" to "EXPENSE"))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.name").value("여가"))
+            .andReturn()
+        val groupId = objectMapper.readTree(groupResult.response.contentAsString)["id"].asLong()
+
         val requestBody = mapOf(
             "name" to "여행",
-            "type" to "EXPENSE"
+            "type" to "EXPENSE",
+            "categoryGroupId" to groupId,
         )
 
         // Create a custom category
@@ -112,6 +125,7 @@ class TransactionIntegrationTest {
             .andExpect(jsonPath("$.id").isNotEmpty)
             .andExpect(jsonPath("$.name").value("여행"))
             .andExpect(jsonPath("$.type").value("EXPENSE"))
+            .andExpect(jsonPath("$.categoryGroupName").value("여가"))
             .andExpect(jsonPath("$.defaultCategory").value(false))
 
         // Duplicate name should fail
@@ -119,6 +133,66 @@ class TransactionIntegrationTest {
             .header("Authorization", "Bearer $token")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(requestBody)))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+
+        val categoryResult = mockMvc.perform(get("/api/ledgers/$ledgerId/categories")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andReturn()
+        val categories: List<CategoryResponse> = objectMapper.readValue(
+            categoryResult.response.contentAsString,
+            objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java),
+        )
+
+        mockMvc.perform(patch("/api/categories/${categories.first { it.name == "식비" }.id}")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("name" to "외식", "categoryGroupId" to groupId))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.name").value("외식"))
+            .andExpect(jsonPath("$.categoryGroupName").value("여가"))
+
+        mockMvc.perform(delete("/api/categories/${categories.first { it.name == "여행" }.id}")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isNoContent)
+
+        mockMvc.perform(get("/api/ledgers/$ledgerId/categories")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.[?(@.name == '여행')]").isEmpty)
+    }
+
+    @Test
+    fun should_RejectCategoryDeletion_When_CategoryIsUsedByTransaction() {
+        val loginResponse = devLogin("user-a@example.com", "유저A")
+        val token = loginResponse.accessToken
+        val ledgerId = loginResponse.currentLedger.id
+        val categoryResult = mockMvc.perform(get("/api/ledgers/$ledgerId/categories")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andReturn()
+        val categories: List<CategoryResponse> = objectMapper.readValue(
+            categoryResult.response.contentAsString,
+            objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java),
+        )
+        val foodCategory = categories.first { it.name == "식비" }
+
+        mockMvc.perform(post("/api/ledgers/$ledgerId/transactions")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "EXPENSE",
+                "amount" to 12000,
+                "transactionDate" to "2026-07-09",
+                "categoryId" to foodCategory.id,
+                "memo" to "카테고리 삭제 확인",
+                "payerUserId" to null,
+            ))))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(delete("/api/categories/${foodCategory.id}")
+            .header("Authorization", "Bearer $token"))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
     }

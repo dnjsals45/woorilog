@@ -10,10 +10,12 @@ import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
+import java.time.Clock
 
 @RestController
 class RecurringTransactionController(
-    private val recurringTransactionService: RecurringTransactionService
+    private val recurringTransactionService: RecurringTransactionService,
+    private val clock: Clock,
 ) {
 
     @GetMapping("/api/ledgers/{ledgerId}/recurring-transactions")
@@ -90,7 +92,7 @@ class RecurringTransactionController(
         @PathVariable ledgerId: Long,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?
     ): List<RecurringTransactionDueResponse> {
-        val targetAsOf = asOf ?: LocalDate.now()
+        val targetAsOf = asOf ?: LocalDate.now(clock)
         return recurringTransactionService.getDueTemplates(principal.userId, ledgerId, targetAsOf)
     }
 
@@ -100,7 +102,7 @@ class RecurringTransactionController(
         @PathVariable ledgerId: Long,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?
     ): List<TransactionResponse> {
-        val targetAsOf = asOf ?: LocalDate.now()
+        val targetAsOf = asOf ?: LocalDate.now(clock)
         return recurringTransactionService.generateTransactions(principal.userId, ledgerId, targetAsOf)
     }
 }

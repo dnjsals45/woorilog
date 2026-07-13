@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.YearMonth
 
 @Service
 @Transactional
@@ -18,7 +19,8 @@ class RecurringTransactionService(
     private val userRepository: UserRepository,
     private val transactionRepository: TransactionRepository,
     private val templateRepository: RecurringTransactionTemplateRepository,
-    private val generationRepository: RecurringTransactionGenerationRepository
+    private val generationRepository: RecurringTransactionGenerationRepository,
+    private val ledgerMonthRepository: LedgerMonthRepository,
 ) {
 
     fun createTemplate(userId: Long, ledgerId: Long, request: CreateRecurringTemplateRequest): RecurringTransactionTemplateResponse {
@@ -238,6 +240,9 @@ class RecurringTransactionService(
 
             if (occurrencesToGenerate.isNotEmpty()) {
                 for (occurrence in occurrencesToGenerate) {
+                    if (ledgerMonthRepository.findByLedgerIdAndBudgetMonth(ledgerId, YearMonth.from(occurrence).toString())?.closed == true) {
+                        throw WoorilogException("MONTH_CLOSED", "마감된 월에는 반복 거래를 생성할 수 없습니다.", HttpStatus.CONFLICT)
+                    }
                     val exists = generationRepository.existsByTemplateIdAndGeneratedDate(template.id!!, occurrence)
                     if (!exists) {
                         val transaction = Transaction(

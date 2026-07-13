@@ -66,6 +66,22 @@ class BudgetAndDashboardIntegrationTest {
         val categories = getCategories(ledgerId, token)
         val foodCat = categories.first { it.name == "식비" }
 
+        val fixedBudgetRequest = mapOf(
+            "name" to "월세",
+            "categoryId" to foodCat.id,
+            "amount" to 500000,
+            "active" to true,
+        )
+        val fixedBudgetResult = mockMvc.perform(post("/api/ledgers/$ledgerId/fixed-budgets")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(fixedBudgetRequest)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.name").value("월세"))
+            .andExpect(jsonPath("$.amount").value(500000))
+            .andReturn()
+        val fixedBudgetId = objectMapper.readTree(fixedBudgetResult.response.contentAsString)["id"].asLong()
+
         // 1. Initial GET before settings are saved -> should return default budget settings populated with ledger categories/members
         mockMvc.perform(get("/api/ledgers/$ledgerId/months/$budgetMonth")
             .header("Authorization", "Bearer $token"))
@@ -73,11 +89,29 @@ class BudgetAndDashboardIntegrationTest {
             .andExpect(jsonPath("$.ledgerId").value(ledgerId))
             .andExpect(jsonPath("$.budgetMonth").value(budgetMonth))
             .andExpect(jsonPath("$.totalBudgetAmount").value(0))
+            .andExpect(jsonPath("$.fixedBudgetTotalAmount").value(500000))
+            .andExpect(jsonPath("$.categoryBudgets[?(@.categoryId == ${foodCat.id})].amount").value(500000))
             .andExpect(jsonPath("$.closed").value(false))
             .andExpect(jsonPath("$.categoryBudgets", hasSize<Any>(categories.size)))
             .andExpect(jsonPath("$.memberAllocations", hasSize<Any>(1)))
             .andExpect(jsonPath("$.memberAllocations[0].userId").value(userId))
             .andExpect(jsonPath("$.memberAllocations[0].amount").value(0))
+
+        mockMvc.perform(put("/api/fixed-budgets/$fixedBudgetId")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(fixedBudgetRequest + ("active" to false))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.active").value(false))
+
+        mockMvc.perform(get("/api/ledgers/$ledgerId/fixed-budgets")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/fixed-budgets/$fixedBudgetId")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isNoContent)
 
         // 2. PUT budget month settings
         val putRequest = mapOf(
@@ -264,8 +298,7 @@ class BudgetAndDashboardIntegrationTest {
             .andExpect(jsonPath("$.remainingBudgetAmount").value(955000))
             .andExpect(jsonPath("$.recentTransactions", hasSize<Any>(3)))
             // categorySpending
-            .andExpect(jsonPath("$.categorySpending[?(@.name == '식비')].totalSpent").value(30000))
-            .andExpect(jsonPath("$.categorySpending[?(@.name == '카페')].totalSpent").value(15000))
+            .andExpect(jsonPath("$.categorySpending[?(@.name == '식비')].totalSpent").value(45000))
             // memberSpending
             .andExpect(jsonPath("$.memberSpending[0].totalSpent").value(45000))
     }

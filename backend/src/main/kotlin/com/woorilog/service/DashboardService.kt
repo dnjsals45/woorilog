@@ -18,19 +18,18 @@ class DashboardService(
     private val ledgerMemberRepository: LedgerMemberRepository,
     private val ledgerMonthRepository: LedgerMonthRepository,
     private val transactionRepository: TransactionRepository,
-    private val ledgerCategoryRepository: LedgerCategoryRepository,
     private val authService: AuthService,
     private val clock: Clock
 ) {
 
-    fun getCurrentDashboardSummary(userId: Long): DashboardSummaryResponse {
+    fun getCurrentDashboardSummary(userId: Long, budgetMonth: String? = null): DashboardSummaryResponse {
         val user = userRepository.findById(userId).orElseThrow {
             NotFoundException("사용자를 찾을 수 없습니다.")
         }
         val currentLedger = authService.resolveCurrentLedger(user)
         val ledgerId = currentLedger.id!!
 
-        val currentYearMonth = YearMonth.now(clock)
+        val currentYearMonth = budgetMonth?.let(::validateBudgetMonth) ?: YearMonth.now(clock)
         val budgetMonthStr = currentYearMonth.toString()
 
         val ledgerMonth = ledgerMonthRepository.findByLedgerIdAndBudgetMonth(ledgerId, budgetMonthStr)
@@ -51,18 +50,7 @@ class DashboardService(
         // Recent transactions: up to 5
         val recentTransactions = currentMonthTxs.take(5).map { it.toResponse() }
 
-        // Category spending: sum EXPENSE for all EXPENSE categories
-        val expenseCategories = ledgerCategoryRepository.findByLedgerIdOrderBySortOrderAsc(ledgerId)
-            .filter { it.type == CategoryType.EXPENSE }
-        val categorySpending = expenseCategories.map { cat ->
-            val spent = currentMonthTxs.filter { it.category?.id == cat.id && it.type == CategoryType.EXPENSE }
-                .sumOf { it.amount }
-            CategorySpendingDto(
-                categoryId = cat.id!!,
-                name = cat.name,
-                totalSpent = spent
-            )
-        }
+        val categorySpending = categoryGroupSpending(currentMonthTxs)
 
         // Member spending: sum EXPENSE for all members
         val members = ledgerMemberRepository.findByLedgerId(ledgerId)
@@ -131,10 +119,26 @@ class DashboardService(
                 month = ym.toString(),
                 totalBudgetAmount = totalBudget,
                 totalExpenseAmount = totalExpense,
-                totalIncomeAmount = totalIncome
+                totalIncomeAmount = totalIncome,
+                categorySpending = categoryGroupSpending(txs)
             )
         }
     }
+
+    private fun categoryGroupSpending(transactions: List<Transaction>): List<CategorySpendingDto> = transactions
+        .filter { it.type == CategoryType.EXPENSE }
+        .groupBy { transaction ->
+            val group = transaction.category?.categoryGroup
+            (group?.id ?: 0L) to (group?.name ?: "미분류")
+        }
+        .map { (group, groupedTransactions) ->
+            CategorySpendingDto(
+                categoryGroupId = group.first,
+                name = group.second,
+                totalSpent = groupedTransactions.sumOf { it.amount },
+            )
+        }
+        .sortedByDescending { it.totalSpent }
 
     private fun validateBudgetMonth(budgetMonth: String): YearMonth {
         if (!budgetMonth.matches(Regex("^\\d{4}-\\d{2}$"))) {
@@ -160,7 +164,7 @@ data class DashboardSummaryResponse(
 )
 
 data class CategorySpendingDto(
-    val categoryId: Long,
+    val categoryGroupId: Long,
     val name: String,
     val totalSpent: Long
 )
@@ -175,5 +179,6 @@ data class MonthlyStatisticsResponse(
     val month: String,
     val totalBudgetAmount: Long,
     val totalExpenseAmount: Long,
-    val totalIncomeAmount: Long
+    val totalIncomeAmount: Long,
+    val categorySpending: List<CategorySpendingDto>,
 )

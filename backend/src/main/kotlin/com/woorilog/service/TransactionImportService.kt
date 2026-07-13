@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.Clock
 import java.time.format.DateTimeFormatter
 
 @Service
@@ -18,7 +19,8 @@ import java.time.format.DateTimeFormatter
 class TransactionImportService(
     private val ledgerRepository: LedgerRepository,
     private val ledgerMemberRepository: LedgerMemberRepository,
-    private val ledgerCategoryRepository: LedgerCategoryRepository
+    private val ledgerCategoryRepository: LedgerCategoryRepository,
+    private val clock: Clock,
 ) {
 
     fun preview(userId: Long, ledgerId: Long, request: TransactionImportPreviewRequest): TransactionImportPreviewResponse {
@@ -33,7 +35,7 @@ class TransactionImportService(
         }
 
         val categories = ledgerCategoryRepository.findByLedgerIdOrderBySortOrderAsc(ledgerId)
-        val fallbackDate = request.transactionDate ?: LocalDate.now()
+        val fallbackDate = request.transactionDate ?: LocalDate.now(clock)
         val candidates = request.text
             .lines()
             .map { it.trim() }
@@ -92,7 +94,7 @@ class TransactionImportService(
         val shortMatch = Regex("""(?<!\d)(\d{1,2})[-./](\d{1,2})(?!\d)""").find(text)
         if (shortMatch != null) {
             val (month, day) = shortMatch.destructured
-            val currentYear = LocalDate.now().year
+            val currentYear = LocalDate.now(clock).year
             return LocalDate.parse(
                 "${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}",
                 DateTimeFormatter.ISO_LOCAL_DATE

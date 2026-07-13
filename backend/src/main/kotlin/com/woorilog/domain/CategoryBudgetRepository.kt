@@ -5,6 +5,8 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface CategoryBudgetRepository : JpaRepository<CategoryBudget, Long> {
+    fun existsByCategoryId(categoryId: Long): Boolean
+
     fun findByLedgerMonthId(ledgerMonthId: Long): List<CategoryBudget>
     fun deleteByLedgerMonthId(ledgerMonthId: Long)
 }
