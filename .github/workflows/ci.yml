@@ -24,6 +24,14 @@ jobs:
         working-directory: backend
         run: ./gradlew test
 
+      - name: Require MySQL integration test
+        working-directory: backend
+        run: |
+          if grep -q 'skipped="[1-9]' build/test-results/test/TEST-com.woorilog.integration.MySqlPersistenceIntegrationTest.xml; then
+            echo "MySQL integration test was skipped"
+            exit 1
+          fi
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -53,3 +61,11 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npm run build
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E smoke
+        working-directory: frontend
+        run: npm run test:e2e
