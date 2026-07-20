@@ -20,6 +20,7 @@ export function CategoryManagementPage() {
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
   const [name, setName] = useState('')
   const [type, setType] = useState<TransactionType>('EXPENSE')
+  const [listType, setListType] = useState<TransactionType>('EXPENSE')
   const [groupId, setGroupId] = useState<number | null>(null)
   const [groupName, setGroupName] = useState('')
   const editingCategory = categoriesQuery.data?.find((category) => category.id === editingCategoryId)
@@ -40,6 +41,7 @@ export function CategoryManagementPage() {
     setEditingCategoryId(category.id)
     setName(category.name)
     setType(category.type)
+    setListType(category.type)
     setGroupId(category.categoryGroupId)
   }
 
@@ -68,6 +70,11 @@ export function CategoryManagementPage() {
   }
 
   const categories = categoriesQuery.data ?? []
+  const visibleCategories = categories.filter((category) => category.type === listType)
+  const categoryCounts = {
+    EXPENSE: categories.filter((category) => category.type === 'EXPENSE').length,
+    INCOME: categories.filter((category) => category.type === 'INCOME').length,
+  }
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[1040px] px-4 py-4 sm:px-6 md:p-8 lg:p-10">
@@ -88,7 +95,7 @@ export function CategoryManagementPage() {
           <details className="mt-6 border-t border-slate-100 pt-5"><summary className="cursor-pointer text-sm font-extrabold text-emerald-700">+ 통계 대분류 추가</summary><form className="mt-4 flex gap-2" onSubmit={handleCreateGroup}><input className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-sm font-bold" onChange={(event) => setGroupName(event.target.value)} placeholder={`새 ${type === 'EXPENSE' ? '지출' : '수입'} 대분류`} required value={groupName} /><button className="min-h-11 rounded-xl border border-emerald-600 px-4 text-sm font-extrabold text-emerald-700 disabled:opacity-50" disabled={createGroupMutation.isPending} type="submit"><FolderPlus size={17} /></button></form></details>
         </SurfaceCard>
 
-        <SurfaceCard labelledBy="category-list-title"><CardHeading eyebrow="YOUR CATEGORIES" id="category-list-title" title="카테고리 목록" trailing={<span className="text-xs font-bold text-slate-400">{categories.length}개</span>} />{categoriesQuery.isLoading ? <div className="mt-5 space-y-2">{[1, 2, 3].map((item) => <div key={item} className="h-14 animate-pulse rounded-xl bg-slate-100" />)}</div> : null}{!categoriesQuery.isLoading && categories.length ? <ul className="mt-4 divide-y divide-slate-100">{categories.map((category) => <li className="flex items-center gap-3 py-3" key={category.id}><span className={`flex size-10 items-center justify-center rounded-xl text-xs font-black ${category.type === 'EXPENSE' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{category.type === 'EXPENSE' ? '지출' : '수입'}</span><strong className="min-w-0 flex-1 truncate text-sm">{category.name}</strong><button aria-label={`${category.name} 수정`} className="flex min-h-10 items-center gap-1 rounded-lg px-3 text-xs font-extrabold text-emerald-700 hover:bg-emerald-50" onClick={() => beginEdit(category.id)} type="button"><Pencil size={15} />수정</button><button aria-label={`${category.name} 삭제`} className="flex min-h-10 items-center gap-1 rounded-lg px-3 text-xs font-extrabold text-red-600 hover:bg-red-50 disabled:opacity-50" disabled={deleteCategoryMutation.isPending} onClick={() => handleDelete(category.id, category.name)} type="button"><Trash2 size={15} />삭제</button></li>)}</ul> : null}{deleteCategoryMutation.isError ? <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{deleteCategoryMutation.error instanceof ApiClientError ? deleteCategoryMutation.error.message : '카테고리를 삭제하지 못했습니다.'}</p> : null}{!categoriesQuery.isLoading && !categories.length ? <EmptyState title="카테고리가 없습니다." description="거래에 필요한 첫 카테고리를 만들어보세요." /> : null}</SurfaceCard>
+        <SurfaceCard labelledBy="category-list-title"><CardHeading eyebrow="YOUR CATEGORIES" id="category-list-title" title="카테고리 목록" trailing={<span className="text-xs font-bold text-slate-400">{categories.length}개</span>} /><div aria-label="카테고리 유형" className="mt-5 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-1"><button aria-pressed={listType === 'EXPENSE'} className={`min-h-11 rounded-lg text-sm font-extrabold transition ${listType === 'EXPENSE' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`} onClick={() => setListType('EXPENSE')} type="button">지출 {categoryCounts.EXPENSE}</button><button aria-pressed={listType === 'INCOME'} className={`min-h-11 rounded-lg text-sm font-extrabold transition ${listType === 'INCOME' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`} onClick={() => setListType('INCOME')} type="button">수입 {categoryCounts.INCOME}</button></div>{categoriesQuery.isLoading ? <div className="mt-5 space-y-2">{[1, 2, 3].map((item) => <div key={item} className="h-14 animate-pulse rounded-xl bg-slate-100" />)}</div> : null}{!categoriesQuery.isLoading && visibleCategories.length ? <ul className="mt-4 divide-y divide-slate-100">{visibleCategories.map((category) => <li className="flex items-center gap-3 py-3" key={category.id}><span className={`flex size-10 items-center justify-center rounded-xl text-xs font-black ${category.type === 'EXPENSE' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{category.type === 'EXPENSE' ? '지출' : '수입'}</span><strong className="min-w-0 flex-1 truncate text-sm">{category.name}</strong><button aria-label={`${category.name} 수정`} className="flex min-h-10 items-center gap-1 rounded-lg px-3 text-xs font-extrabold text-emerald-700 hover:bg-emerald-50" onClick={() => beginEdit(category.id)} type="button"><Pencil size={15} />수정</button><button aria-label={`${category.name} 삭제`} className="flex min-h-10 items-center gap-1 rounded-lg px-3 text-xs font-extrabold text-red-600 hover:bg-red-50 disabled:opacity-50" disabled={deleteCategoryMutation.isPending} onClick={() => handleDelete(category.id, category.name)} type="button"><Trash2 size={15} />삭제</button></li>)}</ul> : null}{deleteCategoryMutation.isError ? <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{deleteCategoryMutation.error instanceof ApiClientError ? deleteCategoryMutation.error.message : '카테고리를 삭제하지 못했습니다.'}</p> : null}{!categoriesQuery.isLoading && !visibleCategories.length ? <EmptyState title={`${listType === 'EXPENSE' ? '지출' : '수입'} 카테고리가 없습니다.`} description="왼쪽에서 이 유형의 카테고리를 추가해보세요." /> : null}</SurfaceCard>
       </div> : null}
     </main>
   )
