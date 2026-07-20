@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.time.LocalDate
 import java.time.YearMonth
 
 @Service
@@ -16,8 +17,11 @@ class DashboardService(
     private val userRepository: UserRepository,
     private val ledgerRepository: LedgerRepository,
     private val ledgerMemberRepository: LedgerMemberRepository,
+    private val cardRepository: CardRepository,
     private val ledgerMonthRepository: LedgerMonthRepository,
     private val transactionRepository: TransactionRepository,
+    private val recurringTransactionTemplateRepository: RecurringTransactionTemplateRepository,
+    private val recurringTransactionGenerationRepository: RecurringTransactionGenerationRepository,
     private val authService: AuthService,
     private val clock: Clock
 ) {
@@ -45,7 +49,8 @@ class DashboardService(
         // Sum EXPENSE only
         val totalExpenseAmount = currentMonthTxs.filter { it.type == CategoryType.EXPENSE }
             .sumOf { it.amount }
-        val remainingBudgetAmount = totalBudgetAmount - totalExpenseAmount
+        val scheduledRecurringExpenseAmount = scheduledRecurringExpenseAmount(ledgerId, currentYearMonth)
+        val remainingBudgetAmount = totalBudgetAmount - totalExpenseAmount - scheduledRecurringExpenseAmount
 
         // Recent transactions: up to 5
         val recentTransactions = currentMonthTxs.take(5).map { it.toResponse() }
@@ -63,16 +68,19 @@ class DashboardService(
                 totalSpent = spent
             )
         }
+        val cardPaymentSummaries = nextCardPaymentSummaries(ledgerId)
 
         return DashboardSummaryResponse(
             currentLedger = LedgerDto.from(currentLedger),
             budgetMonth = budgetMonthStr,
             totalBudgetAmount = totalBudgetAmount,
             totalExpenseAmount = totalExpenseAmount,
+            scheduledRecurringExpenseAmount = scheduledRecurringExpenseAmount,
             remainingBudgetAmount = remainingBudgetAmount,
             recentTransactions = recentTransactions,
             categorySpending = categorySpending,
-            memberSpending = memberSpending
+            memberSpending = memberSpending,
+            cardPaymentSummaries = cardPaymentSummaries,
         )
     }
 
@@ -140,6 +148,76 @@ class DashboardService(
         }
         .sortedByDescending { it.totalSpent }
 
+    private fun scheduledRecurringExpenseAmount(ledgerId: Long, budgetMonth: YearMonth): Long {
+        val startDate = budgetMonth.atDay(1)
+        val endDate = budgetMonth.atEndOfMonth()
+
+        return recurringTransactionTemplateRepository.findByLedgerIdAndPausedFalse(ledgerId)
+            .asSequence()
+            .filter { it.type == CategoryType.EXPENSE }
+            .sumOf { template ->
+                scheduledOccurrencesInMonth(template, startDate, endDate)
+                    .filterNot { occurrence ->
+                        recurringTransactionGenerationRepository.existsByTemplateIdAndGeneratedDate(template.id!!, occurrence)
+                    }
+                    .sumOf { template.amount }
+            }
+    }
+
+    private fun scheduledOccurrencesInMonth(
+        template: RecurringTransactionTemplate,
+        monthStart: LocalDate,
+        monthEnd: LocalDate,
+    ): Sequence<LocalDate> = sequence {
+        var occurrence = template.nextDueDate
+        while (occurrence.isBefore(monthStart)) {
+            occurrence = nextRecurringOccurrence(occurrence, template.frequency)
+        }
+
+        while (!occurrence.isAfter(monthEnd) && (template.endDate == null || !occurrence.isAfter(template.endDate))) {
+            yield(occurrence)
+            occurrence = nextRecurringOccurrence(occurrence, template.frequency)
+        }
+    }
+
+    private fun nextRecurringOccurrence(date: LocalDate, frequency: RecurringFrequency): LocalDate = when (frequency) {
+        RecurringFrequency.WEEKLY -> date.plusWeeks(1)
+        RecurringFrequency.MONTHLY -> date.plusMonths(1)
+    }
+
+    private fun nextCardPaymentSummaries(ledgerId: Long): List<CardPaymentSummary> {
+        val today = LocalDate.now(clock)
+        return cardRepository.findByLedgerIdOrderByNameAsc(ledgerId).map { card ->
+            val upcomingClosingDate = nextClosingDate(today, card.statementClosingDay)
+            val previousClosingDate = closingDate(upcomingClosingDate.minusMonths(1), card.statementClosingDay)
+            val totalAmount = transactionRepository
+                .findByLedgerIdAndTransactionDateBetweenOrderByTransactionDateDescIdDesc(
+                    ledgerId,
+                    previousClosingDate.plusDays(1),
+                    upcomingClosingDate,
+                )
+                .filter { it.type == CategoryType.EXPENSE && it.paymentMethod == PaymentMethod.CARD && it.card?.id == card.id }
+                .sumOf { it.amount }
+            CardPaymentSummary(
+                cardId = card.id!!,
+                cardName = card.name,
+                statementClosingDate = upcomingClosingDate,
+                expectedPaymentMonth = YearMonth.from(upcomingClosingDate).plusMonths(1).toString(),
+                totalAmount = totalAmount,
+            )
+        }
+    }
+
+    private fun nextClosingDate(today: LocalDate, closingDay: Int): LocalDate {
+        val thisMonthClosing = closingDate(today, closingDay)
+        return if (thisMonthClosing.isBefore(today)) closingDate(today.plusMonths(1), closingDay) else thisMonthClosing
+    }
+
+    private fun closingDate(referenceDate: LocalDate, closingDay: Int): LocalDate {
+        val month = YearMonth.from(referenceDate)
+        return month.atDay(minOf(closingDay, month.lengthOfMonth()))
+    }
+
     private fun validateBudgetMonth(budgetMonth: String): YearMonth {
         if (!budgetMonth.matches(Regex("^\\d{4}-\\d{2}$"))) {
             throw WoorilogException("INVALID_REQUEST", "올바르지 않은 예산 월 형식입니다. (YYYY-MM)", HttpStatus.BAD_REQUEST)
@@ -157,10 +235,20 @@ data class DashboardSummaryResponse(
     val budgetMonth: String,
     val totalBudgetAmount: Long,
     val totalExpenseAmount: Long,
+    val scheduledRecurringExpenseAmount: Long,
     val remainingBudgetAmount: Long,
     val recentTransactions: List<TransactionResponse>,
     val categorySpending: List<CategorySpendingDto>,
-    val memberSpending: List<MemberSpendingDto>
+    val memberSpending: List<MemberSpendingDto>,
+    val cardPaymentSummaries: List<CardPaymentSummary>,
+)
+
+data class CardPaymentSummary(
+    val cardId: Long,
+    val cardName: String,
+    val statementClosingDate: LocalDate,
+    val expectedPaymentMonth: String,
+    val totalAmount: Long,
 )
 
 data class CategorySpendingDto(

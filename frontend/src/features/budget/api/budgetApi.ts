@@ -44,6 +44,7 @@ export type DashboardSummary = {
   budgetMonth: string
   totalBudgetAmount: number
   totalExpenseAmount: number
+  scheduledRecurringExpenseAmount: number
   remainingBudgetAmount: number
   recentTransactions: TransactionSummary[]
   categorySpending: Array<{
@@ -55,6 +56,13 @@ export type DashboardSummary = {
     userId: number
     nickname: string
     amount: number
+  }>
+  cardPaymentSummaries: Array<{
+    cardId: number
+    cardName: string
+    statementClosingDate: string
+    expectedPaymentMonth: string
+    totalAmount: number
   }>
 }
 

@@ -89,7 +89,9 @@ class RecurringTransactionService(
         )
 
         val saved = templateRepository.save(template)
-        generateTransactionsForLedger(ledgerId, request.startDate)
+        if (!request.startDate.isAfter(LocalDate.now(clock))) {
+            generateTransactionsForLedger(ledgerId, request.startDate)
+        }
         return saved.toResponse()
     }
 
