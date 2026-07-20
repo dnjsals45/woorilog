@@ -10,9 +10,8 @@ import com.woorilog.exception.WoorilogException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDate
 import java.time.Clock
-import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 
 @Service
 @Transactional(readOnly = true)
@@ -22,6 +21,10 @@ class TransactionImportService(
     private val ledgerCategoryRepository: LedgerCategoryRepository,
     private val clock: Clock,
 ) {
+
+    private val fullDateRegex = Regex("""(?<!\d)(20\d{2})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})(?!\d)""")
+    private val shortYearDateRegex = Regex("""(?<!\d)(\d{2})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})(?!\d)""")
+    private val monthDayDateRegex = Regex("""(?<!\d)(\d{1,2})\s*[-./]\s*(\d{1,2})(?!\d)""")
 
     fun preview(userId: Long, ledgerId: Long, request: TransactionImportPreviewRequest): TransactionImportPreviewResponse {
         ledgerRepository.findById(ledgerId).orElseThrow {
@@ -36,33 +39,38 @@ class TransactionImportService(
 
         val categories = ledgerCategoryRepository.findByLedgerIdOrderBySortOrderAsc(ledgerId)
         val fallbackDate = request.transactionDate ?: LocalDate.now(clock)
-        val candidates = request.text
+        val lines = request.text
             .lines()
             .map { it.trim() }
             .filter { it.isNotBlank() }
-            .mapIndexedNotNull { index, line ->
-                val amount = parseAmount(line) ?: return@mapIndexedNotNull null
+
+        var currentDate = fallbackDate
+        val candidates = buildList {
+            lines.forEachIndexed { index, line ->
+                parseDate(line)?.let { currentDate = it }
+                val amount = parseAmount(line) ?: return@forEachIndexed
                 val type = inferType(line)
                 val category = categories.firstOrNull {
                     it.type == type && line.contains(it.name, ignoreCase = true)
                 } ?: categories.firstOrNull { it.type == type }
 
-                TransactionImportCandidateResponse(
+                add(TransactionImportCandidateResponse(
                     id = "candidate-${index + 1}",
                     type = type,
                     amount = amount,
-                    transactionDate = parseDate(line) ?: fallbackDate,
+                    transactionDate = currentDate,
                     categoryId = category?.id,
                     categoryName = category?.name,
-                    memo = line,
+                    memo = extractMemo(line),
                     rawText = line,
                     confidence = if (category != null) 0.82 else 0.68
-                )
+                ))
             }
+        }
 
         return TransactionImportPreviewResponse(
             candidates = candidates,
-            rejectedLines = request.text.lines().map { it.trim() }.filter { it.isNotBlank() }.size - candidates.size
+            rejectedLines = lines.size - candidates.size
         )
     }
 
@@ -82,27 +90,29 @@ class TransactionImportService(
     }
 
     private fun parseDate(text: String): LocalDate? {
-        val isoMatch = Regex("""(20\d{2})[-./](\d{1,2})[-./](\d{1,2})""").find(text)
-        if (isoMatch != null) {
-            val (year, month, day) = isoMatch.destructured
-            return LocalDate.parse(
-                "${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}",
-                DateTimeFormatter.ISO_LOCAL_DATE
-            )
+        fullDateRegex.find(text)?.let { match ->
+            return toDate(match.groupValues[1], match.groupValues[2], match.groupValues[3])
         }
-
-        val shortMatch = Regex("""(?<!\d)(\d{1,2})[-./](\d{1,2})(?!\d)""").find(text)
-        if (shortMatch != null) {
-            val (month, day) = shortMatch.destructured
-            val currentYear = LocalDate.now(clock).year
-            return LocalDate.parse(
-                "${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}",
-                DateTimeFormatter.ISO_LOCAL_DATE
-            )
+        shortYearDateRegex.find(text)?.let { match ->
+            return toDate((2000 + match.groupValues[1].toInt()).toString(), match.groupValues[2], match.groupValues[3])
         }
-
+        monthDayDateRegex.find(text)?.let { match ->
+            return toDate(LocalDate.now(clock).year.toString(), match.groupValues[1], match.groupValues[2])
+        }
         return null
     }
+
+    private fun toDate(year: String, month: String, day: String): LocalDate? = runCatching {
+        LocalDate.of(year.toInt(), month.toInt(), day.toInt())
+    }.getOrNull()
+
+    private fun extractMemo(text: String): String = text
+        .replace(fullDateRegex, "")
+        .replace(shortYearDateRegex, "")
+        .replace(monthDayDateRegex, "")
+        .replace(Regex("""\d[\d,]*\s*(?:원|₩)?"""), "")
+        .replace(Regex("""\s+"""), " ")
+        .trim(' ', '·', 'ㆍ', '-')
 
     private fun inferType(text: String): CategoryType {
         val incomeHints = listOf("급여", "입금", "수입", "환급", "이자", "bonus", "salary")
