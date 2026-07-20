@@ -87,7 +87,8 @@ Body:
     "id": 1,
     "name": "우리로그 개발자의 개인 장부",
     "type": "PERSONAL",
-    "ownerId": 1
+    "ownerId": 1,
+    "recurringSummaryClosingDay": 31
   }
 }
 ```
@@ -123,7 +124,8 @@ Body:
     "id": 1,
     "name": "우리로그 개발자의 개인 장부",
     "type": "PERSONAL",
-    "ownerId": 1
+    "ownerId": 1,
+    "recurringSummaryClosingDay": 31
   }
 }
 ```
@@ -165,7 +167,8 @@ Success status: `200 OK`
     "id": 1,
     "name": "우리로그 개발자의 개인 장부",
     "type": "PERSONAL",
-    "ownerId": 1
+    "ownerId": 1,
+    "recurringSummaryClosingDay": 31
   }
 }
 ```
@@ -246,7 +249,8 @@ Success status: `200 OK`
       "id": 1,
       "name": "우리로그 개발자의 개인 장부",
       "type": "PERSONAL",
-      "ownerId": 1
+      "ownerId": 1,
+      "recurringSummaryClosingDay": 31
     }
   ]
 }
@@ -300,7 +304,8 @@ Success status: `200 OK`
   "id": 2,
   "name": "생활비 장부",
   "type": "PERSONAL",
-  "ownerId": 1
+  "ownerId": 1,
+  "recurringSummaryClosingDay": 31
 }
 ```
 
@@ -329,7 +334,8 @@ Success status: `200 OK`
   "id": 3,
   "name": "가족 장부",
   "type": "GROUP",
-  "ownerId": 1
+  "ownerId": 1,
+  "recurringSummaryClosingDay": 31
 }
 ```
 
@@ -351,9 +357,36 @@ Success status: `200 OK`
   "id": 2,
   "name": "생활비 장부",
   "type": "PERSONAL",
-  "ownerId": 1
+  "ownerId": 1,
+  "recurringSummaryClosingDay": 31
 }
 ```
+
+## PATCH /api/ledgers/{ledgerId}
+
+### Purpose
+
+- 장부 이름 또는 반복 거래 집계 마감일을 변경합니다.
+
+### Auth
+
+- authenticated
+- current user must be the ledger owner.
+
+### Request
+
+```json
+{
+  "recurringSummaryClosingDay": 10
+}
+```
+
+- `name`, `recurringSummaryClosingDay` 중 하나 이상을 전송합니다.
+- 집계 마감일은 `1`~`31`입니다. `10`이면 매월 11일부터 다음 달 10일까지를 하나의 반복 거래 집계 기간으로 계산하고, `31`이면 달력 월 단위로 계산합니다.
+
+### Response
+
+- 변경된 ledger response.
 
 ### Errors
 
@@ -569,7 +602,10 @@ Success status: `200 OK`
   "transactionDate": "2026-07-09",
   "categoryId": 1,
   "memo": "점심",
-  "payerUserId": null
+  "payerUserId": null,
+  "paymentMethod": "CARD",
+  "cardId": 1,
+  "installmentMonths": null
 }
 ```
 
@@ -591,7 +627,28 @@ Success status: `200 OK`
     "id": 1,
     "nickname": "우리로그 개발자"
   },
-  "memo": "점심"
+  "memo": "점심",
+  "paymentMethod": "CARD",
+  "card": {
+    "id": 1,
+    "name": "생활비 카드"
+  },
+  "installment": null
+}
+```
+
+### Installment
+
+- `installmentMonths`는 선택 값입니다. 생략하거나 `null`, `1`을 보내면 일시불로 등록합니다.
+- `paymentMethod`는 `CASH` 또는 `CARD`입니다. 생략하거나 `null`이면 `CASH`입니다. `CARD`에는 현재 장부의 `cardId`가 필요하며 카드 결제는 지출 거래에만 사용할 수 있습니다.
+- `2`~`60`을 보내면 `CARD` `EXPENSE` 거래의 총 결제 금액을 해당 개월 수로 나누어 시작일과 이후 매월 같은 일자에 회차별 거래를 생성합니다. 나머지 원 단위는 앞선 회차부터 1원씩 더합니다.
+- 응답은 첫 회차 거래를 반환합니다. 할부 거래의 `installment`는 아래 형식이며, 일시불 거래에서는 `null`입니다.
+
+```json
+{
+  "planId": "a9f5c8f7-0ef4-4c05-a517-8d532c584942",
+  "sequence": 1,
+  "totalCount": 3
 }
 ```
 
@@ -599,9 +656,23 @@ Success status: `200 OK`
 
 | status | code | when |
 | --- | --- | --- |
-| 400 | INVALID_REQUEST | amount is not positive, or transaction/category type mismatch |
+| 400 | INVALID_REQUEST | amount is not positive, transaction/category type mismatch, or installment months are invalid |
 | 403 | FORBIDDEN | user or payer is not a ledger member |
 | 404 | NOT_FOUND | ledger, category, or payer not found |
+
+## Card APIs
+
+### GET/POST /api/ledgers/{ledgerId}/cards
+
+- 장부 멤버가 등록 카드를 조회하거나 추가합니다.
+- `POST` body: `{ "name": "생활비 카드", "statementClosingDay": 25 }`
+- response: `{ "id": 1, "ledgerId": 1, "name": "생활비 카드", "statementClosingDay": 25 }`
+- `statementClosingDay`는 1~31 사이의 매월 결제금액 확정일입니다.
+
+### PUT/DELETE /api/cards/{cardId}
+
+- 장부 멤버가 카드 이름과 확정일을 수정하거나 사용하지 않은 카드를 삭제합니다.
+- 거래에 연결된 카드를 삭제하면 `400 INVALID_REQUEST`를 반환합니다.
 
 ## POST /api/ledgers/{ledgerId}/quick-transactions
 
@@ -707,7 +778,9 @@ Success status: `200 OK`
   "transactionDate": "2026-07-10",
   "categoryId": 5,
   "memo": "보너스",
-  "payerUserId": 1
+  "payerUserId": 1,
+  "paymentMethod": "CASH",
+  "cardId": null
 }
 ```
 
@@ -718,6 +791,35 @@ Success status: `200 OK`
 ### Notes
 
 - `payerUserId`를 생략하거나 `null`로 보내면 기존 결제자를 유지합니다. 새 거래 생성에서만 생략 시 현재 사용자를 결제자로 사용합니다.
+
+## DELETE /api/transactions/{transactionId}
+
+### Purpose
+
+- 거래를 삭제합니다.
+
+### Auth
+
+- authenticated
+- current user must be a member of the transaction ledger and the transaction payer.
+
+### Response
+
+```text
+204 No Content
+```
+
+### Errors
+
+| status | code | when |
+| --- | --- | --- |
+| 403 | FORBIDDEN | current user is not the transaction payer |
+| 404 | NOT_FOUND | transaction does not exist |
+| 409 | MONTH_CLOSED | transaction month is closed |
+
+### Notes
+
+- 정기 거래가 생성한 개별 거래도 삭제할 수 있습니다. 해당 발생 이력은 남겨 같은 회차가 다시 생성되지 않도록 합니다.
 
 ## GET /api/ledgers/{ledgerId}/months/{budgetMonth}
 
@@ -857,12 +959,14 @@ Success status: `200 OK`
     "id": 1,
     "name": "우리로그 개발자의 개인 장부",
     "type": "PERSONAL",
-    "ownerId": 1
+    "ownerId": 1,
+    "recurringSummaryClosingDay": 31
   },
   "budgetMonth": "2026-07",
   "totalBudgetAmount": 1000000,
   "totalExpenseAmount": 45000,
-  "remainingBudgetAmount": 955000,
+  "scheduledRecurringExpenseAmount": 13900,
+  "remainingBudgetAmount": 941100,
   "recentTransactions": [
     {
       "id": 3,
@@ -895,6 +999,15 @@ Success status: `200 OK`
       "nickname": "우리로그 개발자",
       "totalSpent": 45000
     }
+  ],
+  "cardPaymentSummaries": [
+    {
+      "cardId": 1,
+      "cardName": "생활비 카드",
+      "statementClosingDate": "2026-07-25",
+      "expectedPaymentMonth": "2026-08",
+      "totalAmount": 120000
+    }
   ]
 }
 ```
@@ -902,8 +1015,11 @@ Success status: `200 OK`
 ### Notes
 
 - `budgetMonth`가 없으면 집계 기준 월은 서버 clock의 현재 `YearMonth`입니다.
-- `totalExpenseAmount`, `categorySpending`, `memberSpending`은 `EXPENSE` 거래만 합산합니다. `categorySpending`은 세부 카테고리가 아닌 통계 대분류 기준입니다.
+- `totalExpenseAmount`, `categorySpending`, `memberSpending`은 실제 `EXPENSE` 거래만 합산합니다. `categorySpending`은 세부 카테고리가 아닌 통계 대분류 기준입니다.
+- `scheduledRecurringExpenseAmount`는 선택 월에 발생하는 활성 지출 정기 거래 중 아직 실제 거래로 생성되지 않은 금액 합계입니다. 일시정지, 종료된 템플릿과 수입 정기 거래는 제외합니다.
+- `remainingBudgetAmount`는 `totalBudgetAmount - totalExpenseAmount - scheduledRecurringExpenseAmount`입니다. 이미 생성된 정기 거래는 실제 지출에만 포함되어 중복 차감하지 않습니다.
 - `recentTransactions`는 현재 월 거래를 `transactionDate desc, id desc` 순서로 최대 5개 반환합니다.
+- `cardPaymentSummaries`는 카드별로 직전 확정일 다음 날부터 다음 확정일까지의 카드 지출을 합산합니다. `expectedPaymentMonth`는 다음 확정일의 다음 달입니다.
 
 ## GET /api/ledgers/{ledgerId}/statistics/monthly
 
@@ -1260,6 +1376,12 @@ Success status: `200 OK`
 
 - recurring transaction template response.
 
+### Notes
+
+- 시작일이 오늘 또는 과거면 해당 발생분을 실제 거래로 바로 등록하고, 미래 시작일이면 발생일까지 예정으로 유지합니다.
+- 이후 발생분은 서버가 자동으로 생성합니다. 같은 템플릿과 발생일 조합은 한 번만 기록됩니다.
+- 실제 거래를 생성하는 시작일이 마감된 월에 속하면 `409 MONTH_CLOSED`를 반환합니다.
+
 ## PUT /api/recurring-transactions/{templateId}
 
 ### Purpose
@@ -1282,6 +1404,26 @@ Success status: `200 OK`
 ### Notes
 
 - `startDate` 또는 `frequency`가 바뀌면 `nextDueDate`는 새 `startDate`로 재설정됩니다.
+
+## DELETE /api/recurring-transactions/{templateId}
+
+### Purpose
+
+- 더 이상 필요 없는 반복 거래 템플릿을 삭제합니다.
+
+### Auth
+
+- authenticated
+- current user must be a member of the template ledger.
+
+### Response
+
+- `204 No Content`
+
+### Notes
+
+- 이미 가계부에 등록된 과거 거래는 삭제하지 않습니다.
+- 이후 자동 생성될 거래와 중복 생성 방지 이력만 제거합니다.
 
 ## POST /api/recurring-transactions/{templateId}/pause
 
@@ -1416,6 +1558,13 @@ Success status: `200 OK`
 - `PUT /api/transactions/{transactionId}`
 - `DELETE /api/transactions/{transactionId}`
 
+### Card
+
+- `GET /api/ledgers/{ledgerId}/cards`
+- `POST /api/ledgers/{ledgerId}/cards`
+- `PUT /api/cards/{cardId}`
+- `DELETE /api/cards/{cardId}`
+
 ### Transaction Import
 
 - `POST /api/ledgers/{ledgerId}/transaction-imports/preview`
@@ -1504,6 +1653,7 @@ V1 OCR uses Tesseract.js in the web layer. The import preview API should accept 
 - `GET /api/ledgers/{ledgerId}/recurring-transactions`
 - `POST /api/ledgers/{ledgerId}/recurring-transactions`
 - `PUT /api/recurring-transactions/{templateId}`
+- `DELETE /api/recurring-transactions/{templateId}`
 - `POST /api/recurring-transactions/{templateId}/pause`
 - `POST /api/recurring-transactions/{templateId}/resume`
 - `GET /api/ledgers/{ledgerId}/recurring-transactions/due`
@@ -1523,7 +1673,7 @@ V1 OCR uses Tesseract.js in the web layer. The import preview API should accept 
 
 ## Ledger Management APIs
 
-- `PATCH /api/ledgers/{ledgerId}` body: `{ "name": "새 장부 이름" }`; 공동 장부 OWNER만 변경할 수 있습니다.
+- `PATCH /api/ledgers/{ledgerId}` body: `{ "name": "새 장부 이름" }` 또는 `{ "recurringSummaryClosingDay": 10 }`; 장부 OWNER만 변경할 수 있습니다.
 - `POST /api/ledgers/{ledgerId}/archive`; 공동 장부 OWNER만 보관할 수 있고 보관된 장부는 목록에서 제외됩니다.
 - `DELETE /api/ledgers/{ledgerId}/members/{userId}`; OWNER가 일반 멤버를 내보냅니다.
 - `DELETE /api/ledgers/{ledgerId}/members/me`; 일반 멤버가 공동 장부에서 탈퇴합니다.
@@ -1531,7 +1681,7 @@ V1 OCR uses Tesseract.js in the web layer. The import preview API should accept 
 
 ## Transaction Mutation Guard
 
-- `DELETE /api/transactions/{transactionId}`는 성공 시 `204 No Content`를 반환합니다.
+- `DELETE /api/transactions/{transactionId}`는 현재 사용자가 결제자인 거래만 삭제할 수 있고, 성공 시 `204 No Content`를 반환합니다.
 - 마감된 월의 거래 생성·빠른 입력·수정·삭제와 반복 거래 생성은 `409 MONTH_CLOSED`를 반환합니다.
 
 ## GET/POST /api/ledgers/{ledgerId}/months/{budgetMonth}/settlements

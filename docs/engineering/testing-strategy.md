@@ -23,6 +23,7 @@
 - ledger CRUD and switching
 - invitation accept/reject/link flow
 - transaction create/update/query
+- installment transaction creation and monthly schedule
 - transaction delete and closed-month mutation guard
 - budget month update/close/reopen
 - category creation/update, group assignment, and group-based dashboard/statistics aggregation

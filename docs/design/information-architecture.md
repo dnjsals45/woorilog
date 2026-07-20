@@ -14,6 +14,7 @@ Protected App
   Budget Month Settings
   Statistics
   Recurring Transactions
+  Card Management
   Settings
   Category Management
   Transaction Edit
@@ -27,10 +28,11 @@ Protected App
 | `/` | 서비스 소개와 로그인 진입 |
 | `/login` | Kakao login, local/test developer login |
 | `/auth/kakao/callback` | OAuth callback 처리 |
-| `/dashboard` | 현재 장부의 예산/지출/최근 거래 요약 |
+| `/dashboard` | 현재 장부의 예산/지출/최근 거래/다음 카드값 요약 |
 | `/calendar` | 날짜별 거래 탐색과 거래 입력 |
 | `/stats` | 월별/카테고리별 통계 |
 | `/recurring` | 정기 거래 설정과 집계 기간별 합계 확인 |
+| `/cards` | 장부별 카드 등록과 결제금액 확정일 관리 |
 | `/settings` | 장부, 별칭, 초대 관리 |
 | `/categories` | 거래 카테고리와 통계 대분류 관리 |
 | `/transactions/:transactionId` | 거래 상세/수정 |
@@ -55,6 +57,7 @@ Protected App
 - Budget: 월 예산 설정과 마감
 - Stats: 소비 흐름과 카테고리 통계
 - Recurring Transactions: 정기 거래 설정, 자동 등록 상태, 집계 기간별 합계 확인
+- Card Management: 카드 등록과 다음 카드값 확인의 기준이 되는 확정일 관리
 - Settings: 장부/별칭/초대 관리
 - Category Management: 카테고리 생성·수정과 통계 대분류 연결
 
