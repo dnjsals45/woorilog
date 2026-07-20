@@ -8,6 +8,8 @@ import java.time.LocalDate
 interface TransactionRepository : JpaRepository<Transaction, Long> {
     fun existsByCategoryId(categoryId: Long): Boolean
 
+    fun existsByCardId(cardId: Long): Boolean
+
     fun findByLedgerIdAndTransactionDateBetweenOrderByTransactionDateDescIdDesc(
         ledgerId: Long,
         startDate: LocalDate,

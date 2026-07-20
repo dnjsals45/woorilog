@@ -1,6 +1,7 @@
 package com.woorilog.controller
 
 import com.woorilog.domain.CategoryType
+import com.woorilog.domain.PaymentMethod
 import com.woorilog.security.UserPrincipal
 import com.woorilog.service.*
 import jakarta.validation.Valid
@@ -31,7 +32,10 @@ class TransactionController(
                 transactionDate = request.transactionDate,
                 categoryId = request.categoryId,
                 memo = request.memo,
-                payerUserId = request.payerUserId
+                payerUserId = request.payerUserId,
+                installmentMonths = request.installmentMonths,
+                paymentMethod = request.paymentMethod,
+                cardId = request.cardId,
             )
         )
     }
@@ -84,7 +88,9 @@ class TransactionController(
                 transactionDate = request.transactionDate,
                 categoryId = request.categoryId,
                 memo = request.memo,
-                payerUserId = request.payerUserId
+                payerUserId = request.payerUserId,
+                paymentMethod = request.paymentMethod,
+                cardId = request.cardId,
             )
         )
     }
@@ -113,7 +119,13 @@ data class CreateTransactionApiRequest(
 
     val memo: String?,
 
-    val payerUserId: Long?
+    val payerUserId: Long?,
+
+    val installmentMonths: Int?,
+
+    val paymentMethod: PaymentMethod?,
+
+    val cardId: Long?,
 )
 
 data class QuickTransactionApiRequest(
@@ -137,5 +149,9 @@ data class UpdateTransactionApiRequest(
 
     val memo: String?,
 
-    val payerUserId: Long?
+    val payerUserId: Long?,
+
+    val paymentMethod: PaymentMethod?,
+
+    val cardId: Long?,
 )

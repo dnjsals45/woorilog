@@ -11,6 +11,7 @@ import java.time.LocalDate
 import java.time.Clock
 import java.time.YearMonth
 import java.time.format.DateTimeParseException
+import java.util.UUID
 
 @Service
 @Transactional
@@ -18,8 +19,10 @@ class TransactionService(
     private val ledgerRepository: LedgerRepository,
     private val ledgerMemberRepository: LedgerMemberRepository,
     private val ledgerCategoryRepository: LedgerCategoryRepository,
+    private val cardRepository: CardRepository,
     private val userRepository: UserRepository,
     private val transactionRepository: TransactionRepository,
+    private val recurringTransactionGenerationRepository: RecurringTransactionGenerationRepository,
     private val ledgerMonthRepository: LedgerMonthRepository,
     private val notificationService: NotificationService,
     private val clock: Clock,
@@ -32,11 +35,13 @@ class TransactionService(
         // Verify user is a member
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
             ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
-        ensureMonthIsOpen(ledgerId, request.transactionDate)
-
-        // Validate amount
         if (request.amount <= 0) {
             throw WoorilogException("INVALID_REQUEST", "금액은 양수여야 합니다.", HttpStatus.BAD_REQUEST)
+        }
+        val payment = resolvePayment(ledgerId, request.type, request.paymentMethod, request.cardId)
+        val installmentMonths = validateInstallmentMonths(request.type, request.installmentMonths, payment.method)
+        (0 until installmentMonths).forEach { installmentIndex ->
+            ensureMonthIsOpen(ledgerId, request.transactionDate.plusMonths(installmentIndex.toLong()))
         }
 
         // Resolve payer
@@ -70,18 +75,28 @@ class TransactionService(
             throw WoorilogException("INVALID_REQUEST", "거래 유형과 카테고리 유형이 일치하지 않습니다.", HttpStatus.BAD_REQUEST)
         }
 
-        val transaction = Transaction(
-            ledger = ledger,
-            category = category,
-            payer = payerUser,
-            type = request.type,
-            amount = request.amount,
-            transactionDate = request.transactionDate,
-            memo = request.memo
-        )
-        val saved = transactionRepository.save(transaction)
-        notifyBudgetIfExceeded(ledgerId, request.transactionDate)
-        return saved.toResponse()
+        val installmentPlanId = if (installmentMonths > 1) UUID.randomUUID().toString() else null
+        val baseAmount = request.amount / installmentMonths
+        val remainder = request.amount % installmentMonths
+        val transactions = (0 until installmentMonths).map { installmentIndex ->
+            Transaction(
+                ledger = ledger,
+                category = category,
+                payer = payerUser,
+                type = request.type,
+                amount = baseAmount + if (installmentIndex < remainder) 1 else 0,
+                transactionDate = request.transactionDate.plusMonths(installmentIndex.toLong()),
+                memo = request.memo,
+                paymentMethod = payment.method,
+                card = payment.card,
+                installmentPlanId = installmentPlanId,
+                installmentSequence = installmentIndex + 1,
+                installmentTotalCount = installmentMonths,
+            )
+        }
+        val saved = transactionRepository.saveAll(transactions)
+        saved.forEach { notifyBudgetIfExceeded(ledgerId, it.transactionDate) }
+        return saved.first().toResponse()
     }
 
     fun quickTransaction(userId: Long, ledgerId: Long, request: QuickTransactionRequest): TransactionResponse {
@@ -201,6 +216,15 @@ class TransactionService(
         transaction.category = category
         transaction.payer = payerUser
         transaction.memo = request.memo
+        val updatedPaymentMethod = request.paymentMethod ?: transaction.paymentMethod
+        val payment = resolvePayment(
+            ledgerId,
+            request.type,
+            updatedPaymentMethod,
+            if (updatedPaymentMethod == PaymentMethod.CARD) request.cardId ?: transaction.card?.id else null,
+        )
+        transaction.paymentMethod = payment.method
+        transaction.card = payment.card
 
         val saved = transactionRepository.save(transaction)
         notifyBudgetIfExceeded(ledgerId, request.transactionDate)
@@ -214,8 +238,12 @@ class TransactionService(
         val ledgerId = transaction.ledger.id!!
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
             ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+        if (transaction.payer.id != userId) {
+            throw ForbiddenException("본인이 결제한 거래만 삭제할 수 있습니다.")
+        }
         ensureMonthIsOpen(ledgerId, transaction.transactionDate)
-        transactionRepository.delete(transaction)
+        recurringTransactionGenerationRepository.detachTransaction(transactionId)
+        transactionRepository.deleteById(transactionId)
     }
 
     private fun ensureMonthIsOpen(ledgerId: Long, transactionDate: LocalDate) {
@@ -246,6 +274,40 @@ class TransactionService(
                 "budget-over-$ledgerId-$budgetMonth",
             )
         }
+    }
+
+    private fun validateInstallmentMonths(type: CategoryType, requestedMonths: Int?, paymentMethod: PaymentMethod): Int {
+        val installmentMonths = requestedMonths ?: 1
+        if (installmentMonths !in 1..60) {
+            throw WoorilogException("INVALID_REQUEST", "할부 개월 수는 1개월에서 60개월 사이여야 합니다.", HttpStatus.BAD_REQUEST)
+        }
+        if (installmentMonths > 1 && type != CategoryType.EXPENSE) {
+            throw WoorilogException("INVALID_REQUEST", "할부는 지출 거래에만 사용할 수 있습니다.", HttpStatus.BAD_REQUEST)
+        }
+        if (installmentMonths > 1 && paymentMethod != PaymentMethod.CARD) {
+            throw WoorilogException("INVALID_REQUEST", "할부는 카드 결제에만 사용할 수 있습니다.", HttpStatus.BAD_REQUEST)
+        }
+        return installmentMonths
+    }
+
+    private fun resolvePayment(
+        ledgerId: Long,
+        type: CategoryType,
+        paymentMethod: PaymentMethod?,
+        cardId: Long?,
+    ): ResolvedPayment {
+        val method = paymentMethod ?: PaymentMethod.CASH
+        if (method == PaymentMethod.CASH) {
+            if (cardId != null) throw WoorilogException("INVALID_REQUEST", "현금 결제에는 카드를 선택할 수 없습니다.", HttpStatus.BAD_REQUEST)
+            return ResolvedPayment(PaymentMethod.CASH, null)
+        }
+        if (type != CategoryType.EXPENSE) {
+            throw WoorilogException("INVALID_REQUEST", "카드 결제는 지출 거래에만 사용할 수 있습니다.", HttpStatus.BAD_REQUEST)
+        }
+        val card = cardId?.let { cardRepository.findById(it).orElseThrow { NotFoundException("카드를 찾을 수 없습니다.") } }
+            ?: throw WoorilogException("INVALID_REQUEST", "카드 결제에는 카드를 선택해야 합니다.", HttpStatus.BAD_REQUEST)
+        if (card.ledger.id != ledgerId) throw NotFoundException("카드를 찾을 수 없습니다.")
+        return ResolvedPayment(PaymentMethod.CARD, card)
     }
 
     private fun parseAmountFromText(text: String): Long {
@@ -299,7 +361,10 @@ data class CreateTransactionRequest(
     val transactionDate: LocalDate,
     val categoryId: Long?,
     val memo: String?,
-    val payerUserId: Long?
+    val payerUserId: Long?,
+    val installmentMonths: Int?,
+    val paymentMethod: PaymentMethod?,
+    val cardId: Long?,
 )
 
 data class QuickTransactionRequest(
@@ -313,7 +378,9 @@ data class UpdateTransactionRequest(
     val transactionDate: LocalDate,
     val categoryId: Long?,
     val memo: String?,
-    val payerUserId: Long?
+    val payerUserId: Long?,
+    val paymentMethod: PaymentMethod?,
+    val cardId: Long?,
 )
 
 data class TransactionResponse(
@@ -324,7 +391,21 @@ data class TransactionResponse(
     val transactionDate: LocalDate,
     val category: CategorySummary?,
     val payer: PayerSummary,
-    val memo: String?
+    val memo: String?,
+    val paymentMethod: PaymentMethod,
+    val card: PaymentCardSummary?,
+    val installment: InstallmentSummary?
+)
+
+data class PaymentCardSummary(
+    val id: Long,
+    val name: String,
+)
+
+data class InstallmentSummary(
+    val planId: String,
+    val sequence: Int,
+    val totalCount: Int,
 )
 
 data class CategorySummary(
@@ -346,5 +427,15 @@ fun Transaction.toResponse() = TransactionResponse(
     transactionDate = this.transactionDate,
     category = this.category?.let { CategorySummary(it.id!!, it.name, it.type) },
     payer = PayerSummary(this.payer.id!!, this.payer.nickname),
-    memo = this.memo
+    memo = this.memo,
+    paymentMethod = this.paymentMethod,
+    card = this.card?.let { PaymentCardSummary(it.id!!, it.name) },
+    installment = this.installmentPlanId?.let {
+        InstallmentSummary(it, this.installmentSequence, this.installmentTotalCount)
+    }
+)
+
+private data class ResolvedPayment(
+    val method: PaymentMethod,
+    val card: Card?,
 )
