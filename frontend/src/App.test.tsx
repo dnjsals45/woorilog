@@ -227,6 +227,7 @@ describe('App', () => {
     const actor = userEvent.setup()
     renderApp('/calendar')
 
+    await actor.click(await screen.findByRole('button', { name: '선택 해제하고 월 전체 보기' }))
     await actor.click(await screen.findByRole('button', { name: '내 거래 거래 삭제' }))
 
     expect(confirm).toHaveBeenCalledWith('이 거래를 삭제할까요?\n삭제한 거래는 복구할 수 없습니다.')
