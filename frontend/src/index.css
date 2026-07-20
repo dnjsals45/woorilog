@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@daypicker/react/style.css';
 @import './styles/tokens.css';
 @import './styles/app-shell.css';
 
@@ -37,6 +38,34 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.woorilog-date-picker .rdp-root {
+  --rdp-accent-color: #059669;
+  --rdp-accent-background-color: #ecfdf5;
+  --rdp-day_button-height: 2.7rem;
+  --rdp-day_button-width: 2.7rem;
+  --rdp-day-height: 2.8rem;
+  --rdp-day-width: 2.8rem;
+  color: #1e293b;
+}
+
+.woorilog-date-picker .rdp-month_caption {
+  font-size: 1rem;
+}
+
+.woorilog-date-picker .rdp-weekday {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.woorilog-date-picker .rdp-day_button:hover {
+  background: #ecfdf5;
+}
+
+.woorilog-date-picker .rdp-selected .rdp-day_button {
+  background: #059669;
+  color: white;
 }
 
 body {

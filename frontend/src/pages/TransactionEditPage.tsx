@@ -10,7 +10,10 @@ import {
   useUpdateTransactionMutation,
 } from '../features/transaction/model/transactionQueries'
 import type { TransactionType } from '../features/transaction/api/transactionApi'
+import type { PaymentMethod } from '../features/transaction/api/transactionApi'
 import { ApiClientError } from '../shared/api/client'
+import { useCardsQuery } from '../features/card/model/cardQueries'
+import { DatePicker } from '../shared/ui/DatePicker'
 
 export function TransactionEditPage() {
   const navigate = useNavigate()
@@ -23,14 +26,23 @@ export function TransactionEditPage() {
   const ledgerId = transactionQuery.data?.ledgerId ?? meQuery.data?.currentLedger.id
   const categoriesQuery = useCategoriesQuery(ledgerId)
   const membersQuery = useLedgerMembersQuery(ledgerId)
+  const cardsQuery = useCardsQuery(ledgerId)
   const updateMutation = useUpdateTransactionMutation(transactionId)
   const deleteMutation = useDeleteTransactionMutation(transactionId)
   const [editedType, setEditedType] = useState<TransactionType | null>(null)
   const [editedCategoryId, setEditedCategoryId] = useState<string | null>(null)
+  const [editedPaymentMethod, setEditedPaymentMethod] = useState<PaymentMethod | null>(null)
+  const [editedCardId, setEditedCardId] = useState<string | null>(null)
+  const [editedTransactionDate, setEditedTransactionDate] = useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const type = editedType ?? transactionQuery.data?.type ?? 'EXPENSE'
   const categoryId = editedCategoryId ?? transactionQuery.data?.category?.id.toString() ?? ''
+  const paymentMethod = editedPaymentMethod ?? transactionQuery.data?.paymentMethod ?? 'CASH'
+  const cardId = editedCardId ?? transactionQuery.data?.card?.id.toString() ?? ''
+  const transactionDate = editedTransactionDate ?? transactionQuery.data?.transactionDate ?? ''
   const visibleCategories = categoriesQuery.data?.filter((category) => category.type === type) ?? []
+  const canDelete = transactionQuery.data?.payer.id === meQuery.data?.user.id
+  const deleteErrorMessage = deleteMutation.error instanceof ApiClientError ? deleteMutation.error.message : '거래를 삭제하지 못했습니다. 다시 시도해주세요.'
 
   if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
     return <Navigate to="/login" replace />
@@ -47,10 +59,12 @@ export function TransactionEditPage() {
       {
         type,
         amount: Number(formData.get('amount')),
-        transactionDate: String(formData.get('transactionDate')),
+        transactionDate,
         categoryId: submittedCategoryId ? Number(submittedCategoryId) : null,
         memo: memo || null,
         payerUserId: Number(formData.get('payerUserId')) || null,
+        paymentMethod,
+        cardId: paymentMethod === 'CARD' ? Number(cardId) || null : null,
       },
       {
         onSuccess: () => navigate('/calendar'),
@@ -79,7 +93,7 @@ export function TransactionEditPage() {
           key={transactionQuery.data.id}
           onSubmit={handleSubmit}
         >
-          <div className="mb-8 border-b border-slate-100 pb-7 text-center"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${transactionQuery.data.type === 'EXPENSE' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{transactionQuery.data.type === 'EXPENSE' ? '지출' : '수입'}</span><p className="mt-4 text-lg font-bold">{transactionQuery.data.memo || transactionQuery.data.category?.name || '거래 내역'}</p><p className="mt-2 text-4xl font-bold tracking-tight text-[var(--wl-color-primary-dark)]">{transactionQuery.data.amount.toLocaleString('ko-KR')}원</p></div>
+          <div className="mb-8 border-b border-slate-100 pb-7 text-center"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${transactionQuery.data.type === 'EXPENSE' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>{transactionQuery.data.type === 'EXPENSE' ? '지출' : '수입'}</span><p className="mt-4 text-lg font-bold">{transactionQuery.data.memo || transactionQuery.data.category?.name || '거래 내역'}</p><p className="mt-2 text-4xl font-bold tracking-tight text-[var(--wl-color-primary-dark)]">{transactionQuery.data.amount.toLocaleString('ko-KR')}원</p>{transactionQuery.data.installment ? <p className="mt-3 text-sm font-bold text-emerald-700">{transactionQuery.data.installment.totalCount}개월 할부 · {transactionQuery.data.installment.sequence}/{transactionQuery.data.installment.totalCount}회차</p> : null}</div>
 
           <label className="block text-sm font-medium text-slate-700">
             거래 유형
@@ -89,6 +103,10 @@ export function TransactionEditPage() {
               onChange={(event) => {
                 setEditedType(event.target.value as TransactionType)
                 setEditedCategoryId('')
+                if (event.target.value === 'INCOME') {
+                  setEditedPaymentMethod('CASH')
+                  setEditedCardId('')
+                }
               }}
               value={type}
             >
@@ -97,16 +115,7 @@ export function TransactionEditPage() {
             </select>
           </label>
 
-          <label className="mt-4 block text-sm font-medium text-slate-700">
-            날짜
-            <input
-              className="mt-2 h-11 w-full rounded-md border border-slate-300 px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-              defaultValue={transactionQuery.data.transactionDate}
-              name="transactionDate"
-              type="date"
-              required
-            />
-          </label>
+          <div className="mt-4"><p className="text-sm font-medium text-slate-700">날짜</p><DatePicker ariaLabel="날짜" className="mt-2" onChange={setEditedTransactionDate} value={transactionDate} /></div>
 
           <label className="mt-4 block text-sm font-medium text-slate-700">
             금액
@@ -152,6 +161,8 @@ export function TransactionEditPage() {
             </select>
           </label>
 
+          {type === 'EXPENSE' ? <><label className="mt-4 block text-sm font-medium text-slate-700">결제수단<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => { const next = event.target.value as PaymentMethod; setEditedPaymentMethod(next); if (next === 'CASH') setEditedCardId('') }} value={paymentMethod}><option value="CASH">현금</option><option value="CARD">카드</option></select></label>{paymentMethod === 'CARD' ? <label className="mt-4 block text-sm font-medium text-slate-700">사용 카드<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => setEditedCardId(event.target.value)} required value={cardId}><option value="">카드를 선택하세요</option>{cardsQuery.data?.map((card) => <option key={card.id} value={card.id}>{card.name} · 매달 {card.statementClosingDay}일 확정</option>)}</select></label> : null}</> : null}
+
           <label className="mt-4 block text-sm font-medium text-slate-700">
             메모
             <input
@@ -170,8 +181,8 @@ export function TransactionEditPage() {
             수정 저장
           </button>
           {updateMutation.isError ? <p className="mt-3 text-center text-sm font-medium text-red-600" role="alert">거래를 수정하지 못했습니다. 마감 여부와 입력값을 확인해주세요.</p> : null}
-          <button className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50" onClick={() => setDeleteConfirmOpen(true)} type="button"><Trash2 size={17} />거래 삭제</button>
-          {deleteConfirmOpen ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-4"><p className="text-sm font-bold text-red-800">이 거래를 삭제할까요?</p><p className="mt-1 text-xs text-red-600">삭제한 거래는 복구할 수 없습니다.</p><div className="mt-3 grid grid-cols-2 gap-2"><button className="min-h-10 rounded-lg border border-red-200 bg-white text-sm font-bold text-red-700" onClick={() => setDeleteConfirmOpen(false)} type="button">취소</button><button className="min-h-10 rounded-lg bg-red-600 text-sm font-bold text-white disabled:bg-slate-300" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(undefined, { onSuccess: () => navigate('/calendar', { replace: true }) })} type="button">{deleteMutation.isPending ? '삭제 중' : '삭제'}</button></div>{deleteMutation.isError ? <p className="mt-2 text-xs font-bold text-red-700" role="alert">거래를 삭제하지 못했습니다.</p> : null}</div> : null}
+          {canDelete ? <><button className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50" onClick={() => setDeleteConfirmOpen(true)} type="button"><Trash2 size={17} />거래 삭제</button>
+          {deleteConfirmOpen ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-4"><p className="text-sm font-bold text-red-800">이 거래를 삭제할까요?</p><p className="mt-1 text-xs text-red-600">삭제한 거래는 복구할 수 없습니다.</p><div className="mt-3 grid grid-cols-2 gap-2"><button className="min-h-10 rounded-lg border border-red-200 bg-white text-sm font-bold text-red-700" onClick={() => setDeleteConfirmOpen(false)} type="button">취소</button><button className="min-h-10 rounded-lg bg-red-600 text-sm font-bold text-white disabled:bg-slate-300" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(undefined, { onSuccess: () => navigate('/calendar', { replace: true }) })} type="button">{deleteMutation.isPending ? '삭제 중' : '삭제'}</button></div>{deleteMutation.isError ? <p className="mt-2 text-xs font-bold text-red-700" role="alert">{deleteErrorMessage}</p> : null}</div> : null}</> : null}
         </form>
       ) : null}
     </main>

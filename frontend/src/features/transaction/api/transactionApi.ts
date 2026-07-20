@@ -1,6 +1,7 @@
 import { apiRequest } from '../../../shared/api/client'
 
 export type TransactionType = 'EXPENSE' | 'INCOME'
+export type PaymentMethod = 'CASH' | 'CARD'
 
 export type UserSummary = {
   id: number
@@ -22,6 +23,16 @@ export type TransactionSummary = {
   category: TransactionCategorySummary | null
   payer: UserSummary
   memo: string | null
+  paymentMethod: PaymentMethod
+  card: {
+    id: number
+    name: string
+  } | null
+  installment: {
+    planId: string
+    sequence: number
+    totalCount: number
+  } | null
 }
 
 export type TransactionListResponse = {
@@ -36,6 +47,9 @@ export type SaveTransactionRequest = {
   categoryId?: number | null
   memo?: string | null
   payerUserId?: number | null
+  installmentMonths?: number | null
+  paymentMethod?: PaymentMethod | null
+  cardId?: number | null
 }
 
 export type QuickTransactionRequest = {

@@ -43,21 +43,14 @@ export function useTransactionQuery(transactionId: number | undefined) {
   })
 }
 
-export function useCreateTransactionMutation(
-  ledgerId: number | undefined,
-  budgetMonth: string,
-) {
+export function useCreateTransactionMutation(ledgerId: number | undefined) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (request: SaveTransactionRequest) =>
       createTransaction(ledgerId!, request),
     onSuccess: () => {
-      if (ledgerId) {
-        queryClient.invalidateQueries({
-          queryKey: transactionQueryKeys.month(ledgerId, budgetMonth),
-        })
-      }
+      queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: ['budget'] })
     },
   })
@@ -99,13 +92,14 @@ export function useUpdateTransactionMutation(transactionId: number | undefined) 
   })
 }
 
-export function useDeleteTransactionMutation(transactionId: number | undefined) {
+export function useDeleteTransactionMutation(transactionId?: number) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => deleteTransaction(transactionId!),
-    onSuccess: () => {
-      queryClient.removeQueries({ queryKey: transactionId ? transactionQueryKeys.detail(transactionId) : transactionQueryKeys.all })
+    mutationFn: (targetTransactionId?: number) => deleteTransaction(targetTransactionId ?? transactionId!),
+    onSuccess: (_response, targetTransactionId) => {
+      const deletedTransactionId = targetTransactionId ?? transactionId
+      queryClient.removeQueries({ queryKey: deletedTransactionId ? transactionQueryKeys.detail(deletedTransactionId) : transactionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: ['budget'] })
     },

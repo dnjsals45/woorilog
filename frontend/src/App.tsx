@@ -17,6 +17,7 @@ import { HelpPage } from './pages/HelpPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { CategoryManagementPage } from './pages/CategoryManagementPage'
+import { CardManagementPage } from './pages/CardManagementPage'
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/transactions/:transactionId" element={<TransactionEditPage />} />
           <Route path="/stats" element={<StatisticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/cards" element={<CardManagementPage />} />
           <Route path="/recurring" element={<RecurringTransactionPage />} />
           <Route path="/categories" element={<CategoryManagementPage />} />
           <Route path="/imports" element={<TransactionImportPage />} />

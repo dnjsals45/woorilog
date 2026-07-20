@@ -8,7 +8,8 @@ import { useCreateTransactionMutation } from '../features/transaction/model/tran
 import { useCategoriesQuery } from '../features/category/model/categoryQueries'
 import type { TransactionType } from '../features/transaction/api/transactionApi'
 import { ApiClientError } from '../shared/api/client'
-import { formatBudgetMonth, formatDateInput } from '../shared/lib/date'
+import { formatDateInput } from '../shared/lib/date'
+import { DatePicker } from '../shared/ui/DatePicker'
 
 export function TransactionImportPage() {
   const meQuery = useMeQuery()
@@ -18,11 +19,9 @@ export function TransactionImportPage() {
   const [isOcrRunning, setIsOcrRunning] = useState(false)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
   const [ocrError, setOcrError] = useState(false)
+  const [candidateDates, setCandidateDates] = useState<Record<string, string>>({})
   const previewMutation = useTransactionImportPreviewMutation(ledgerId)
-  const createTransactionMutation = useCreateTransactionMutation(
-    ledgerId,
-    formatBudgetMonth(new Date(transactionDate)),
-  )
+  const createTransactionMutation = useCreateTransactionMutation(ledgerId)
   const categoriesQuery = useCategoriesQuery(ledgerId)
 
   if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
@@ -63,7 +62,7 @@ export function TransactionImportPage() {
       {
         type: String(formData.get('type')) as TransactionType,
         amount: Number(formData.get('amount')),
-        transactionDate: String(formData.get('transactionDate')),
+        transactionDate: candidateDates[candidate.id] ?? candidate.transactionDate,
         categoryId: categoryId || null,
         memo: String(formData.get('memo')) || null,
       },
@@ -115,15 +114,7 @@ export function TransactionImportPage() {
           </label>
           {ocrError ? <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">이미지에서 글자를 읽지 못했습니다. 다른 이미지를 선택하거나 텍스트를 직접 입력해주세요.</p> : null}
 
-          <label className="mt-4 block text-sm font-medium text-slate-700">
-            기준 날짜
-            <input
-              className="mt-2 h-11 w-full rounded-md border border-slate-300 px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-              onChange={(event) => setTransactionDate(event.target.value)}
-              type="date"
-              value={transactionDate}
-            />
-          </label>
+          <div className="mt-4"><p className="text-sm font-medium text-slate-700">기준 날짜</p><DatePicker ariaLabel="기준 날짜" className="mt-2" onChange={setTransactionDate} value={transactionDate} /></div>
 
           <label className="mt-4 block text-sm font-medium text-slate-700">
             추출 텍스트
@@ -160,7 +151,7 @@ export function TransactionImportPage() {
               previewMutation.data.candidates.map((candidate) => (
                 <form className="grid gap-3 py-4 sm:grid-cols-2" key={candidate.id} onSubmit={(event) => handleSaveCandidate(candidate, event)}>
                   <label className="text-xs font-bold text-slate-500">유형<select className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm" defaultValue={candidate.type} name="type"><option value="EXPENSE">지출</option><option value="INCOME">수입</option></select></label>
-                  <label className="text-xs font-bold text-slate-500">날짜<input className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" defaultValue={candidate.transactionDate} name="transactionDate" required type="date" /></label>
+                  <div className="text-xs font-bold text-slate-500"><p>날짜</p><DatePicker ariaLabel={`${candidate.id} 날짜`} className="mt-1" onChange={(date) => setCandidateDates((current) => ({ ...current, [candidate.id]: date }))} value={candidateDates[candidate.id] ?? candidate.transactionDate} /></div>
                   <label className="text-xs font-bold text-slate-500">금액<input className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" defaultValue={candidate.amount} min="1" name="amount" required type="number" /></label>
                   <label className="text-xs font-bold text-slate-500">카테고리<select className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm" defaultValue={candidate.categoryId ?? ''} name="categoryId"><option value="">미분류</option>{categoriesQuery.data?.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
                   <label className="text-xs font-bold text-slate-500 sm:col-span-2">메모<input className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" defaultValue={candidate.memo} name="memo" /></label>

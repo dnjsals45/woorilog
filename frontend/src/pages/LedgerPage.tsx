@@ -1,8 +1,8 @@
-import { ChevronLeft, ChevronRight, Plus, ScanText, Search, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, ScanText, Search, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useMeQuery } from '../features/auth/model/authQueries'
-import { useMonthTransactionsQuery } from '../features/transaction/model/transactionQueries'
+import { useDeleteTransactionMutation, useMonthTransactionsQuery } from '../features/transaction/model/transactionQueries'
 import { ApiClientError } from '../shared/api/client'
 import { formatBudgetMonth, formatDateInput } from '../shared/lib/date'
 import { formatWon } from '../shared/lib/money'
@@ -22,8 +22,10 @@ export function LedgerPage() {
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'EXPENSE' | 'INCOME'>('ALL')
   const ledgerId = meQuery.data?.currentLedger.id
   const transactionsQuery = useMonthTransactionsQuery(ledgerId, budgetMonth)
+  const deleteMutation = useDeleteTransactionMutation()
   const transactions = useMemo(() => transactionsQuery.data?.transactions ?? [], [transactionsQuery.data?.transactions])
   const transactionDates = useMemo(() => [...new Set(transactions.map((item) => item.transactionDate))], [transactions])
+  const [deleteError, setDeleteError] = useState<{ transactionId: number; message: string } | null>(null)
 
   if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) return <Navigate to="/login" replace />
 
@@ -44,6 +46,18 @@ export function LedgerPage() {
     setSelectedDate(null)
   }
 
+  function deleteTransactionFromList(transactionId: number) {
+    if (!window.confirm('이 거래를 삭제할까요?\n삭제한 거래는 복구할 수 없습니다.')) return
+
+    setDeleteError(null)
+    deleteMutation.mutate(transactionId, {
+      onError: (error) => setDeleteError({
+        transactionId,
+        message: error instanceof ApiClientError ? error.message : '거래를 삭제하지 못했습니다. 다시 시도해주세요.',
+      }),
+    })
+  }
+
   const selectedTitle = selectedDate
     ? `${Number(selectedDate.slice(5, 7))}월 ${Number(selectedDate.slice(8, 10))}일 거래`
     : `${budgetMonth.replace('-', '년 ')}월 전체 거래`
@@ -54,7 +68,7 @@ export function LedgerPage() {
         eyebrow="LEDGER"
         title="가계부"
         description="오늘 바로 입력하고 날짜별 지출과 수입을 확인합니다."
-        actions={<div className="flex gap-2"><button aria-label="거래 검색" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" onClick={() => setSearchOpen((value) => !value)} type="button"><Search size={19} /></button><button aria-expanded={filterOpen} aria-label="거래 필터" className={`flex size-11 items-center justify-center rounded-xl border bg-white shadow-sm ${typeFilter === 'ALL' ? 'border-slate-200 text-slate-600' : 'border-emerald-300 text-emerald-700'}`} onClick={() => setFilterOpen((value) => !value)} type="button"><SlidersHorizontal size={19} /></button><Link aria-label="거래 가져오기" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" to="/imports"><ScanText size={19} /></Link><button className="hidden min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(14,159,110,0.18)] lg:flex" onClick={() => openTransactionEntry()} type="button"><Plus size={18} />거래 추가</button></div>}
+        actions={<div className="flex gap-2"><button aria-label="거래 검색" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" onClick={() => setSearchOpen((value) => !value)} type="button"><Search size={19} /></button><button aria-expanded={filterOpen} aria-label="거래 필터" className={`flex size-11 items-center justify-center rounded-xl border bg-white shadow-sm ${typeFilter === 'ALL' ? 'border-slate-200 text-slate-600' : 'border-emerald-300 text-emerald-700'}`} onClick={() => setFilterOpen((value) => !value)} type="button"><SlidersHorizontal size={19} /></button><Link aria-label="거래 가져오기" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" to="/imports"><ScanText size={19} /></Link><button className="hidden min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(14,159,110,0.18)] lg:flex" onClick={() => openTransactionEntry({ transactionDate: selectedDate ?? undefined })} type="button"><Plus size={18} />거래 추가</button></div>}
       />
 
       {searchOpen ? <label className="mt-4 block"><span className="sr-only">거래 검색어</span><div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm"><Search className="text-slate-400" size={18} /><input autoFocus className="min-w-0 flex-1 border-0 bg-transparent text-base outline-none" onChange={(event) => setSearchText(event.target.value)} placeholder="내역, 카테고리, 결제자 검색" value={searchText} /></div></label> : null}
@@ -73,9 +87,24 @@ export function LedgerPage() {
         <SurfaceCard labelledBy="transaction-list-title">
           <CardHeading eyebrow="TIMELINE" id="transaction-list-title" title={selectedTitle} trailing={<div className="text-right"><p className="text-xs font-bold text-slate-400">{visibleTransactions.length}건</p><p className="mt-1 text-sm font-black text-slate-800">{formatWon(selectedExpense)}</p></div>} />
           {transactionsQuery.isLoading ? <div className="mt-5 space-y-3">{[1,2,3].map((item) => <div className="h-16 animate-pulse rounded-2xl bg-slate-100" key={item} />)}</div> : null}
-          {!transactionsQuery.isLoading && visibleTransactions.length ? <ul className="mt-4 divide-y divide-slate-100">{visibleTransactions.map((transaction) => <li key={transaction.id}><Link className="flex items-center gap-3 rounded-xl px-1 py-3 text-left transition hover:bg-slate-50 sm:gap-4" to={`/transactions/${transaction.id}`}><CategoryBadge name={transaction.category?.name} /><span className="min-w-0 flex-1"><strong className="block truncate text-sm font-extrabold text-slate-900 sm:text-base">{transaction.memo || transaction.category?.name || '거래 내역'}</strong><span className="mt-1 block truncate text-xs font-medium text-slate-400">{transaction.transactionDate.replaceAll('-', '.')} · {transaction.payer.nickname} · {transaction.category?.name ?? '미분류'}</span></span><strong className={`shrink-0 text-sm font-black sm:text-base ${transaction.type === 'INCOME' ? 'text-blue-600' : 'text-slate-900'}`}>{transaction.type === 'INCOME' ? '+' : '-'}{formatWon(transaction.amount)}</strong></Link></li>)}</ul> : null}
+          {!transactionsQuery.isLoading && visibleTransactions.length ? <ul className="mt-4 divide-y divide-slate-100">{visibleTransactions.map((transaction) => {
+            const canDelete = transaction.payer.id === meQuery.data?.user.id
+            const transactionName = transaction.memo || transaction.category?.name || '거래 내역'
+
+            return <li key={transaction.id}>
+              <div className="flex items-center gap-1">
+                <Link className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-3 text-left transition hover:bg-slate-50 sm:gap-4" to={`/transactions/${transaction.id}`}>
+                  <CategoryBadge name={transaction.category?.name} />
+                  <span className="min-w-0 flex-1"><strong className="block truncate text-sm font-extrabold text-slate-900 sm:text-base">{transactionName}</strong><span className="mt-1 block truncate text-xs font-medium text-slate-400">{transaction.transactionDate.replaceAll('-', '.')} · {transaction.payer.nickname} · {transaction.category?.name ?? '미분류'}</span></span>
+                  <strong className={`shrink-0 text-sm font-black sm:text-base ${transaction.type === 'INCOME' ? 'text-blue-600' : 'text-slate-900'}`}>{transaction.type === 'INCOME' ? '+' : '-'}{formatWon(transaction.amount)}</strong>
+                </Link>
+                {canDelete ? <button aria-label={`${transactionName} 거래 삭제`} className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:text-slate-300" disabled={deleteMutation.isPending} onClick={() => deleteTransactionFromList(transaction.id)} type="button"><Trash2 aria-hidden="true" size={18} /></button> : null}
+              </div>
+              {deleteError?.transactionId === transaction.id ? <p className="pb-3 pl-1 text-xs font-bold text-red-600" role="alert">{deleteError.message}</p> : null}
+            </li>
+          })}</ul> : null}
           {!transactionsQuery.isLoading && !visibleTransactions.length ? <EmptyState title={selectedDate ? '이날의 거래 기록이 없습니다.' : '이번 달 거래가 없습니다.'} description="하단의 + 버튼을 눌러 첫 거래를 입력해보세요." /> : null}
-          <button className="mt-5 min-h-12 w-full rounded-xl bg-emerald-600 text-sm font-extrabold text-white xl:hidden" onClick={() => openTransactionEntry()} type="button"><Plus className="mr-1 inline" size={18} />거래 추가</button>
+          <button className="mt-5 min-h-12 w-full rounded-xl bg-emerald-600 text-sm font-extrabold text-white xl:hidden" onClick={() => openTransactionEntry({ transactionDate: selectedDate ?? undefined })} type="button"><Plus className="mr-1 inline" size={18} />거래 추가</button>
         </SurfaceCard>
       </section> : null}
     </main>

@@ -9,6 +9,7 @@ export type TransactionEntryPreset = {
   categoryName?: string
   amount?: string
   memo?: string
+  transactionDate?: string
 }
 
 export const TransactionEntryContext = createContext<TransactionEntryContextValue | null>(null)
