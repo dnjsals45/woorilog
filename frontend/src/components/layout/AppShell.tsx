@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpen,
   CircleHelp,
+  CreditCard,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -30,6 +31,7 @@ const navigation = [
   { label: '통계', to: '/stats', icon: BarChart3 },
   { label: '예산·정산', to: '/budget', icon: PiggyBank, budget: true },
   { label: '정기 거래', to: '/recurring', icon: Repeat },
+  { label: '카드 관리', to: '/cards', icon: CreditCard },
   { label: '설정', to: '/settings', icon: Settings },
 ]
 
@@ -120,9 +122,8 @@ export function AppShell() {
           </section>
         ) : null}
         <div className="border-t border-slate-100 pt-3">
-          {meQuery.data ? <div className="mb-2 flex items-center gap-3 rounded-xl px-3 py-2"><span className="flex size-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">{meQuery.data.user.nickname.slice(0, 1)}</span><span className="min-w-0 truncate text-sm font-extrabold">{meQuery.data.user.nickname}</span></div> : null}
+          {meQuery.data ? <div className="mb-2 flex items-center justify-between gap-2 rounded-xl px-3 py-2"><span className="flex min-w-0 items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">{meQuery.data.user.nickname.slice(0, 1)}</span><span className="truncate text-sm font-extrabold">{meQuery.data.user.nickname}</span></span><button aria-label="로그아웃" className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })} type="button"><LogOut size={16} />{logoutMutation.isPending ? '처리 중' : '로그아웃'}</button></div> : null}
           <button className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold text-slate-500 hover:bg-slate-50" onClick={() => closeAndNavigate('/help')} type="button"><CircleHelp size={18} />도움말</button>
-          <button className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })} type="button"><LogOut size={18} />{logoutMutation.isPending ? '로그아웃 중...' : '로그아웃'}</button>
         </div>
       </div>
     </div>
