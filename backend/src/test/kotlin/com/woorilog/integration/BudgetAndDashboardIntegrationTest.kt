@@ -295,12 +295,73 @@ class BudgetAndDashboardIntegrationTest {
             .andExpect(jsonPath("$.totalBudgetAmount").value(1000000))
             // totalExpenseAmount should only count EXPENSE = 30000 + 15000 = 45000
             .andExpect(jsonPath("$.totalExpenseAmount").value(45000))
+            .andExpect(jsonPath("$.scheduledRecurringExpenseAmount").value(0))
             .andExpect(jsonPath("$.remainingBudgetAmount").value(955000))
             .andExpect(jsonPath("$.recentTransactions", hasSize<Any>(3)))
             // categorySpending
             .andExpect(jsonPath("$.categorySpending[?(@.name == '식비')].totalSpent").value(45000))
             // memberSpending
             .andExpect(jsonPath("$.memberSpending[0].totalSpent").value(45000))
+    }
+
+    @Test
+    fun should_ReserveScheduledRecurringExpense_AndAvoidDoubleCountingAfterGeneration() {
+        val loginResponse = devLogin("scheduled-recurring@example.com", "예정 정기비")
+        val token = loginResponse.accessToken
+        val ledgerId = loginResponse.currentLedger.id
+        val scheduledMonth = YearMonth.now().plusMonths(1)
+        val scheduledMonthStr = scheduledMonth.toString()
+        val scheduledDate = scheduledMonth.atDay(5)
+
+        val budgetRequest = mapOf(
+            "totalBudgetAmount" to 1_000_000,
+            "categoryBudgets" to emptyList<Any>(),
+            "memberAllocations" to emptyList<Any>(),
+        )
+        mockMvc.perform(put("/api/ledgers/$ledgerId/months/$scheduledMonthStr")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(budgetRequest)))
+            .andExpect(status().isOk)
+
+        val recurringRequest = mapOf(
+            "type" to "EXPENSE",
+            "amount" to 40_000,
+            "categoryId" to null,
+            "memo" to "예정 구독료",
+            "payerUserId" to null,
+            "frequency" to "MONTHLY",
+            "startDate" to scheduledDate.toString(),
+            "endDate" to null,
+        )
+        mockMvc.perform(post("/api/ledgers/$ledgerId/recurring-transactions")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(recurringRequest)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.nextDueDate").value(scheduledDate.toString()))
+
+        mockMvc.perform(get("/api/dashboard/current")
+            .header("Authorization", "Bearer $token")
+            .param("budgetMonth", scheduledMonthStr))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalExpenseAmount").value(0))
+            .andExpect(jsonPath("$.scheduledRecurringExpenseAmount").value(40_000))
+            .andExpect(jsonPath("$.remainingBudgetAmount").value(960_000))
+
+        mockMvc.perform(post("/api/ledgers/$ledgerId/recurring-transactions/generate")
+            .header("Authorization", "Bearer $token")
+            .param("asOf", scheduledDate.toString()))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+
+        mockMvc.perform(get("/api/dashboard/current")
+            .header("Authorization", "Bearer $token")
+            .param("budgetMonth", scheduledMonthStr))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalExpenseAmount").value(40_000))
+            .andExpect(jsonPath("$.scheduledRecurringExpenseAmount").value(0))
+            .andExpect(jsonPath("$.remainingBudgetAmount").value(960_000))
     }
 
     @Test

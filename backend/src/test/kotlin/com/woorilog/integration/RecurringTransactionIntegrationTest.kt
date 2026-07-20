@@ -3,6 +3,7 @@ package com.woorilog.integration
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.woorilog.domain.CategoryType
 import com.woorilog.domain.RecurringFrequency
+import com.woorilog.domain.RecurringTransactionGenerationRepository
 import com.woorilog.service.DevLoginResponse
 import com.woorilog.service.CategoryResponse
 import com.woorilog.service.TransactionResponse
@@ -11,6 +12,7 @@ import com.woorilog.service.RecurringTransactionDueResponse
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -36,6 +38,9 @@ class RecurringTransactionIntegrationTest {
 
     @Autowired
     private lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    private lateinit var generationRepository: RecurringTransactionGenerationRepository
 
     private fun devLogin(email: String, nickname: String): DevLoginResponse {
         val requestBody = mapOf(
@@ -366,6 +371,42 @@ class RecurringTransactionIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$", hasSize<Any>(1)))
             .andExpect(jsonPath("$[0].memo").value("삭제할 구독"))
+    }
+
+    @Test
+    fun should_DeleteRecurringGeneratedTransactionAndKeepGenerationRecord() {
+        val loginResponse = devLogin("delete-generated@example.com", "반복 삭제")
+        val token = loginResponse.accessToken
+        val ledgerId = loginResponse.currentLedger.id
+        val templateId = objectMapper.readTree(
+            mockMvc.perform(post("/api/ledgers/$ledgerId/recurring-transactions")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf(
+                    "type" to "EXPENSE", "amount" to 15_000, "categoryId" to null,
+                    "memo" to "삭제할 정기 거래", "payerUserId" to null, "frequency" to "MONTHLY",
+                    "startDate" to "2026-07-10", "endDate" to null,
+                ))))
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString,
+        )["id"].asLong()
+
+        val transactionId = objectMapper.readTree(
+            mockMvc.perform(get("/api/ledgers/$ledgerId/months/2026-07/transactions")
+                .header("Authorization", "Bearer $token"))
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString,
+        )[0]["id"].asLong()
+
+        mockMvc.perform(delete("/api/transactions/$transactionId")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isNoContent)
+
+        mockMvc.perform(get("/api/ledgers/$ledgerId/months/2026-07/transactions")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(0)))
+        assertNull(generationRepository.findByTemplateId(templateId).single().transaction)
     }
 
     @Test

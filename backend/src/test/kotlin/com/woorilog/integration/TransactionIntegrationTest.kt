@@ -278,6 +278,123 @@ class TransactionIntegrationTest {
     }
 
     @Test
+    fun should_CreateMonthlyInstallments_When_ExpenseTransactionRequestsInstallments() {
+        val loginResponse = devLogin("installment@example.com", "할부 사용자")
+        val token = loginResponse.accessToken
+        val ledgerId = loginResponse.currentLedger.id
+        val categories: List<CategoryResponse> = objectMapper.readValue(
+            mockMvc.perform(get("/api/ledgers/$ledgerId/categories").header("Authorization", "Bearer $token"))
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString,
+            objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java),
+        )
+        val cardId = objectMapper.readTree(
+            mockMvc.perform(post("/api/ledgers/$ledgerId/cards")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("name" to "할부 카드", "statementClosingDay" to 25))))
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString,
+        )["id"].asLong()
+
+        mockMvc.perform(post("/api/ledgers/$ledgerId/transactions")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "EXPENSE", "amount" to 10_000, "transactionDate" to "2026-07-31",
+                "categoryId" to categories.first { it.name == "식비" }.id, "memo" to "가전 할부",
+                "installmentMonths" to 3, "paymentMethod" to "CARD", "cardId" to cardId,
+            ))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.amount").value(3334))
+            .andExpect(jsonPath("$.paymentMethod").value("CARD"))
+            .andExpect(jsonPath("$.card.id").value(cardId))
+            .andExpect(jsonPath("$.installment.sequence").value(1))
+            .andExpect(jsonPath("$.installment.totalCount").value(3))
+
+        listOf("2026-07" to 3334, "2026-08" to 3333, "2026-09" to 3333).forEachIndexed { index, (month, amount) ->
+            mockMvc.perform(get("/api/ledgers/$ledgerId/months/$month/transactions")
+                .header("Authorization", "Bearer $token"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$", hasSize<Any>(1)))
+                .andExpect(jsonPath("$[0].amount").value(amount))
+                .andExpect(jsonPath("$[0].installment.sequence").value(index + 1))
+                .andExpect(jsonPath("$[0].installment.totalCount").value(3))
+        }
+    }
+
+    @Test
+    fun should_RejectInstallmentsForIncomeTransactions() {
+        val loginResponse = devLogin("installment-income@example.com", "수입 할부 사용자")
+
+        mockMvc.perform(post("/api/ledgers/${loginResponse.currentLedger.id}/transactions")
+            .header("Authorization", "Bearer ${loginResponse.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "INCOME", "amount" to 100_000, "transactionDate" to "2026-07-31",
+                "categoryId" to null, "installmentMonths" to 3,
+            ))))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+    }
+
+    @Test
+    fun should_RegisterCardAndRequireItForCardPayments() {
+        val loginResponse = devLogin("card-user@example.com", "카드 사용자")
+        val token = loginResponse.accessToken
+        val ledgerId = loginResponse.currentLedger.id
+        val today = LocalDate.now()
+        val categories: List<CategoryResponse> = objectMapper.readValue(
+            mockMvc.perform(get("/api/ledgers/$ledgerId/categories").header("Authorization", "Bearer $token"))
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString,
+            objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java),
+        )
+        val cardId = objectMapper.readTree(
+            mockMvc.perform(post("/api/ledgers/$ledgerId/cards")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("name" to "생활비 카드", "statementClosingDay" to today.dayOfMonth))))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.name").value("생활비 카드"))
+                .andExpect(jsonPath("$.statementClosingDay").value(today.dayOfMonth))
+                .andReturn().response.contentAsString,
+        )["id"].asLong()
+
+        mockMvc.perform(post("/api/ledgers/$ledgerId/transactions")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "EXPENSE", "amount" to 12_000, "transactionDate" to today.toString(),
+                "categoryId" to categories.first { it.name == "식비" }.id,
+                "paymentMethod" to "CARD", "cardId" to cardId,
+            ))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.paymentMethod").value("CARD"))
+            .andExpect(jsonPath("$.card.name").value("생활비 카드"))
+
+        mockMvc.perform(get("/api/dashboard/current").header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.cardPaymentSummaries[0].cardId").value(cardId))
+            .andExpect(jsonPath("$.cardPaymentSummaries[0].statementClosingDate").value(today.toString()))
+            .andExpect(jsonPath("$.cardPaymentSummaries[0].totalAmount").value(12_000))
+
+        mockMvc.perform(post("/api/ledgers/$ledgerId/transactions")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "EXPENSE", "amount" to 12_000, "transactionDate" to today.toString(),
+                "categoryId" to categories.first { it.name == "식비" }.id,
+                "installmentMonths" to 3,
+            ))))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+
+        mockMvc.perform(delete("/api/cards/$cardId").header("Authorization", "Bearer $token"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
     fun should_PreserveExistingPayer_When_UpdatingTransactionWithoutPayer() {
         val ownerLogin = devLogin("owner@example.com", "소유자")
         val memberLogin = devLogin("member@example.com", "멤버")
@@ -306,6 +423,36 @@ class TransactionIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.payer.id").value(member.id))
             .andExpect(jsonPath("$.amount").value(13000))
+    }
+
+    @Test
+    fun should_AllowOnlyPayerToDeleteTransaction() {
+        val ownerLogin = devLogin("delete-owner@example.com", "소유자")
+        val memberLogin = devLogin("delete-member@example.com", "멤버")
+        val ledger = ledgerRepository.findById(ownerLogin.currentLedger.id).orElseThrow()
+        val member = userRepository.findById(memberLogin.user.id).orElseThrow()
+        ledgerMemberRepository.save(LedgerMember(ledger, member, LedgerRole.MEMBER))
+
+        val transaction = objectMapper.readValue(
+            mockMvc.perform(post("/api/ledgers/${ledger.id}/transactions")
+                .header("Authorization", "Bearer ${ownerLogin.accessToken}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf(
+                    "type" to "EXPENSE", "amount" to 12000, "transactionDate" to "2026-07-09",
+                    "categoryId" to null, "memo" to "멤버 결제", "payerUserId" to member.id,
+                ))))
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString,
+            TransactionResponse::class.java,
+        )
+
+        mockMvc.perform(delete("/api/transactions/${transaction.id}")
+            .header("Authorization", "Bearer ${ownerLogin.accessToken}"))
+            .andExpect(status().isForbidden)
+
+        mockMvc.perform(delete("/api/transactions/${transaction.id}")
+            .header("Authorization", "Bearer ${memberLogin.accessToken}"))
+            .andExpect(status().isNoContent)
     }
 
     @Test

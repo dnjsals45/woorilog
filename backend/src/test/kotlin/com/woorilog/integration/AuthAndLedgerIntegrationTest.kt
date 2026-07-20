@@ -15,6 +15,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.transaction.annotation.Transactional
 import jakarta.servlet.http.Cookie
@@ -284,5 +285,29 @@ class AuthAndLedgerIntegrationTest {
             .header("Authorization", "Bearer $tokenA"))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+    }
+
+    @Test
+    fun should_UpdateRecurringSummaryClosingDay_When_LedgerOwner() {
+        val loginResult = mockMvc.perform(post("/api/auth/dev-login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("email" to "summary-day@example.com", "nickname" to "집계일사용자"))))
+            .andExpect(status().isOk)
+            .andReturn()
+        val loginResponse = objectMapper.readValue(loginResult.response.contentAsString, DevLoginResponse::class.java)
+        val token = loginResponse.accessToken
+        val ledgerId = loginResponse.currentLedger.id
+
+        mockMvc.perform(patch("/api/ledgers/$ledgerId")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("recurringSummaryClosingDay" to 10))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.recurringSummaryClosingDay").value(10))
+
+        mockMvc.perform(get("/api/ledgers")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.ledgers[0].recurringSummaryClosingDay").value(10))
     }
 }
