@@ -38,6 +38,7 @@ class BudgetMonthService(
 
         val totalBudgetAmount = ledgerMonth?.totalBudgetAmount ?: 0L
         val closed = ledgerMonth?.closed ?: false
+        val supportsCategoryBudgets = ledger.type == LedgerType.PERSONAL
 
         val savedCategoryBudgets = ledgerMonth?.let {
             categoryBudgetRepository.findByLedgerMonthId(it.id!!).associateBy { cb -> cb.category.id!! }
@@ -47,20 +48,28 @@ class BudgetMonthService(
             memberAllocationRepository.findByLedgerMonthId(it.id!!).associateBy { ma -> ma.user.id!! }
         } ?: emptyMap()
 
-        val fixedBudgets = fixedBudgetTemplateRepository.findByLedgerIdAndActiveTrue(ledgerId)
+        val fixedBudgets = if (supportsCategoryBudgets) {
+            fixedBudgetTemplateRepository.findByLedgerIdAndActiveTrue(ledgerId)
+        } else {
+            emptyList()
+        }
         val fixedBudgetByCategoryId = fixedBudgets.groupBy { it.category.id!! }
             .mapValues { (_, templates) -> templates.sumOf { it.amount } }
 
-        val categoryBudgetDtos = categories.map { cat ->
-            CategoryBudgetResponseDto(
-                categoryId = cat.id!!,
-                name = cat.name,
-                type = cat.type,
-                categoryGroupId = cat.categoryGroup.id!!,
-                categoryGroupName = cat.categoryGroup.name,
-                amount = savedCategoryBudgets[cat.id]?.amount
-                    ?: if (ledgerMonth == null) fixedBudgetByCategoryId[cat.id] ?: 0L else 0L
-            )
+        val categoryBudgetDtos = if (supportsCategoryBudgets) {
+            categories.map { cat ->
+                CategoryBudgetResponseDto(
+                    categoryId = cat.id!!,
+                    name = cat.name,
+                    type = cat.type,
+                    categoryGroupId = cat.categoryGroup.id!!,
+                    categoryGroupName = cat.categoryGroup.name,
+                    amount = savedCategoryBudgets[cat.id]?.amount
+                        ?: if (ledgerMonth == null) fixedBudgetByCategoryId[cat.id] ?: 0L else 0L
+                )
+            }
+        } else {
+            emptyList()
         }
 
         val memberAllocationDtos = members.map { mem ->
@@ -98,9 +107,11 @@ class BudgetMonthService(
         if (request.totalBudgetAmount < 0) {
             throw WoorilogException("INVALID_REQUEST", "예산 금액은 음수일 수 없습니다.", HttpStatus.BAD_REQUEST)
         }
-        request.categoryBudgets.forEach {
-            if (it.amount < 0) {
-                throw WoorilogException("INVALID_REQUEST", "카테고리 예산 금액은 음수일 수 없습니다.", HttpStatus.BAD_REQUEST)
+        if (ledger.type == LedgerType.PERSONAL) {
+            request.categoryBudgets.forEach {
+                if (it.amount < 0) {
+                    throw WoorilogException("INVALID_REQUEST", "카테고리 예산 금액은 음수일 수 없습니다.", HttpStatus.BAD_REQUEST)
+                }
             }
         }
         request.memberAllocations.forEach {
@@ -128,18 +139,22 @@ class BudgetMonthService(
         // Save category budgets
         categoryBudgetRepository.deleteByLedgerMonthId(ledgerMonth.id!!)
         categoryBudgetRepository.flush()
-        val categoryBudgetsToSave = request.categoryBudgets.map { cb ->
-            val category = ledgerCategoryRepository.findById(cb.categoryId).orElseThrow {
-                NotFoundException("카테고리를 찾을 수 없습니다.")
+        val categoryBudgetsToSave = if (ledger.type == LedgerType.PERSONAL) {
+            request.categoryBudgets.map { cb ->
+                val category = ledgerCategoryRepository.findById(cb.categoryId).orElseThrow {
+                    NotFoundException("카테고리를 찾을 수 없습니다.")
+                }
+                if (category.ledger.id != ledgerId) {
+                    throw WoorilogException("INVALID_REQUEST", "해당 장부의 카테고리가 아닙니다.", HttpStatus.BAD_REQUEST)
+                }
+                CategoryBudget(
+                    ledgerMonth = ledgerMonth,
+                    category = category,
+                    amount = cb.amount
+                )
             }
-            if (category.ledger.id != ledgerId) {
-                throw WoorilogException("INVALID_REQUEST", "해당 장부의 카테고리가 아닙니다.", HttpStatus.BAD_REQUEST)
-            }
-            CategoryBudget(
-                ledgerMonth = ledgerMonth,
-                category = category,
-                amount = cb.amount
-            )
+        } else {
+            emptyList()
         }
         categoryBudgetRepository.saveAll(categoryBudgetsToSave)
 

@@ -169,6 +169,44 @@ class BudgetAndDashboardIntegrationTest {
     }
 
     @Test
+    fun should_UseOnlyMemberAllocations_ForGroupLedgerBudget() {
+        val loginResponse = devLogin("group-budget@example.com", "공동 예산 사용자")
+        val token = loginResponse.accessToken
+        val groupLedger = objectMapper.readValue(
+            mockMvc.perform(post("/api/ledgers/group")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("name" to "공동 예산 장부"))))
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString,
+            LedgerDto::class.java,
+        )
+        val categories = getCategories(groupLedger.id, token)
+        val foodCategory = categories.first { it.name == "식비" }
+        val request = mapOf(
+            "totalBudgetAmount" to 500_000,
+            "categoryBudgets" to listOf(mapOf("categoryId" to foodCategory.id, "amount" to 300_000)),
+            "memberAllocations" to listOf(mapOf("userId" to loginResponse.user.id, "amount" to 500_000)),
+        )
+
+        mockMvc.perform(put("/api/ledgers/${groupLedger.id}/months/2026-07")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalBudgetAmount").value(500_000))
+            .andExpect(jsonPath("$.categoryBudgets", hasSize<Any>(0)))
+            .andExpect(jsonPath("$.fixedBudgetTotalAmount").value(0))
+            .andExpect(jsonPath("$.memberAllocations[0].amount").value(500_000))
+
+        mockMvc.perform(get("/api/ledgers/${groupLedger.id}/months/2026-07")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.categoryBudgets", hasSize<Any>(0)))
+            .andExpect(jsonPath("$.memberAllocations[0].amount").value(500_000))
+    }
+
+    @Test
     fun should_ValidateBudgetInputs_When_Invalid() {
         val loginResponse = devLogin("user-a@example.com", "유저A")
         val token = loginResponse.accessToken
