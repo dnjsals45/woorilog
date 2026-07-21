@@ -103,7 +103,21 @@ class TransactionController(
         transactionService.deleteTransaction(principal.userId, transactionId)
         return ResponseEntity.noContent().build()
     }
+
+    @PostMapping("/api/transactions/bulk-delete")
+    fun bulkDeleteTransactions(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @Valid @RequestBody request: BulkDeleteTransactionsApiRequest,
+    ): ResponseEntity<Void> {
+        transactionService.bulkDeleteTransactions(principal.userId, request.transactionIds ?: emptyList())
+        return ResponseEntity.noContent().build()
+    }
 }
+
+data class BulkDeleteTransactionsApiRequest(
+    @field:NotNull(message = "거래 ID 목록은 필수입니다.")
+    val transactionIds: List<Long?>?,
+)
 
 data class CreateTransactionApiRequest(
     @field:NotNull(message = "거래 유형은 필수입니다.")

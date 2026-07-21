@@ -232,6 +232,24 @@ class TransactionService(
     }
 
     fun deleteTransaction(userId: Long, transactionId: Long) {
+        val transaction = validateTransactionDeletion(userId, transactionId)
+        deleteValidatedTransactions(listOf(transaction))
+    }
+
+    fun bulkDeleteTransactions(userId: Long, transactionIds: List<Long?>) {
+        if (transactionIds.size !in 1..100 || transactionIds.any { it == null }) {
+            throw WoorilogException("INVALID_REQUEST", "거래 ID는 1개에서 100개까지 입력해야 합니다.", HttpStatus.BAD_REQUEST)
+        }
+        val validatedIds = transactionIds.filterNotNull()
+        if (validatedIds.distinct().size != validatedIds.size) {
+            throw WoorilogException("INVALID_REQUEST", "중복된 거래 ID는 입력할 수 없습니다.", HttpStatus.BAD_REQUEST)
+        }
+
+        val transactions = validatedIds.map { validateTransactionDeletion(userId, it) }
+        deleteValidatedTransactions(transactions)
+    }
+
+    private fun validateTransactionDeletion(userId: Long, transactionId: Long): Transaction {
         val transaction = transactionRepository.findById(transactionId).orElseThrow {
             NotFoundException("거래를 찾을 수 없습니다.")
         }
@@ -242,8 +260,13 @@ class TransactionService(
             throw ForbiddenException("본인이 결제한 거래만 삭제할 수 있습니다.")
         }
         ensureMonthIsOpen(ledgerId, transaction.transactionDate)
-        recurringTransactionGenerationRepository.detachTransaction(transactionId)
-        transactionRepository.deleteById(transactionId)
+        return transaction
+    }
+
+    private fun deleteValidatedTransactions(transactions: List<Transaction>) {
+        val transactionIds = transactions.map { it.id!! }
+        recurringTransactionGenerationRepository.detachTransactions(transactionIds)
+        transactionRepository.deleteAllByIdInBatch(transactionIds)
     }
 
     private fun ensureMonthIsOpen(ledgerId: Long, transactionDate: LocalDate) {

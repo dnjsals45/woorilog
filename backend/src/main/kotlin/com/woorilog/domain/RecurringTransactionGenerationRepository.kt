@@ -20,4 +20,8 @@ interface RecurringTransactionGenerationRepository : JpaRepository<RecurringTran
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update RecurringTransactionGeneration generation set generation.transaction = null where generation.transaction.id = :transactionId")
     fun detachTransaction(@Param("transactionId") transactionId: Long): Int
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update RecurringTransactionGeneration generation set generation.transaction = null where generation.transaction.id in :transactionIds")
+    fun detachTransactions(@Param("transactionIds") transactionIds: Collection<Long>): Int
 }

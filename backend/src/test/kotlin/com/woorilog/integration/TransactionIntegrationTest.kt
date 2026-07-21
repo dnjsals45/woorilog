@@ -8,6 +8,7 @@ import com.woorilog.service.TransactionResponse
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -453,6 +454,97 @@ class TransactionIntegrationTest {
         mockMvc.perform(delete("/api/transactions/${transaction.id}")
             .header("Authorization", "Bearer ${memberLogin.accessToken}"))
             .andExpect(status().isNoContent)
+    }
+
+    @Test
+    fun should_BulkDeleteTransactions_When_AllTargetsAreValid() {
+        val login = devLogin("bulk-delete@example.com", "일괄 삭제")
+        val ledger = ledgerRepository.findById(login.currentLedger.id).orElseThrow()
+        val payer = userRepository.findById(login.user.id).orElseThrow()
+        val transactions = transactionRepository.saveAll(listOf(
+            Transaction(ledger, null, payer, CategoryType.EXPENSE, 12_000, LocalDate.parse("2026-07-09"), "점심"),
+            Transaction(ledger, null, payer, CategoryType.INCOME, 30_000, LocalDate.parse("2026-07-10"), "환급"),
+        ))
+
+        mockMvc.perform(post("/api/transactions/bulk-delete")
+            .header("Authorization", "Bearer ${login.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("transactionIds" to transactions.map { it.id }))))
+            .andExpect(status().isNoContent)
+
+        assertTrue(transactions.none { transactionRepository.existsById(it.id!!) })
+    }
+
+    @Test
+    fun should_RollBackBulkDelete_When_TargetIncludesAnotherPayerTransaction() {
+        val ownerLogin = devLogin("bulk-owner@example.com", "일괄 소유자")
+        val memberLogin = devLogin("bulk-member@example.com", "일괄 멤버")
+        val ledger = ledgerRepository.findById(ownerLogin.currentLedger.id).orElseThrow()
+        val owner = userRepository.findById(ownerLogin.user.id).orElseThrow()
+        val member = userRepository.findById(memberLogin.user.id).orElseThrow()
+        ledgerMemberRepository.save(LedgerMember(ledger, member, LedgerRole.MEMBER))
+        val transactions = transactionRepository.saveAll(listOf(
+            Transaction(ledger, null, owner, CategoryType.EXPENSE, 12_000, LocalDate.parse("2026-07-09"), "내 거래"),
+            Transaction(ledger, null, member, CategoryType.EXPENSE, 20_000, LocalDate.parse("2026-07-10"), "다른 결제자 거래"),
+        ))
+
+        mockMvc.perform(post("/api/transactions/bulk-delete")
+            .header("Authorization", "Bearer ${ownerLogin.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("transactionIds" to transactions.map { it.id }))))
+            .andExpect(status().isForbidden)
+
+        assertTrue(transactions.all { transactionRepository.existsById(it.id!!) })
+    }
+
+    @Test
+    fun should_ValidateBulkDeleteTransactionIdsWithoutDeletingValidTargets() {
+        val login = devLogin("bulk-validation@example.com", "일괄 검증")
+        val ledger = ledgerRepository.findById(login.currentLedger.id).orElseThrow()
+        val payer = userRepository.findById(login.user.id).orElseThrow()
+        val transaction = transactionRepository.save(
+            Transaction(ledger, null, payer, CategoryType.EXPENSE, 12_000, LocalDate.parse("2026-07-09"), "남아야 하는 거래"),
+        )
+
+        listOf(emptyList<Long>(), listOf(transaction.id!!, transaction.id!!)).forEach { transactionIds ->
+            mockMvc.perform(post("/api/transactions/bulk-delete")
+                .header("Authorization", "Bearer ${login.accessToken}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("transactionIds" to transactionIds))))
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+        }
+
+        mockMvc.perform(post("/api/transactions/bulk-delete")
+            .header("Authorization", "Bearer ${login.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("transactionIds" to listOf(transaction.id!!, Long.MAX_VALUE)))))
+            .andExpect(status().isNotFound)
+
+        assertTrue(transactionRepository.existsById(transaction.id!!))
+    }
+
+    @Test
+    fun should_RollBackBulkDelete_When_TargetIncludesClosedMonthTransaction() {
+        val login = devLogin("bulk-closed@example.com", "마감 일괄 삭제")
+        val ledger = ledgerRepository.findById(login.currentLedger.id).orElseThrow()
+        val payer = userRepository.findById(login.user.id).orElseThrow()
+        val transactions = transactionRepository.saveAll(listOf(
+            Transaction(ledger, null, payer, CategoryType.EXPENSE, 12_000, LocalDate.parse("2026-07-09"), "열린 월 거래"),
+            Transaction(ledger, null, payer, CategoryType.EXPENSE, 20_000, LocalDate.parse("2026-08-10"), "마감 월 거래"),
+        ))
+        mockMvc.perform(post("/api/ledgers/${ledger.id}/months/2026-08/close")
+            .header("Authorization", "Bearer ${login.accessToken}"))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(post("/api/transactions/bulk-delete")
+            .header("Authorization", "Bearer ${login.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("transactionIds" to transactions.map { it.id }))))
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.code").value("MONTH_CLOSED"))
+
+        assertTrue(transactions.all { transactionRepository.existsById(it.id!!) })
     }
 
     @Test
