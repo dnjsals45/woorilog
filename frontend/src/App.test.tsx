@@ -139,6 +139,34 @@ describe('App', () => {
     expect(await screen.findByText(/2026년 06월도/)).toBeInTheDocument()
   })
 
+  it('uses total budget and member allocations only for a group ledger', async () => {
+    setAccessToken('access-token')
+    const groupLedger = { ...ledger, name: '공동 장부', type: 'GROUP' }
+    installApiMock((path, method) => {
+      if (path === '/api/me') return response({ user, currentLedger: groupLedger })
+      if (path === '/api/ledgers/1/months/2026-07' && method === 'GET') return response({
+        ledgerId: 1,
+        budgetMonth: '2026-07',
+        totalBudgetAmount: 500000,
+        fixedBudgetTotalAmount: 0,
+        closed: false,
+        categoryBudgets: [],
+        memberAllocations: [{ userId: 1, nickname: '개발자', amount: 500000 }],
+      })
+      return undefined
+    })
+    const actor = userEvent.setup()
+    renderApp('/ledgers/1/months/2026-07')
+
+    expect(await screen.findByRole('heading', { level: 2, name: '멤버별 예산 할당' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 2, name: '대분류별 사용 현황' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 2, name: '고정비 관리' })).not.toBeInTheDocument()
+
+    await actor.click(screen.getByText('예산 관리'))
+    expect(screen.getByText('공동장부는 카테고리별 한도 대신 월 총 예산과 멤버별 할당으로 관리합니다. 정기 지출 예정액은 남은 예산에 자동 반영됩니다.')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 3, name: '카테고리 예산' })).not.toBeInTheDocument()
+  })
+
   it('exposes new ledger creation from the global ledger switcher', async () => {
     setAccessToken('access-token')
     installApiMock()
@@ -235,6 +263,52 @@ describe('App', () => {
     expect(await screen.findByText('다른 사람 거래')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText('내 거래')).not.toBeInTheDocument())
     expect(screen.queryByRole('button', { name: '다른 사람 거래 거래 삭제' })).not.toBeInTheDocument()
+  })
+
+  it('bulk deletes the current user\'s visible transactions with one request', async () => {
+    setAccessToken('access-token')
+    let bulkDeleted = false
+    installApiMock((path, method) => {
+      if (path === '/api/ledgers/1/months/2026-07/transactions' && method === 'GET') {
+        return response(bulkDeleted ? [
+          { id: 3, ledgerId: 1, type: 'EXPENSE', amount: 20000, transactionDate: '2026-07-21', category: { id: 1, name: '식비', type: 'EXPENSE' }, payer: { id: 2, nickname: '함께 쓰는 사람' }, memo: '다른 사람 거래', paymentMethod: 'CASH', card: null, installment: null },
+        ] : [
+          { id: 1, ledgerId: 1, type: 'EXPENSE', amount: 12000, transactionDate: '2026-07-21', category: { id: 1, name: '식비', type: 'EXPENSE' }, payer: { id: 1, nickname: '개발자' }, memo: '첫 내 거래', paymentMethod: 'CASH', card: null, installment: null },
+          { id: 2, ledgerId: 1, type: 'INCOME', amount: 30000, transactionDate: '2026-07-21', category: { id: 3, name: '급여', type: 'INCOME' }, payer: { id: 1, nickname: '개발자' }, memo: '둘째 내 거래', paymentMethod: 'CASH', card: null, installment: null },
+          { id: 3, ledgerId: 1, type: 'EXPENSE', amount: 20000, transactionDate: '2026-07-21', category: { id: 1, name: '식비', type: 'EXPENSE' }, payer: { id: 2, nickname: '함께 쓰는 사람' }, memo: '다른 사람 거래', paymentMethod: 'CASH', card: null, installment: null },
+        ])
+      }
+      if (path === '/api/transactions/bulk-delete' && method === 'POST') {
+        bulkDeleted = true
+        return response(undefined, 204)
+      }
+      return undefined
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const actor = userEvent.setup()
+    renderApp('/calendar')
+
+    await actor.click(await screen.findByRole('button', { name: '선택' }))
+    expect(screen.queryByLabelText('다른 사람 거래 거래 선택')).not.toBeInTheDocument()
+    expect(screen.getByText('결제자만', { exact: false })).toBeInTheDocument()
+    await actor.click(screen.getByRole('button', { name: '이날 전체 선택' }))
+    expect(screen.getByLabelText('첫 내 거래 거래 선택')).toBeChecked()
+    expect(screen.getByLabelText('둘째 내 거래 거래 선택')).toBeChecked()
+
+    await actor.click(screen.getByRole('button', { name: '2건 삭제' }))
+
+    expect(confirm).toHaveBeenCalledWith('2건의 거래를 삭제할까요?\n삭제한 거래는 복구할 수 없습니다.')
+    await waitFor(() => expect(window.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/transactions/bulk-delete'),
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ transactionIds: [1, 2] }) }),
+    ))
+    const bulkRequests = vi.mocked(window.fetch).mock.calls.filter(([input, init]) =>
+      requestUrl(input).endsWith('/api/transactions/bulk-delete') && init?.method === 'POST',
+    )
+    expect(bulkRequests).toHaveLength(1)
+    expect(await screen.findByText('다른 사람 거래')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByLabelText('첫 내 거래 거래 선택')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: '선택' })).toBeInTheDocument()
   })
 
   it('separates income categories in category management', async () => {
