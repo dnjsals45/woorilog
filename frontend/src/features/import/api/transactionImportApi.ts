@@ -1,5 +1,5 @@
 import { apiRequest } from '../../../shared/api/client'
-import type { TransactionType } from '../../transaction/api/transactionApi'
+import type { SaveTransactionRequest, TransactionSummary, TransactionType } from '../../transaction/api/transactionApi'
 
 export type TransactionImportCandidate = {
   id: string
@@ -18,6 +18,11 @@ export type TransactionImportPreviewResponse = {
   rejectedLines: number
 }
 
+export type TransactionImportImagePreviewResponse = TransactionImportPreviewResponse & {
+  extractedText: string
+  ocrEngine: string
+}
+
 export type TransactionImportPreviewRequest = {
   text: string
   transactionDate?: string | null
@@ -34,6 +39,39 @@ export function previewTransactionImport(
     {
       method: 'POST',
       body: request,
+    },
+  )
+}
+
+export function previewTransactionImageImport(
+  ledgerId: number,
+  images: File[],
+  transactionDate?: string | null,
+) {
+  const formData = new FormData()
+  images.forEach((image) => formData.append('image', image))
+  if (transactionDate) {
+    formData.append('transactionDate', transactionDate)
+  }
+
+  return apiRequest<TransactionImportImagePreviewResponse>(
+    `/api/ledgers/${ledgerId}/transaction-imports/ocr-preview`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+  )
+}
+
+export function saveTransactionImport(
+  ledgerId: number,
+  candidates: SaveTransactionRequest[],
+) {
+  return apiRequest<TransactionSummary[]>(
+    `/api/ledgers/${ledgerId}/transaction-imports`,
+    {
+      method: 'POST',
+      body: { candidates },
     },
   )
 }

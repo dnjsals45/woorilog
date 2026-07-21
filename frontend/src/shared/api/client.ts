@@ -62,14 +62,15 @@ export async function apiRequest<T>(
   path: string,
   { method = 'GET', body, token = getAccessToken(), retryAfterRefresh = true }: ApiRequestOptions = {},
 ): Promise<T> {
+  const isFormData = body instanceof FormData
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     credentials: 'include',
     headers: {
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
   })
 
   if (response.status === 401 && token && retryAfterRefresh && path !== '/api/auth/refresh') {
