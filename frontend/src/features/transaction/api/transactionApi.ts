@@ -108,3 +108,10 @@ export function updateTransaction(
 export function deleteTransaction(transactionId: number) {
   return apiRequest<void>(`/api/transactions/${transactionId}`, { method: 'DELETE' })
 }
+
+export function bulkDeleteTransactions(transactionIds: number[]) {
+  return apiRequest<void>('/api/transactions/bulk-delete', {
+    method: 'POST',
+    body: { transactionIds },
+  })
+}

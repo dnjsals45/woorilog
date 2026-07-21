@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  bulkDeleteTransactions,
   createQuickTransaction,
   deleteTransaction,
   createTransaction,
@@ -100,6 +101,21 @@ export function useDeleteTransactionMutation(transactionId?: number) {
     onSuccess: (_response, targetTransactionId) => {
       const deletedTransactionId = targetTransactionId ?? transactionId
       queryClient.removeQueries({ queryKey: deletedTransactionId ? transactionQueryKeys.detail(deletedTransactionId) : transactionQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['budget'] })
+    },
+  })
+}
+
+export function useBulkDeleteTransactionsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: bulkDeleteTransactions,
+    onSuccess: (_response, transactionIds) => {
+      transactionIds.forEach((transactionId) => {
+        queryClient.removeQueries({ queryKey: transactionQueryKeys.detail(transactionId) })
+      })
       queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: ['budget'] })
     },
