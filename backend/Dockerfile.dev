@@ -1,5 +1,22 @@
 FROM eclipse-temurin:21-jdk
 
+ARG TESSDATA_BEST_COMMIT=e12c65a915945e4c28e237a9b52bc4a8f39a0cec
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        tesseract-ocr \
+    && curl --fail --location --silent --show-error \
+        "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/${TESSDATA_BEST_COMMIT}/eng.traineddata" \
+        --output /usr/share/tesseract-ocr/5/tessdata/eng.traineddata \
+    && curl --fail --location --silent --show-error \
+        "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/${TESSDATA_BEST_COMMIT}/kor.traineddata" \
+        --output /usr/share/tesseract-ocr/5/tessdata/kor.traineddata \
+    && echo "8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba  /usr/share/tesseract-ocr/5/tessdata/eng.traineddata" | sha256sum --check \
+    && echo "f888d4038348a0c3d25151e7f452bda0d74ca275b18cab146798bcbb94084fff  /usr/share/tesseract-ocr/5/tessdata/kor.traineddata" | sha256sum --check \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /workspace
 
 ENV GRADLE_USER_HOME=/gradle
