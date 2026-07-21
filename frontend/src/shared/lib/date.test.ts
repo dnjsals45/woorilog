@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { addDateInputPeriod, countRecurringOccurrences, getRecurringSummaryPeriod } from './date'
+import { addDateInputPeriod, countRecurringOccurrences, formatMonthlyClosingDay, getRecurringSummaryPeriod } from './date'
+
+describe('monthly closing day', () => {
+  it('labels 31 as the end of each month', () => {
+    expect(formatMonthlyClosingDay(25)).toBe('매달 25일')
+    expect(formatMonthlyClosingDay(31)).toBe('매달 말일')
+  })
+})
 
 describe('recurring summary period', () => {
   it('uses the day after the closing day through the next closing day', () => {

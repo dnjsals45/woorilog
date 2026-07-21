@@ -11,6 +11,10 @@ export function formatDateInput(date = new Date()) {
   return `${year}-${month}-${day}`
 }
 
+export function formatMonthlyClosingDay(closingDay: number) {
+  return closingDay === 31 ? '매달 말일' : `매달 ${closingDay}일`
+}
+
 export function addDateInputPeriod(
   dateString: string,
   period: 'WEEK' | 'MONTH' | 'YEAR',

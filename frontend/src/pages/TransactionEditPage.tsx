@@ -12,6 +12,7 @@ import {
 import type { TransactionType } from '../features/transaction/api/transactionApi'
 import type { PaymentMethod } from '../features/transaction/api/transactionApi'
 import { ApiClientError } from '../shared/api/client'
+import { formatMonthlyClosingDay } from '../shared/lib/date'
 import { useCardsQuery } from '../features/card/model/cardQueries'
 import { DatePicker } from '../shared/ui/DatePicker'
 
@@ -161,7 +162,7 @@ export function TransactionEditPage() {
             </select>
           </label>
 
-          {type === 'EXPENSE' ? <><label className="mt-4 block text-sm font-medium text-slate-700">결제수단<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => { const next = event.target.value as PaymentMethod; setEditedPaymentMethod(next); if (next === 'CASH') setEditedCardId('') }} value={paymentMethod}><option value="CASH">현금</option><option value="CARD">카드</option></select></label>{paymentMethod === 'CARD' ? <label className="mt-4 block text-sm font-medium text-slate-700">사용 카드<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => setEditedCardId(event.target.value)} required value={cardId}><option value="">카드를 선택하세요</option>{cardsQuery.data?.map((card) => <option key={card.id} value={card.id}>{card.name} · 매달 {card.statementClosingDay}일 확정</option>)}</select></label> : null}</> : null}
+          {type === 'EXPENSE' ? <><label className="mt-4 block text-sm font-medium text-slate-700">결제수단<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => { const next = event.target.value as PaymentMethod; setEditedPaymentMethod(next); if (next === 'CASH') setEditedCardId('') }} value={paymentMethod}><option value="CASH">현금</option><option value="CARD">카드</option></select></label>{paymentMethod === 'CARD' ? <label className="mt-4 block text-sm font-medium text-slate-700">사용 카드<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => setEditedCardId(event.target.value)} required value={cardId}><option value="">카드를 선택하세요</option>{cardsQuery.data?.map((card) => <option key={card.id} value={card.id}>{card.name} · {formatMonthlyClosingDay(card.statementClosingDay)} 확정</option>)}</select></label> : null}</> : null}
 
           <label className="mt-4 block text-sm font-medium text-slate-700">
             메모
