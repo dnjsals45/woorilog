@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>우리로그 OCR 엔진 개선 보고서 — 2026-07-21</title>
+  <style>
+    :root {
+      --ink: #17211b;
+      --muted: #5f6f65;
+      --line: #dce6df;
+      --paper: #ffffff;
+      --canvas: #f4f7f4;
+      --green: #176b4d;
+      --green-soft: #e7f4ed;
+      --blue: #225c8f;
+      --blue-soft: #eaf2f9;
+      --amber: #8a5a12;
+      --amber-soft: #fff3d8;
+      --red: #9b3b35;
+      --red-soft: #fbeceb;
+      --shadow: 0 18px 50px rgb(23 33 27 / 8%);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font-family: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+      line-height: 1.72;
+      word-break: keep-all;
+    }
+    a { color: var(--green); text-underline-offset: 0.18em; }
+    code, pre { font-family: "SFMono-Regular", Consolas, monospace; }
+    code {
+      padding: 0.12em 0.35em;
+      border-radius: 0.35em;
+      background: #eef2ef;
+      font-size: 0.91em;
+      word-break: break-word;
+    }
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 24px auto 64px;
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+    aside {
+      position: sticky;
+      top: 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgb(255 255 255 / 92%);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    aside strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--green);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    aside a {
+      display: block;
+      padding: 5px 0;
+      color: #425148;
+      text-decoration: none;
+      font-size: 0.91rem;
+    }
+    aside a:hover { color: var(--green); }
+    main {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+    header {
+      padding: 54px clamp(24px, 6vw, 68px) 46px;
+      color: white;
+      background:
+        radial-gradient(circle at 90% 20%, rgb(255 255 255 / 16%), transparent 24%),
+        linear-gradient(135deg, #123d2e, #176b4d 58%, #2c8061);
+    }
+    .eyebrow {
+      margin: 0 0 12px;
+      font-weight: 750;
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.82;
+    }
+    h1 {
+      max-width: 780px;
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1.12;
+      letter-spacing: -0.04em;
+    }
+    .subtitle {
+      max-width: 760px;
+      margin: 22px 0 0;
+      color: rgb(255 255 255 / 84%);
+      font-size: 1.05rem;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 20px;
+      margin-top: 28px;
+      font-size: 0.88rem;
+      color: rgb(255 255 255 / 72%);
+    }
+    article { padding: 18px clamp(24px, 6vw, 68px) 68px; }
+    section { padding-top: 44px; scroll-margin-top: 24px; }
+    h2 {
+      margin: 0 0 18px;
+      font-size: clamp(1.45rem, 3vw, 2rem);
+      line-height: 1.3;
+      letter-spacing: -0.025em;
+    }
+    h3 { margin: 32px 0 10px; font-size: 1.15rem; }
+    h4 { margin: 0 0 6px; font-size: 1rem; }
+    p { margin: 10px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li + li { margin-top: 6px; }
+    .lead { font-size: 1.08rem; color: #33443a; }
+    .callout {
+      margin: 22px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--green);
+      border-radius: 0 12px 12px 0;
+      background: var(--green-soft);
+    }
+    .callout.warning { border-color: var(--amber); background: var(--amber-soft); }
+    .callout.danger { border-color: var(--red); background: var(--red-soft); }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .card {
+      min-height: 124px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fbfdfb;
+    }
+    .card .value {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--green);
+      font-size: 1.65rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+    .card .label { color: var(--muted); font-size: 0.88rem; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin: 24px 0;
+    }
+    .flow div {
+      position: relative;
+      padding: 16px 12px;
+      border: 1px solid #cfe1d7;
+      border-radius: 12px;
+      background: var(--green-soft);
+      text-align: center;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+    .flow div:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      right: -13px;
+      width: 18px;
+      color: var(--green);
+      background: var(--paper);
+      transform: translateY(-50%);
+    }
+    .table-wrap { overflow-x: auto; margin: 20px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.91rem;
+    }
+    th, td {
+      padding: 12px 13px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f0f5f1; font-weight: 750; }
+    tbody tr:nth-child(even) { background: #fbfdfb; }
+    pre {
+      overflow-x: auto;
+      margin: 18px 0;
+      padding: 18px;
+      border-radius: 14px;
+      color: #e9f5ee;
+      background: #15221a;
+      font-size: 0.84rem;
+      line-height: 1.65;
+    }
+    .timeline { margin: 24px 0; padding-left: 0; list-style: none; }
+    .timeline li {
+      position: relative;
+      margin: 0;
+      padding: 0 0 24px 30px;
+      border-left: 2px solid #cfe1d7;
+    }
+    .timeline li::before {
+      content: "";
+      position: absolute;
+      top: 7px;
+      left: -7px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px var(--green-soft);
+    }
+    .timeline li:last-child { border-color: transparent; }
+    .timeline small { color: var(--green); font-weight: 750; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .panel {
+      padding: 19px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fcfdfc;
+    }
+    .panel.problem { border-top: 4px solid var(--red); }
+    .panel.solution { border-top: 4px solid var(--green); }
+    .risk-high { color: var(--red); font-weight: 750; }
+    .risk-mid { color: var(--amber); font-weight: 750; }
+    .risk-low { color: var(--blue); font-weight: 750; }
+    .footnotes {
+      padding: 22px;
+      border-radius: 14px;
+      background: #f6f8f6;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      aside { position: static; }
+      aside nav { columns: 2; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow { grid-template-columns: 1fr; }
+      .flow div:not(:last-child)::after {
+        content: "↓";
+        top: auto;
+        right: 50%;
+        bottom: -17px;
+        transform: translateX(50%);
+      }
+    }
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 16px, 1180px); margin-top: 8px; }
+      aside { display: none; }
+      main { border-radius: 16px; }
+      header { padding-top: 38px; }
+      .cards, .split { grid-template-columns: 1fr; }
+      th, td { padding: 10px; }
+      body { word-break: normal; }
+    }
+    @media print {
+      body { background: white; font-size: 10.5pt; }
+      .shell { display: block; width: 100%; margin: 0; }
+      aside { display: none; }
+      main { border: 0; box-shadow: none; }
+      header { color: black; background: white; padding: 20px 0; border-bottom: 2px solid #222; }
+      .subtitle, .meta { color: #444; }
+      article { padding: 0; }
+      section { break-inside: avoid; }
+      a { color: inherit; }
+      .card, .panel, table, pre { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside aria-label="보고서 목차">
+      <strong>Contents</strong>
+      <nav>
+        <a href="#summary">요약</a>
+        <a href="#scope">작업 범위와 흐름</a>
+        <a href="#architecture">현재 아키텍처</a>
+        <a href="#problems">발견한 문제</a>
+        <a href="#diagnosis">원인 진단 방법</a>
+        <a href="#improvements">구현한 개선</a>
+        <a href="#knowledge">기술 지식</a>
+        <a href="#results">검증 결과</a>
+        <a href="#limitations">한계와 예상 문제</a>
+        <a href="#strategy">표본 확장 전략</a>
+        <a href="#references">근거 자료</a>
+        <a href="#conclusion">결론</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header>
+        <p class="eyebrow">Woorilog Engineering Report · OCR-2026-07-21</p>
+        <h1>거래 이미지 OCR 엔진 개선 보고서</h1>
+        <p class="subtitle">
+          브라우저 OCR을 백엔드 Native Tesseract 파이프라인으로 이전하고, 어두운 화면 전처리,
+          여러 이미지 업로드, 희소 레이아웃 인식, 거래 의미 파싱과 회귀 검증까지 진행한 작업 기록입니다.
+        </p>
+        <div class="meta">
+          <span>작성일 2026-07-21</span>
+          <span>대상 우리로그 로컬 개발 환경</span>
+          <span>상태 구현·로컬 검증 완료</span>
+        </div>
+      </header>
+
+      <article>
+        <section id="summary">
+          <h2>1. 요약</h2>
+          <p class="lead">
+            오늘 작업의 핵심은 OCR 엔진을 단순히 “더 선명하게 읽게” 만든 것이 아니라,
+            <strong>이미지 인식과 거래 의미 해석을 분리한 서버 파이프라인</strong>으로 재구성한 것입니다.
+            실제 오류는 밝기, Tesseract의 페이지 분할, 상호명 줄바꿈, 결제 금액과 잔액의 혼동이 함께 만든 복합 문제였습니다.
+          </p>
+
+          <div class="cards" aria-label="핵심 결과">
+            <div class="card"><span class="value">24 / 24</span><span class="label">1~4번 기준 거래 일치</span></div>
+            <div class="card"><span class="value">0건</span><span class="label">4번 이미지 최종 오탐</span></div>
+            <div class="card"><span class="value">1~10장</span><span class="label">한 요청의 이미지 개수</span></div>
+            <div class="card"><span class="value">7~11초</span><span class="label">현재 이미지당 관측 시간</span></div>
+          </div>
+
+          <div class="callout">
+            <strong>현재 판단:</strong> 외부 OCR 서비스 도입 전 단계로서 충분히 의미 있는 개선입니다.
+            다만 표본이 4장뿐이므로 “범용적으로 100% 정확하다”는 의미는 아닙니다.
+            이후에는 실제 실패 이미지를 익명화된 회귀 표본으로 축적하며 규칙을 일반화해야 합니다.
+          </div>
+        </section>
+
+        <section id="scope">
+          <h2>2. 오늘 작업 범위와 의사결정 흐름</h2>
+          <ol class="timeline">
+            <li>
+              <small>초기 문제 확인</small>
+              <h4>어두운 거래 화면과 복잡한 목록 UI에서 인식 품질 저하</h4>
+              <p>상태바, 아이콘, 줄바꿈된 상호명과 금액이 한 OCR 텍스트에 섞였고 일부 한글은 라틴 문자로 반복 오인식됐습니다.</p>
+            </li>
+            <li>
+              <small>아키텍처 결정</small>
+              <h4>프론트엔드 Tesseract.js에서 백엔드 Native Tesseract로 이전</h4>
+              <p>브라우저별 성능 차이와 모델 다운로드 부담을 제거하고, 동일한 모델·전처리·파서를 서버에서 재현하도록 했습니다. 외부 OCR은 비용과 개인정보 전송 검토 전까지 보류했습니다.</p>
+            </li>
+            <li>
+              <small>기본 파이프라인 구축</small>
+              <h4>원본·대비 강화·반전·이진화 변형을 생성하고 결과 선택</h4>
+              <p>한 번의 전처리 결과에 의존하지 않고 서로 다른 영상 변형을 인식해 거래 후보 수와 상호명 품질을 기준으로 결합했습니다.</p>
+            </li>
+            <li>
+              <small>사용 흐름 개선</small>
+              <h4>다중 이미지 업로드와 서버 분석으로 UI 변경</h4>
+              <p>최대 10장을 선택할 수 있게 하고, 브라우저에서는 추출 원문을 노출하지 않고 사용자가 확인해야 하는 거래 후보만 보여주도록 했습니다.</p>
+            </li>
+            <li>
+              <small>4번 이미지 추가 분석</small>
+              <h4>누락 1건과 잔액·상태바 오탐 9건을 분리 진단</h4>
+              <p>PSM 6과 PSM 11 원문을 비교해 아성다이소 누락은 페이지 분할 문제, 잔액 오탐은 파서의 의미 구분 문제임을 확인했습니다.</p>
+            </li>
+            <li>
+              <small>일반화와 회귀 검증</small>
+              <h4>희소 OCR 조건부 실행, 상태 기반 파싱, 순서 기반 병합</h4>
+              <p>새 상호명을 추가로 하드코딩하지 않고 화면 구조를 인식하는 규칙을 적용했으며, 1~4번 실제 이미지 24건을 다시 확인했습니다.</p>
+            </li>
+          </ol>
+        </section>
+
+        <section id="architecture">
+          <h2>3. 현재 OCR 아키텍처</h2>
+          <div class="flow" aria-label="OCR 처리 흐름">
+            <div>1. PNG/JPEG<br>다중 업로드</div>
+            <div>2. 입력 검증<br>임시 디렉터리</div>
+            <div>3. 이미지 변형<br>전처리</div>
+            <div>4. Tesseract<br>다중 패스</div>
+            <div>5. 파싱·병합<br>거래 후보 응답</div>
+          </div>
+
+          <h3>이전과 현재의 차이</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>관점</th><th>이전</th><th>현재</th></tr></thead>
+              <tbody>
+                <tr><td>실행 위치</td><td>브라우저 Tesseract.js</td><td>백엔드 컨테이너 Native Tesseract 5</td></tr>
+                <tr><td>모델 일관성</td><td>클라이언트 다운로드·환경 영향</td><td>고정된 <code>tessdata_best kor+eng</code></td></tr>
+                <tr><td>전처리</td><td>제한적 또는 클라이언트 의존</td><td>원본, 대비 강화·반전, Otsu 이진화</td></tr>
+                <tr><td>레이아웃 인식</td><td>단일 인식 흐름</td><td>PSM 6 기본 + 조건부 PSM 11</td></tr>
+                <tr><td>여러 이미지</td><td>단일 파일</td><td>반복 multipart 필드로 최대 10장</td></tr>
+                <tr><td>사용자 화면</td><td>OCR 추출 텍스트 노출</td><td>거래 후보만 노출, 직접 입력은 별도 접기 영역</td></tr>
+                <tr><td>이미지 보관</td><td>브라우저 메모리 중심</td><td>서버 임시 파일 사용 후 요청 종료 시 삭제</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            서버 API는 <code>multipart/form-data</code>의 반복 <code>image</code> 필드를 받습니다.
+            PNG/JPEG, 1~10장, 각 이미지 100~8,000px, 최대 2,400만 픽셀을 검증합니다.
+            개별 파일 검증 상한은 10MB이고 현재 Spring 설정의 전체 multipart 요청 상한도 10MB이므로,
+            여러 장을 올릴 때는 합계 크기가 실질적인 제한이 됩니다.
+          </p>
+        </section>
+
+        <section id="problems">
+          <h2>4. 발견한 문제</h2>
+
+          <div class="split">
+            <div class="panel problem">
+              <h3>인식 단계의 문제</h3>
+              <ul>
+                <li>다크 모드에서 글자와 배경 대비가 부족하거나 반전 방향이 맞지 않음</li>
+                <li>목록형 2열 UI를 PSM 6이 하나의 텍스트 블록으로 잘못 가정</li>
+                <li>화면 끝의 <code>아성다이소 -8,200원</code> 누락</li>
+                <li>굵은 한글 <code>긱스타PC</code>를 여러 변형에서 <code>ZIAEIPC</code> 계열로 동일하게 오인식</li>
+                <li>긴 법인명과 <code>코엑스몰</code> 같은 한 글자 접미사가 여러 줄·스크롤 흔적으로 분리</li>
+              </ul>
+            </div>
+            <div class="panel problem">
+              <h3>해석 단계의 문제</h3>
+              <ul>
+                <li>결제 금액과 결제 후 잔액이 모두 원화 숫자라 형태만으로 구분 불가</li>
+                <li>PSM 11에서 상호와 금액이 서로 다른 줄로 분리됨</li>
+                <li>상태바의 시간·배터리 숫자가 금액 후보에 섞일 수 있음</li>
+                <li>서로 다른 OCR 결과를 단순 합치면 중복 거래 발생</li>
+                <li>단순 중복 제거는 실제 연속 동일 결제를 삭제할 수 있음</li>
+                <li>날짜 영역이 잘린 거래는 실제 날짜를 복원할 근거가 없음</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>4번 이미지에서 확인한 대표 실패</h3>
+          <pre aria-label="4번 이미지 OCR 구조 예시">삼성카드                  -34,508원   ← 실제 거래 금액
+18:28 #자동이체                  0원   ← 메타데이터 + 잔액
+
+아성다이소                 -8,200원   ← PSM 6에서는 누락
+12:54 #체크카드             170,688원   ← 결제 후 잔액</pre>
+          <p>
+            개선 전 파서는 7개의 정상 거래 외에 <code>0</code>, <code>34,508</code>, <code>43,008</code>,
+            <code>74,608</code>, <code>103,768</code>, <code>130,188</code>, <code>161,788</code>,
+            <code>170,688</code>원 등의 잔액과 UI 숫자를 거래 후보로 만들었습니다. 동시에 아성다이소 1건은 누락했습니다.
+          </p>
+        </section>
+
+        <section id="diagnosis">
+          <h2>5. 원인 진단 방법</h2>
+          <p>
+            OCR 문제를 한 덩어리로 보지 않고 <strong>영상 전처리 → 문자 인식 → 텍스트 파싱 → 후보 병합</strong> 단계로 나눴습니다.
+            각 단계의 출력을 사람 판독 기준값과 대조해 오류가 처음 발생한 지점을 찾았습니다.
+          </p>
+          <ol>
+            <li><strong>Ground truth 작성:</strong> 이미지에서 사람이 읽은 상호명·금액·날짜를 정답 목록으로 고정했습니다.</li>
+            <li><strong>OCR 원문 비교:</strong> 원본·강화·이진화 이미지와 PSM 6·11의 텍스트를 각각 확인했습니다.</li>
+            <li><strong>누락 위치 추적:</strong> OCR 원문에 없는지, 원문에는 있지만 파서가 버렸는지 구분했습니다.</li>
+            <li><strong>오탐 패턴 분류:</strong> 잘못 생성된 숫자가 상태바인지, 잔액인지, 날짜인지 원본 UI와 대조했습니다.</li>
+            <li><strong>가설별 최소 수정:</strong> 밝기 문제에는 전처리, 레이아웃 문제에는 PSM, 의미 문제에는 파서 규칙을 적용했습니다.</li>
+            <li><strong>회귀 검증:</strong> 새 이미지뿐 아니라 기존 1~3번을 같은 실제 API 경로로 다시 실행했습니다.</li>
+          </ol>
+
+          <div class="callout warning">
+            <strong>중요한 관찰:</strong> 4번은 밝은 화면이므로 전처리만 강화해도 해결되지 않았습니다.
+            아성다이소 누락의 직접 원인은 페이지 분할 모드였고, 9건의 오탐은 OCR보다 거래 파서의 문맥 이해 부족이 원인이었습니다.
+          </div>
+        </section>
+
+        <section id="improvements">
+          <h2>6. 구현한 개선</h2>
+
+          <h3>6.1 서버 Native Tesseract와 모델 고정</h3>
+          <p>
+            개발 Docker 이미지에 Tesseract 5를 설치하고 <code>tessdata_best</code>의 한국어·영어 모델을 특정 commit으로 고정했습니다.
+            다운로드된 모델의 SHA-256을 확인하므로 같은 코드가 다른 모델 파일을 우연히 사용하는 위험을 줄였습니다.
+            실행 언어는 <code>kor+eng</code>, 기본 timeout은 인식 1회당 20초입니다.
+          </p>
+
+          <h3>6.2 전처리 변형 생성</h3>
+          <ul>
+            <li><strong>Original:</strong> 투명도와 색상 형식을 RGB로 정규화합니다.</li>
+            <li><strong>Enhanced:</strong> 회색조 히스토그램의 2~98 percentile을 0~255로 늘려 대비를 강화합니다.</li>
+            <li><strong>Dark-mode inversion:</strong> 평균 휘도가 128 미만이면 밝고 어두운 방향을 반전합니다.</li>
+            <li><strong>Binary:</strong> Otsu 임계값으로 흑백 이진화합니다. 기본 결과가 비거나 두 기본 변형의 후보 수가 다를 때만 추가 인식합니다.</li>
+          </ul>
+
+          <h3>6.3 조건부 PSM 11</h3>
+          <p>
+            기본 PSM 6 결과에 <code>HH:mm #결제수단</code> 형태가 있으면 카드 목록형 화면으로 판단해 원본 이미지에 PSM 11을 추가 실행합니다.
+            PSM 11은 흩어진 텍스트를 독립적으로 탐색하므로 화면 하단의 누락 거래를 복원하는 데 유리합니다.
+            모든 이미지에 실행하지 않아 일반 입력의 불필요한 지연을 제한했습니다.
+          </p>
+
+          <h3>6.4 상태 기반 거래 파서</h3>
+          <p>파서는 줄 하나만 보는 정규식 모음이 아니라, 이전 줄의 의미를 기억하는 작은 상태 머신으로 동작합니다.</p>
+          <pre aria-label="거래 목록 파싱 상태">상호명              → leadingMerchant에 임시 보관
+단독 결제 금액       → 직전 상호와 묶어 거래 후보 생성
+HH:mm #결제수단     → 현재 후보 확정, 다음 단독 금액 억제
+다음 단독 금액      → 잔액으로 판단하고 제외
+날짜 헤더            → 이후 거래의 currentDate 갱신</pre>
+          <p>
+            이 구조로 같은 숫자 형식이어도 위치와 앞뒤 행에 따라 결제 금액과 잔액을 구분합니다.
+            상호가 없는 상태의 단독 숫자는 버려 상태바 숫자가 다음 거래에 붙는 문제도 차단했습니다.
+          </p>
+
+          <h3>6.5 후보 선택과 순서 기반 병합</h3>
+          <p>
+            각 OCR 시도의 결과는 거래 후보 수를 가장 크게 보고, 한글·문자 비율이 높고 숫자 잡음이 적은 상호명에 가점을 주어 평가합니다.
+            결과를 결합할 때는 금액의 등장 순서로 <abbr title="Longest Common Subsequence">LCS</abbr>를 구해 같은 거래를 대응시킵니다.
+            대응된 거래에서는 더 깨끗한 상호명을 선택하고, 다른 시도에만 있는 타당한 거래를 삽입합니다.
+          </p>
+          <p>
+            병합 후 단순 중복 제거를 하지 않는 것이 중요합니다. 예를 들어 같은 카페에서 5,000원을 연속 결제한 두 건은
+            데이터만 보면 중복처럼 보이지만 실제로는 서로 다른 거래일 수 있습니다.
+          </p>
+
+          <h3>6.6 좁은 예외 보정</h3>
+          <p>
+            <code>긱스타PC</code>는 원본·강화·이진화 모두에서 같은 라틴 문자 형태로 오인식돼 영상 변형만으로 복구할 정보가 없었습니다.
+            따라서 <code>ZIAEIPC</code>, <code>2IAELPC</code> 등 관측된 소수 변형만 <code>긱스타PC</code>로 바꾸는 좁은 보정이 남아 있습니다.
+            줄 끝의 <code>코엑스몰</code>이 스크롤 흔적과 함께 분리되는 경우에도 원문 줄 구조를 확인하는 제한적 접미사 복원 규칙이 있습니다.
+          </p>
+          <div class="callout danger">
+            이 규칙들은 현재 표본에는 효과적이지만 범용 OCR 지식은 아닙니다. 새로운 상호마다 같은 방식으로 하드코딩하면 유지보수 비용과 잘못된 자동 교정 위험이 빠르게 증가합니다.
+          </div>
+
+          <h3>6.7 API와 화면</h3>
+          <ul>
+            <li><code>POST /api/ledgers/{ledgerId}/transaction-imports/ocr-preview</code> 추가</li>
+            <li>반복 <code>image</code> multipart 필드로 최대 10장 수신</li>
+            <li>첨부 순서대로 처리하고 여러 이미지의 candidate ID에 이미지 순번 prefix 부여</li>
+            <li>인증과 장부 멤버 권한 확인 후 OCR 실행</li>
+            <li>브라우저의 Tesseract.js 의존성 제거</li>
+            <li>프론트에서는 추출 원문을 렌더링하지 않고 거래 후보만 표시</li>
+            <li>직접 입력 텍스트 preview 기능은 별도 경로로 유지</li>
+          </ul>
+          <p>
+            API 응답에는 진단과 호환을 위해 아직 <code>extractedText</code>가 포함되지만, 사용자 화면에서는 보여주지 않습니다.
+            이는 “UI에서 숨김”이지 “서버 응답 계약에서 제거”는 아닙니다.
+          </p>
+        </section>
+
+        <section id="knowledge">
+          <h2>7. 이번 작업에 사용된 기술 지식</h2>
+
+          <h3>OCR은 하나의 모델 호출이 아니라 파이프라인이다</h3>
+          <p>
+            OCR의 최종 정확도는 문자 모델만으로 결정되지 않습니다. 입력 영상의 대비, 페이지 레이아웃 가정,
+            언어 모델, 행 순서 복원, 도메인 규칙이 연쇄적으로 영향을 줍니다. 따라서 오류를 고칠 때도
+            “Tesseract가 틀렸다”가 아니라 어느 단계에서 정보가 사라졌는지를 먼저 확인해야 합니다.
+          </p>
+
+          <h3>휘도와 대비 스트레칭</h3>
+          <p>
+            RGB 픽셀은 사람의 밝기 인지에 가까운 가중치 <code>0.299R + 0.587G + 0.114B</code>로 회색조 휘도로 변환합니다.
+            최솟값과 최댓값을 그대로 쓰면 한두 개의 극단 픽셀에 영향을 받으므로, 하위 2%와 상위 2%를 잘라낸 percentile 범위를
+            0~255로 확장합니다. 평균 휘도가 낮은 이미지는 반전해 검은 글자·흰 배경에 가까운 형태를 만듭니다.
+          </p>
+
+          <h3>Otsu 이진화</h3>
+          <p>
+            Otsu 방식은 회색조 히스토그램을 배경과 전경 두 집단으로 나눴을 때 집단 사이 분산이 가장 커지는 임계값을 찾습니다.
+            수동으로 “밝기 128 이상” 같은 값을 정하지 않아도 이미지별 임계값을 얻을 수 있습니다.
+            다만 그림자나 그라데이션이 심한 경우에는 전역 임계값 하나로 충분하지 않을 수 있습니다.
+          </p>
+
+          <h3>Tesseract PSM</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>모드</th><th>가정</th><th>이번 작업에서의 역할</th></tr></thead>
+              <tbody>
+                <tr><td>PSM 6</td><td>이미지를 하나의 균일한 텍스트 블록으로 간주</td><td>행 흐름이 비교적 일정한 화면의 기본 인식</td></tr>
+                <tr><td>PSM 11</td><td>희소한 텍스트를 가능한 한 독립적으로 탐색</td><td>2열 목록과 화면 끝에 흩어진 거래 복구</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>PSM 11은 누락을 줄일 수 있지만 행 관계를 더 많이 잃으므로 파서가 상호·금액·메타데이터를 다시 연결해야 합니다.</p>
+
+          <h3>LCS를 이용한 결과 융합</h3>
+          <p>
+            LCS는 두 순서열에서 순서를 유지하며 공통으로 나타나는 가장 긴 부분 수열을 찾습니다.
+            이번 구현에서는 금액 열을 비교 키로 사용해 서로 다른 OCR 시도의 거래 순서를 맞춥니다.
+            전체 줄 문자열을 동일 비교하지 않기 때문에 상호명이 조금 다르게 인식돼도 같은 금액·순서의 거래를 대응시킬 수 있습니다.
+          </p>
+
+          <h3>정밀도와 재현율</h3>
+          <ul>
+            <li><strong>오탐(False positive):</strong> 잔액이나 상태바 숫자를 거래라고 판단하는 경우</li>
+            <li><strong>누락(False negative):</strong> 아성다이소처럼 실제 거래를 찾지 못한 경우</li>
+            <li><strong>정밀도(Precision):</strong> 생성한 후보 중 실제 거래의 비율</li>
+            <li><strong>재현율(Recall):</strong> 실제 거래 중 찾아낸 비율</li>
+          </ul>
+          <p>
+            후보 수만 늘리는 것은 재현율을 높일 수 있지만 오탐도 늘립니다. 이번 개선은 PSM 11로 누락을 복구하면서
+            문맥 파싱으로 잔액 오탐을 제거해 두 방향을 함께 개선한 사례입니다.
+          </p>
+
+          <h3>현재 confidence 값의 의미</h3>
+          <p>
+            응답의 <code>confidence</code>는 현재 Tesseract가 반환한 글자별 신뢰도가 아닙니다.
+            카테고리가 매칭되면 <code>0.82</code>, 그렇지 않으면 <code>0.68</code>을 주는 애플리케이션 수준 값입니다.
+            향후 낮은 OCR 신뢰도만 사용자에게 확인시키려면 TSV/hOCR 등의 실제 Tesseract confidence를 별도로 수집해야 합니다.
+          </p>
+        </section>
+
+        <section id="results">
+          <h2>8. 검증 결과</h2>
+
+          <h3>실제 이미지 회귀 결과</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>표본</th><th>기준 거래 수</th><th>최종 결과</th><th>대표 검증 내용</th></tr></thead>
+              <tbody>
+                <tr><td>1번</td><td>5건</td><td>5/5 일치</td><td>다크 화면, 반복 긱스타PC 금액</td></tr>
+                <tr><td>2번</td><td>6건</td><td>6/6 일치</td><td>긴 법인명, 줄바꿈 상호, 다양한 금액</td></tr>
+                <tr><td>3번</td><td>5건</td><td>5/5 일치</td><td>코엑스몰 줄바꿈, 네이버페이, 긴 지점명</td></tr>
+                <tr><td>4번</td><td>8건</td><td>8/8 일치</td><td>2열 목록, 결제 후 잔액, PSM 6 누락 거래</td></tr>
+                <tr><th>합계</th><th>24건</th><th>24/24 일치</th><th>현재 표본 범위 내 오탐·누락 없음</th></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>4번 개선 전후</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>지표</th><th>개선 전</th><th>개선 후</th></tr></thead>
+              <tbody>
+                <tr><td>생성 후보</td><td>16건</td><td>8건</td></tr>
+                <tr><td>정상 거래</td><td>7건</td><td>8건</td></tr>
+                <tr><td>누락</td><td>1건</td><td>0건</td></tr>
+                <tr><td>오탐</td><td>9건</td><td>0건</td></tr>
+                <tr><td>대표 변화</td><td>아성다이소 누락, 잔액 거래화</td><td>아성다이소 복구, 잔액 전부 제외</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>4번 최종 거래</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>상호명</th><th>금액</th><th>날짜 처리</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>삼성카드</td><td>34,508원</td><td>이미지에 날짜가 없어 기준 날짜 2026-07-21 사용</td></tr>
+                <tr><td>2</td><td>아이파크몰(주)</td><td>8,500원</td><td>이미지에 날짜가 없어 기준 날짜 2026-07-21 사용</td></tr>
+                <tr><td>3</td><td>아이파크몰(주)</td><td>31,600원</td><td>이미지에 날짜가 없어 기준 날짜 2026-07-21 사용</td></tr>
+                <tr><td>4</td><td>지에스더프레시 신촌</td><td>29,160원</td><td>07.19</td></tr>
+                <tr><td>5</td><td>이마트 신촌점</td><td>26,420원</td><td>07.19</td></tr>
+                <tr><td>6</td><td>(주)우아한형제들</td><td>31,600원</td><td>07.18</td></tr>
+                <tr><td>7</td><td>(주)신세계프라퍼티</td><td>8,900원</td><td>07.18</td></tr>
+                <tr><td>8</td><td>아성다이소</td><td>8,200원</td><td>07.18</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>성능과 자동 테스트</h3>
+          <ul>
+            <li>일반 샘플: 이미지당 약 7~9초</li>
+            <li>4번 희소 레이아웃 샘플: 약 11.2초</li>
+            <li>1~3번 다중 업로드 실제 API: 약 24.2초</li>
+            <li>파서·전처리·OCR 병합 집중 테스트 통과</li>
+            <li>multipart 단일/다중 이미지, 최대 10장, 누락 part 통합 테스트 포함</li>
+            <li>전체 백엔드 <code>./gradlew test</code> 통과</li>
+            <li>프론트 multipart 반복 필드 테스트 포함</li>
+          </ul>
+
+          <div class="callout warning">
+            24/24는 현재 회귀 표본에 대한 결과입니다. 표본을 보며 규칙을 만든 동일 데이터에서의 정확도이므로,
+            아직 보지 않은 앱·폰트·레이아웃에 대한 일반화 성능과 구분해야 합니다.
+          </div>
+        </section>
+
+        <section id="limitations">
+          <h2>9. 한계와 추후 예상 문제</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>우선도</th><th>예상 문제</th><th>왜 발생하는가</th><th>대응 방향</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="risk-high">높음</td>
+                  <td>새 금융 앱에서 잔액·할인·포인트를 거래로 오인</td>
+                  <td>현재 문맥 규칙은 <code>시간 + #결제수단 + 잔액</code> 구조에 최적화</td>
+                  <td>레이아웃별 익명화 표본과 negative fixture 추가</td>
+                </tr>
+                <tr>
+                  <td class="risk-high">높음</td>
+                  <td>여러 이미지 요청의 긴 지연과 CPU 부하</td>
+                  <td>이미지를 첨부 순서대로 처리하고 이미지마다 여러 번 Tesseract 실행</td>
+                  <td>동시성 제한, 작업 큐, 이미지별 제한 병렬화, timeout 관측</td>
+                </tr>
+                <tr>
+                  <td class="risk-mid">중간</td>
+                  <td>날짜가 잘린 상단 거래의 잘못된 기본 날짜</td>
+                  <td>이미지에 정보가 없으면 OCR로 복구 불가능</td>
+                  <td>추정 표시, 사용자 확인, 주변 이미지와의 날짜 연결 검토</td>
+                </tr>
+                <tr>
+                  <td class="risk-mid">중간</td>
+                  <td>동일 금액이 반복될 때 LCS 대응 오류</td>
+                  <td>현재 병합의 주 비교 키가 금액과 순서</td>
+                  <td>날짜·상호 유사도·행 좌표를 결합한 정렬 검토</td>
+                </tr>
+                <tr>
+                  <td class="risk-mid">중간</td>
+                  <td>하드코딩 교정 규칙 증가</td>
+                  <td>모든 변형이 같은 오인식을 내면 현재 정보만으로 원문 복구 불가</td>
+                  <td>실제 OCR confidence, 사용자 상호 사전, 확인 UI를 제한적으로 결합</td>
+                </tr>
+                <tr>
+                  <td class="risk-mid">중간</td>
+                  <td>그라데이션·그림자·기울어진 촬영 이미지</td>
+                  <td>현재 Otsu는 이미지 전체에 하나의 임계값을 적용하고 기울기 보정이 없음</td>
+                  <td>adaptive threshold, deskew, 영역 감지의 필요성을 표본으로 평가</td>
+                </tr>
+                <tr>
+                  <td class="risk-low">관찰</td>
+                  <td>컨테이너 밖 실행 시 OCR 불가</td>
+                  <td>호스트에 Tesseract와 kor/eng 모델이 없을 수 있음</td>
+                  <td>환경 문서 준수와 시작 시 dependency health check 검토</td>
+                </tr>
+                <tr>
+                  <td class="risk-low">관찰</td>
+                  <td>실제 OCR 신뢰도 부재</td>
+                  <td>현재 API confidence는 카테고리 매칭 점수</td>
+                  <td>낮은 신뢰도 항목 확인 기능 도입 전에 TSV/hOCR 데이터 수집</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="strategy">
+          <h2>10. 앞으로의 표본 확장과 개선 원칙</h2>
+          <p>
+            당분간은 외부 OCR로 바로 교체하기보다 현재 엔진의 실패 표본을 체계적으로 모으는 방향이 적절합니다.
+            표본 한 장을 추가할 때는 성공 이미지만 저장하는 것이 아니라 정답과 실패 이유를 함께 기록해야 합니다.
+          </p>
+
+          <h3>표본 하나에 남길 정보</h3>
+          <ul>
+            <li>익명화된 원본 또는 재현 가능한 테스트 이미지</li>
+            <li>사람이 판독한 상호명·금액·날짜의 ground truth</li>
+            <li>원본·강화·이진화 및 PSM별 OCR 결과</li>
+            <li>오류 유형: 문자 오인식, 행 누락, 잔액 오탐, 날짜 오류, 병합 오류</li>
+            <li>수정 전후 후보와 처리 시간</li>
+            <li>새 규칙이 기존 표본을 깨뜨리지 않는 회귀 테스트</li>
+          </ul>
+
+          <h3>우선 수집할 커버리지</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>축</th><th>필요한 표본</th></tr></thead>
+              <tbody>
+                <tr><td>화면</td><td>라이트·다크 모드, 긴 목록, 카드형 UI, 좌우 2열, 팝업이 겹친 화면</td></tr>
+                <tr><td>금액 의미</td><td>결제, 잔액, 취소, 환불, 승인, 할인, 포인트, 할부</td></tr>
+                <tr><td>텍스트</td><td>긴 법인명, 영문 로고, 숫자가 포함된 상호, 같은 상호·금액 반복</td></tr>
+                <tr><td>날짜</td><td>전체 날짜, 월·일 헤더, 연도 경계, 날짜가 잘린 이미지</td></tr>
+                <tr><td>화질</td><td>저해상도, 압축, 흔들림, 기울기, 그림자, 스크린 촬영</td></tr>
+                <tr><td>업로드</td><td>1장, 10장, 합계 10MB 근접, 잘못된 MIME, 초대형 해상도</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>개선 여부를 결정하는 기준</h3>
+          <ol>
+            <li>새 실패가 영상 문제인지, 인식 문제인지, 의미 파싱 문제인지 먼저 분류합니다.</li>
+            <li>특정 상호명 치환보다 화면 구조·문맥에 적용되는 일반 규칙을 우선합니다.</li>
+            <li>규칙을 추가하기 전에 오탐을 방지하는 반례 테스트도 함께 만듭니다.</li>
+            <li>정확도뿐 아니라 이미지당 시간과 동시 요청 CPU를 같이 기록합니다.</li>
+            <li>표본이 충분해진 뒤 현재 엔진과 외부 OCR을 같은 ground truth로 비교합니다.</li>
+          </ol>
+
+          <div class="callout">
+            <strong>외부 OCR 재평가 시점:</strong> 표본이 늘어나도 현재 Tesseract의 문자 누락·오인식이 전처리와 파싱으로 해결되지 않거나,
+            처리 시간과 운영 복잡도가 수용 기준을 넘을 때입니다. 이때 정확도, 응답 시간, 비용, 개인정보 외부 전송,
+            credential 운영을 동일한 평가표에서 비교해야 합니다.
+          </div>
+        </section>
+
+        <section id="references">
+          <h2>11. 구현 및 문서 근거</h2>
+          <div class="footnotes">
+            <p><strong>핵심 구현</strong></p>
+            <ul>
+              <li><a href="../../backend/src/main/kotlin/com/woorilog/service/TransactionImagePreprocessor.kt">TransactionImagePreprocessor.kt</a> — 영상 검증, 대비 강화, 반전, Otsu 이진화</li>
+              <li><a href="../../backend/src/main/kotlin/com/woorilog/service/NativeTesseractOcrRunner.kt">NativeTesseractOcrRunner.kt</a> — Native Tesseract, kor+eng, PSM 6/11, timeout</li>
+              <li><a href="../../backend/src/main/kotlin/com/woorilog/service/ServerTesseractTransactionImageOcr.kt">ServerTesseractTransactionImageOcr.kt</a> — 다중 패스 선택, 조건부 희소 OCR, LCS 병합</li>
+              <li><a href="../../backend/src/main/kotlin/com/woorilog/service/TransactionImportTextParser.kt">TransactionImportTextParser.kt</a> — 날짜·금액·상호·결제 메타데이터 상태 파싱</li>
+              <li><a href="../../backend/src/main/kotlin/com/woorilog/service/TransactionImportService.kt">TransactionImportService.kt</a> — 다중 이미지 처리와 거래 후보 응답</li>
+              <li><a href="../../frontend/src/pages/TransactionImportPage.tsx">TransactionImportPage.tsx</a> — 다중 파일 선택, 서버 분석 상태, 후보 UI</li>
+            </ul>
+            <p><strong>자동 테스트</strong></p>
+            <ul>
+              <li><a href="../../backend/src/test/kotlin/com/woorilog/service/TransactionImagePreprocessorTest.kt">TransactionImagePreprocessorTest.kt</a></li>
+              <li><a href="../../backend/src/test/kotlin/com/woorilog/service/TransactionImportTextParserTest.kt">TransactionImportTextParserTest.kt</a></li>
+              <li><a href="../../backend/src/test/kotlin/com/woorilog/service/ServerTesseractTransactionImageOcrTest.kt">ServerTesseractTransactionImageOcrTest.kt</a></li>
+              <li><a href="../../backend/src/test/kotlin/com/woorilog/integration/TransactionImportIntegrationTest.kt">TransactionImportIntegrationTest.kt</a></li>
+              <li><a href="../../frontend/src/features/import/api/transactionImportApi.test.ts">transactionImportApi.test.ts</a></li>
+            </ul>
+            <p><strong>관련 설계 문서</strong></p>
+            <ul>
+              <li><a href="../engineering/adr/002-server-side-transaction-image-ocr.md">ADR-002: 거래 이미지 OCR의 서버 이전</a></li>
+              <li><a href="../engineering/api-contract.md">API 계약 — Transaction Import</a></li>
+              <li><a href="../engineering/environment.md">환경 및 Tesseract 실행 조건</a></li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="conclusion">
+          <h2>12. 결론</h2>
+          <p>
+            오늘 개선으로 OCR 실행 환경은 브라우저에서 서버로 일원화됐고, 어두운 화면과 2열 거래 목록을 위한 다중 전처리·다중 PSM 경로가 생겼습니다.
+            거래 파서는 숫자 모양만 보는 방식에서 결제 메타데이터와 행 순서를 이해하는 방식으로 발전했습니다.
+            현재 4개 이미지 24건은 모두 정답과 일치하지만, 다음 단계의 품질은 더 많은 표본을 얼마나 구조적으로 축적하느냐에 달려 있습니다.
+          </p>
+          <p>
+            따라서 앞으로의 원칙은 <strong>실패 표본 추가 → 오류 단계 분류 → 일반화 가능한 최소 수정 → 전체 회귀 검증</strong>입니다.
+            이 과정에서 더 이상 로컬 규칙으로 해결하기 어려운 정확도·성능 한계가 관측될 때 외부 OCR 서비스를 비교하는 것이 합리적입니다.
+          </p>
+        </section>
+
+        <footer>
+          이 보고서는 2026-07-21 우리로그 로컬 개발 작업 트리와 실제 1~4번 이미지 검증 결과를 기준으로 작성되었습니다.
+          수치와 동작은 이후 구현 변경 및 회귀 표본 확대에 따라 갱신될 수 있습니다.
+        </footer>
+      </article>
+    </main>
+  </div>
+</body>
+</html>
