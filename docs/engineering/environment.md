@@ -14,6 +14,7 @@
 
 - Backend와 frontend baseline scaffold가 추가되었습니다.
 - Docker Compose는 MySQL 8.x와 frontend/backend 개발 서버를 제공합니다.
+- backend Docker 이미지에는 Native Tesseract 5와 고정된 `tessdata_best` 한국어/영어 모델이 포함됩니다.
 - Kakao OAuth는 환경 변수가 설정되면 authorization code flow로 로그인합니다.
 - developer login은 `local` profile에서만 기본 활성화되며, 다른 profile에서는 `DEV_LOGIN_ENABLED=true`을 명시하지 않는 한 비활성화됩니다.
 
@@ -31,6 +32,8 @@ backend 컨테이너는 MySQL service에 `mysql:3306`으로 연결하며, 브라
 
 frontend 소스 변경은 Vite HMR로 반영됩니다. backend 소스 변경은 Gradle의 연속 컴파일과 Spring Boot DevTools 재시작으로 반영됩니다.
 이미지 재빌드는 Dockerfile 또는 기반 이미지가 바뀔 때만 필요합니다.
+
+Docker 밖에서 `cd backend && ./gradlew bootRun`으로 이미지 OCR까지 확인하려면 `PATH`에서 `tesseract`를 실행할 수 있어야 하고, Tesseract data 경로에 `kor`, `eng` traineddata가 설치되어 있어야 합니다. OCR용 환경 변수나 외부 서비스 credential은 현재 필요하지 않습니다. 업로드 이미지와 전처리 결과는 임시 파일로만 사용하고 요청 종료 시 삭제합니다.
 
 ## Profiles
 

@@ -25,6 +25,7 @@
 - Spring MVC Test
 - Spring Security Test
 - Testcontainers
+- Native Tesseract 5 (`tessdata_best` `kor+eng`)
 
 Backend decisions:
 
@@ -45,7 +46,6 @@ Backend decisions:
 - lucide-react
 - React Hook Form
 - Zod
-- Tesseract.js
 - Vitest
 - React Testing Library
 - ESLint
@@ -56,7 +56,7 @@ Frontend decisions:
 - lucide-react is the default icon library.
 - React Hook Form and Zod are used for persisted input forms.
 - Simple filters and local-only controls can use component state without React Hook Form.
-- Tesseract.js is used for V1 OCR. OCR should run in the web layer first; the backend import API should focus on transaction preview parsing and persistence rules.
+- 거래 이미지 OCR은 backend의 Native Tesseract로 수행하고 frontend는 multipart 업로드와 preview 편집을 담당합니다.
 - Chart library adoption is deferred until dashboard/statistics implementation. Recharts is the default candidate for simple budget and spending charts.
 
 ## Local Infrastructure

@@ -821,12 +821,55 @@ Success status: `200 OK`
 
 - 정기 거래가 생성한 개별 거래도 삭제할 수 있습니다. 해당 발생 이력은 남겨 같은 회차가 다시 생성되지 않도록 합니다.
 
+## POST /api/transactions/bulk-delete
+
+### Purpose
+
+- 가계부에서 선택한 여러 거래를 한 요청으로 삭제합니다.
+
+### Auth
+
+- authenticated
+- current user must be a member of every transaction ledger and the payer of every transaction.
+
+### Request
+
+```json
+{
+  "transactionIds": [1, 2]
+}
+```
+
+- `transactionIds`는 중복 없는 거래 ID를 1개 이상 100개 이하로 받습니다.
+
+### Response
+
+```text
+204 No Content
+```
+
+### Errors
+
+| status | code | when |
+| --- | --- | --- |
+| 400 | INVALID_REQUEST | ID 목록이 비었거나 100개를 초과하거나 중복 ID가 있음 |
+| 403 | FORBIDDEN | current user is not a ledger member or transaction payer for any target |
+| 404 | NOT_FOUND | any transaction does not exist |
+| 409 | MONTH_CLOSED | any transaction month is closed |
+
+### Notes
+
+- 서로 다른 장부나 거래 일자의 ID를 함께 보낼 수 있으며, 각 거래에 단건 삭제와 같은 권한·월 마감 규칙을 적용합니다.
+- 서버는 모든 대상을 먼저 검증하고 하나의 transaction에서 삭제합니다. 하나라도 실패하면 어떤 거래도 삭제하지 않습니다.
+- 정기 거래가 생성한 개별 거래는 발생 이력과의 연결만 해제한 뒤 삭제하여 같은 회차가 다시 생성되지 않게 합니다.
+
 ## GET /api/ledgers/{ledgerId}/months/{budgetMonth}
 
 ### Purpose
 
-- 장부의 월 예산 설정, 카테고리별 예산, 멤버별 할당을 조회합니다.
-- 저장된 월 설정이 없어도 장부 카테고리와 멤버를 기준으로 반환합니다. 활성 고정비가 있으면 해당 카테고리 예산은 합계 금액으로 미리 채웁니다.
+- 장부의 월 예산 설정과 멤버별 할당을 조회합니다. 개인 장부에서는 카테고리별 예산도 함께 조회합니다.
+- 저장된 월 설정이 없어도 장부 카테고리와 멤버를 기준으로 반환합니다. 개인 장부의 활성 고정비는 해당 카테고리 예산의 합계 금액으로 미리 채웁니다.
+- 공동 장부는 `categoryBudgets: []`, `fixedBudgetTotalAmount: 0`을 반환하며 월 총 예산과 멤버별 할당만 관리합니다.
 
 ### Auth
 
@@ -866,7 +909,8 @@ Success status: `200 OK`
 
 ### Purpose
 
-- 장부의 월 총 예산, 카테고리별 예산, 멤버별 할당을 저장합니다.
+- 장부의 월 총 예산과 멤버별 할당을 저장합니다. 개인 장부에서는 카테고리별 예산도 저장합니다.
+- 공동 장부에서 전송한 `categoryBudgets`는 저장하지 않으며, 기존 카테고리 예산도 제거합니다.
 
 ### Auth
 
@@ -1567,15 +1611,72 @@ Success status: `200 OK`
 
 ### Transaction Import
 
+- `POST /api/ledgers/{ledgerId}/transaction-imports/ocr-preview`
 - `POST /api/ledgers/{ledgerId}/transaction-imports/preview`
+- `POST /api/ledgers/{ledgerId}/transaction-imports`
 
-V1 OCR uses Tesseract.js in the web layer. The import preview API should accept extracted text and client-side OCR metadata when needed, then return transaction candidates.
+이미지는 서버의 Native Tesseract로 인식하고, 직접 입력한 텍스트는 별도 preview endpoint에서 파싱합니다. 두 endpoint 모두 후보 생성만 수행하며 실제 거래를 저장하지 않습니다.
+
+## POST /api/ledgers/{ledgerId}/transaction-imports/ocr-preview
+
+### Purpose
+
+- 한 장 이상의 거래 내역 이미지를 전처리하고 OCR 결과를 하나의 거래 후보 목록으로 파싱합니다.
+
+### Auth
+
+- authenticated
+- current user must be a ledger member.
+
+### Request
+
+- Content-Type: `multipart/form-data`
+- `image`: required repeated PNG/JPEG multipart field. 1~10개 파일을 같은 field name으로 전송하며 전체 multipart request는 최대 10MB입니다.
+- `transactionDate`: optional `YYYY-MM-DD` multipart field or query parameter. 이미지에서 날짜를 찾지 못했을 때 사용합니다.
+
+### Response
+
+```json
+{
+  "extractedText": "2026-07-18 네이버페이 127200원",
+  "ocrEngine": "tesseract-5-server",
+  "candidates": [
+    {
+      "id": "candidate-1",
+      "type": "EXPENSE",
+      "amount": 127200,
+      "transactionDate": "2026-07-18",
+      "categoryId": 1,
+      "categoryName": "식비",
+      "memo": "네이버페이",
+      "rawText": "2026-07-18 네이버페이 127200원",
+      "confidence": 0.82
+    }
+  ],
+  "rejectedLines": 0
+}
+```
+
+### Errors
+
+- `400 INVALID_OCR_IMAGE`: 파일 개수, 형식, 내용, 해상도 검증 실패
+- `413 OCR_IMAGE_TOO_LARGE`: multipart 크기 10MB 초과
+- `422 OCR_PROCESSING_FAILED`: 이미지 디코딩 후 문자를 추출하지 못함
+- `503 OCR_UNAVAILABLE`: 서버에서 Tesseract 실행 불가
+
+### Notes
+
+- 서버는 원본과 대비 강화·반전 결과를 기본 인식하며, 결과가 불충분하면 이진화 결과도 인식합니다.
+- 여러 변형에서 얻은 거래 후보를 금액과 순서로 정렬해 더 깨끗한 상호명을 선택합니다.
+- `HH:mm #결제수단` 형식의 상세 행과 잔액이 함께 있는 화면은 희소 레이아웃 OCR 결과를 추가 결합하며 잔액은 거래 후보로 만들지 않습니다.
+- 여러 이미지는 첨부 순서대로 처리하고 후보를 하나의 목록으로 합칩니다. 단일 이미지의 candidate ID 형식은 기존과 같고, 여러 이미지일 때 `image-{순번}-` prefix를 붙입니다.
+- 업로드 원본과 전처리 이미지는 요청 처리 중 임시 파일로만 사용하고 종료 시 삭제합니다.
 
 ## POST /api/ledgers/{ledgerId}/transaction-imports/preview
 
 ### Purpose
 
-- 이미지 OCR 또는 직접 입력으로 추출된 텍스트를 거래 후보로 파싱합니다.
+- 직접 입력하거나 이미 추출된 텍스트를 거래 후보로 파싱합니다.
 - 후보 생성만 수행하며 실제 거래는 저장하지 않습니다.
 
 ### Auth
@@ -1589,7 +1690,7 @@ V1 OCR uses Tesseract.js in the web layer. The import preview API should accept 
 {
   "text": "2026-07-09 식비 점심 12,000원\n급여 입금 500000원",
   "transactionDate": "2026-07-10",
-  "ocrEngine": "tesseract.js",
+  "ocrEngine": "manual-text",
   "sourceName": "receipt.png"
 }
 ```
@@ -1617,10 +1718,55 @@ V1 OCR uses Tesseract.js in the web layer. The import preview API should accept 
 
 ### Notes
 
-- OCR은 프론트엔드에서 Tesseract.js로 수행하고, 백엔드는 추출 텍스트를 파싱합니다.
+- `ocrEngine`과 `sourceName`은 선택적인 출처 metadata이며 파싱 결과에는 영향을 주지 않습니다.
 - 금액은 `원`, `₩`, 쉼표 포함 숫자를 우선 파싱합니다.
 - 날짜가 줄 안에 없으면 request의 `transactionDate`를 사용하고, 둘 다 없으면 서버 현재일을 사용합니다.
 - `급여`, `입금`, `수입`, `환급`, `이자`, `bonus`, `salary`가 포함된 줄은 `INCOME`으로 추론하고 나머지는 `EXPENSE`로 봅니다.
+
+## POST /api/ledgers/{ledgerId}/transaction-imports
+
+### Purpose
+
+- preview에서 사용자가 확인·수정하고 선택한 거래 후보를 한 번에 저장합니다.
+- 모든 후보는 일반 거래 생성 규칙(장부 멤버 권한, 카테고리 유형, 월 마감 등)을 동일하게 적용합니다.
+
+### Auth
+
+- authenticated
+- current user must be a ledger member.
+
+### Request
+
+```json
+{
+  "candidates": [
+    {
+      "type": "EXPENSE",
+      "amount": 12000,
+      "transactionDate": "2026-07-09",
+      "categoryId": 1,
+      "memo": "점심"
+    }
+  ]
+}
+```
+
+### Response
+
+Success status: `200 OK`
+
+- 생성된 거래 목록을 입력 순서대로 반환합니다. 각 항목의 형식은 `POST /api/ledgers/{ledgerId}/transactions` 응답과 같습니다.
+
+### Errors
+
+- `400 INVALID_REQUEST`: 후보 목록이 비어 있거나 후보 값이 유효하지 않음
+- `403 FORBIDDEN`: 장부 멤버가 아님
+- `404 NOT_FOUND`: 장부 또는 카테고리를 찾을 수 없음
+- `409 MONTH_CLOSED`: 후보 중 하나의 거래 월이 마감됨
+
+### Notes
+
+- 한 후보라도 저장할 수 없으면 전체 요청을 저장하지 않습니다.
 
 ### Category
 
@@ -1682,6 +1828,7 @@ V1 OCR uses Tesseract.js in the web layer. The import preview API should accept 
 ## Transaction Mutation Guard
 
 - `DELETE /api/transactions/{transactionId}`는 현재 사용자가 결제자인 거래만 삭제할 수 있고, 성공 시 `204 No Content`를 반환합니다.
+- `POST /api/transactions/bulk-delete`는 1~100개의 고유 거래 ID를 받아 모든 대상을 단건 삭제와 같은 규칙으로 먼저 검증한 뒤 원자적으로 삭제하며, 성공 시 `204 No Content`를 반환합니다.
 - 마감된 월의 거래 생성·빠른 입력·수정·삭제와 반복 거래 생성은 `409 MONTH_CLOSED`를 반환합니다.
 
 ## GET/POST /api/ledgers/{ledgerId}/months/{budgetMonth}/settlements

@@ -24,7 +24,7 @@
 
 ## Add During Import And OCR
 
-- `docs/engineering/transaction-import.md`: Tesseract.js OCR 입력/출력, parser 입력/출력, preview 저장 여부, 실패 처리
+- `docs/engineering/transaction-import.md`: 서버 Native Tesseract OCR 입력/출력, 전처리, parser 입력/출력, preview 저장 여부, 실패 처리
 - `docs/engineering/privacy.md`: 영수증/거래 이미지, 거래 메모, 사용자 식별 정보 보관 기준
 
 ## Add Before Real Use

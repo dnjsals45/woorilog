@@ -137,7 +137,7 @@ Completion:
 
 ### 9. Transaction Import
 
-- Tesseract.js OCR integration
+- backend Native Tesseract OCR와 이미지 전처리 integration
 - parser
 - preview endpoint
 - frontend image import preview

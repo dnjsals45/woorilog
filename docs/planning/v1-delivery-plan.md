@@ -48,7 +48,7 @@
 - recurring transactions
 - due/generate flow
 - transaction import preview
-- Tesseract.js OCR integration
+- backend Native Tesseract OCR와 이미지 전처리 integration
 
 ## Milestone 7. Product Readiness
 
