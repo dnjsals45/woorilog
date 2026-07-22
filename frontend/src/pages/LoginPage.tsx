@@ -1,8 +1,9 @@
 import { ArrowLeft, LogIn, MessageCircle, WalletCards } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getKakaoLoginUrl } from '../features/auth/api/authApi'
 import { useDevLoginMutation } from '../features/auth/model/authQueries'
+import { AuthReturnRedirect } from '../features/auth/ui/AuthReturnRedirect'
 import { getAccessToken } from '../shared/api/client'
 
 const developmentAccounts = [
@@ -12,18 +13,17 @@ const developmentAccounts = [
 ] as const
 
 export function LoginPage() {
-  const navigate = useNavigate()
   const loginMutation = useDevLoginMutation()
   const [selectedDevelopmentAccountEmail, setSelectedDevelopmentAccountEmail] = useState<(typeof developmentAccounts)[number]['email']>(developmentAccounts[0].email)
   const [kakaoError, setKakaoError] = useState(false)
   const devLoginEnabled = import.meta.env.DEV && import.meta.env.VITE_DEV_LOGIN_ENABLED !== 'false'
   const selectedDevelopmentAccount = developmentAccounts.find((account) => account.email === selectedDevelopmentAccountEmail) ?? developmentAccounts[0]
 
-  if (getAccessToken()) return <Navigate to="/dashboard" replace />
+  if (getAccessToken()) return <AuthReturnRedirect />
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    loginMutation.mutate(selectedDevelopmentAccount, { onSuccess: () => navigate('/dashboard', { replace: true }) })
+    loginMutation.mutate(selectedDevelopmentAccount)
   }
 
   async function handleKakaoLogin() {

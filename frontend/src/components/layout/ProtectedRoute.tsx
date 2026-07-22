@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { getAccessToken } from '../../shared/api/client'
 import { useSessionBootstrapQuery } from '../../features/auth/model/authQueries'
+import { storeAuthReturnPath } from '../../features/auth/model/authReturnPath'
 
 export function ProtectedRoute() {
   const location = useLocation()
@@ -15,7 +16,9 @@ export function ProtectedRoute() {
   }
 
   if (refreshQuery.isError) {
-    return <Navigate replace state={{ from: location.pathname }} to="/login" />
+    const returnPath = `${location.pathname}${location.search}${location.hash}`
+    storeAuthReturnPath(returnPath)
+    return <Navigate replace state={{ from: returnPath }} to="/login" />
   }
 
   return null
