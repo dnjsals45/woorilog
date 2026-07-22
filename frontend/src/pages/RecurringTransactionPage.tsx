@@ -1,11 +1,11 @@
-import { Repeat, Settings2, Trash2 } from 'lucide-react'
+import { Pause, Play, Repeat, Settings2, Trash2 } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useMeQuery } from '../features/auth/model/authQueries'
 import { useCategoriesQuery } from '../features/category/model/categoryQueries'
 import { useLedgerMembersQuery, useLedgersQuery, useUpdateRecurringSummaryClosingDayMutation } from '../features/ledger/model/ledgerQueries'
 import type { RecurringFrequency, RecurringTemplate } from '../features/recurring/api/recurringApi'
-import { useCreateRecurringTemplateMutation, useDeleteRecurringTemplateMutation, useRecurringTemplatesQuery, useUpdateRecurringTemplateMutation } from '../features/recurring/model/recurringQueries'
+import { useCreateRecurringTemplateMutation, useDeleteRecurringTemplateMutation, useRecurringPauseMutation, useRecurringTemplatesQuery, useUpdateRecurringTemplateMutation } from '../features/recurring/model/recurringQueries'
 import type { TransactionType } from '../features/transaction/api/transactionApi'
 import { ApiClientError } from '../shared/api/client'
 import { addDateInputPeriod, countRecurringOccurrences, formatDateInput, getRecurringSummaryPeriod } from '../shared/lib/date'
@@ -27,8 +27,11 @@ export function RecurringTransactionPage() {
   const createMutation = useCreateRecurringTemplateMutation(currentLedger?.id)
   const updateMutation = useUpdateRecurringTemplateMutation(editingTemplateId ?? undefined)
   const deleteMutation = useDeleteRecurringTemplateMutation()
+  const pauseMutation = useRecurringPauseMutation('pause')
+  const resumeMutation = useRecurringPauseMutation('resume')
   const updateClosingDayMutation = useUpdateRecurringSummaryClosingDayMutation(currentLedger?.id)
-  const templates = templatesQuery.data?.filter((template) => !template.paused) ?? []
+  const templates = templatesQuery.data ?? []
+  const activeTemplates = templates.filter((template) => !template.paused)
   const editingTemplate = templates.find((template) => template.id === editingTemplateId)
   const closingDay = currentLedger?.recurringSummaryClosingDay ?? 31
   const period = getRecurringSummaryPeriod(closingDay)
@@ -105,7 +108,7 @@ export function RecurringTransactionPage() {
           </div>
           <p className="mt-2 text-sm font-medium text-slate-500">{period.startDate.replaceAll('-', '.')} ~ {period.endDate.replaceAll('-', '.')} · 활성 정기 거래만 합산</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2"><SummaryAmount label="반복 지출" value={summary.expense} tone="text-orange-600" /><SummaryAmount label="반복 수입" value={summary.income} tone="text-blue-600" /></div>
-          <p className="mt-4 text-xs font-bold text-slate-500">활성 정기 거래 {summary.occurrences}건이 이 기간에 발생합니다.</p>
+          <p className="mt-4 text-xs font-bold text-slate-500">활성 정기 거래 {activeTemplates.length}개에서 {summary.occurrences}건이 이 기간에 발생합니다.</p>
         </SurfaceCard>
 
         <SurfaceCard>
@@ -128,7 +131,7 @@ export function RecurringTransactionPage() {
           </form>
         </SurfaceCard>
 
-        <SurfaceCard labelledBy="recurring-list-title"><div className="flex items-center justify-between"><div><p className="dashboard-eyebrow">ACTIVE RULES</p><h2 className="mt-1 text-lg font-extrabold" id="recurring-list-title">등록한 정기 거래</h2></div><span className="text-sm font-bold text-slate-400">{templates.length}개</span></div>{templatesQuery.isError ? <div className="mt-5"><ErrorState onRetry={() => templatesQuery.refetch()} /></div> : null}{templatesQuery.isLoading ? <div className="mt-5 space-y-3">{[1, 2, 3].map((item) => <div className="h-20 animate-pulse rounded-xl bg-slate-100" key={item} />)}</div> : null}{!templatesQuery.isLoading && !templatesQuery.isError && templates.length ? <ul className="mt-4 divide-y divide-slate-100">{templates.map((template) => <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center" key={template.id}><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="truncate text-base font-extrabold">{template.memo || template.category?.name || '정기 거래'}</strong><span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${template.type === 'EXPENSE' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'}`}>{template.type === 'EXPENSE' ? '지출' : '수입'}</span></div><p className="mt-1 text-sm font-bold text-slate-700">{formatWon(template.amount)} · {template.frequency === 'MONTHLY' ? '매월' : '매주'} · {template.payer.nickname}</p><p className="mt-1 text-xs font-medium text-slate-500">시작 {template.startDate.replaceAll('-', '.')} {template.endDate ? `· 종료 ${template.endDate.replaceAll('-', '.')}` : ''}</p></div><div className="flex gap-2"><button className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-600" onClick={() => startEdit(template)} type="button">수정</button><button aria-label={`${template.memo || template.category?.name || '정기 거래'} 삭제`} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-rose-200 px-3 text-sm font-bold text-rose-600 hover:bg-rose-50" disabled={deleteMutation.isPending} onClick={() => deleteTemplate(template)} type="button"><Trash2 size={15} />삭제</button></div></li>)}</ul> : null}{!templatesQuery.isLoading && !templatesQuery.isError && !templates.length ? <div className="mt-5"><EmptyState title="등록한 정기 거래가 없어요." description="월세, 구독료, 월급처럼 반복되는 거래를 먼저 추가해보세요." /></div> : null}</SurfaceCard>
+        <SurfaceCard labelledBy="recurring-list-title"><div className="flex items-center justify-between"><div><p className="dashboard-eyebrow">RECURRING RULES</p><h2 className="mt-1 text-lg font-extrabold" id="recurring-list-title">등록한 정기 거래</h2></div><span className="text-sm font-bold text-slate-400">활성 {activeTemplates.length} · 중지 {templates.length - activeTemplates.length}</span></div>{templatesQuery.isError ? <div className="mt-5"><ErrorState onRetry={() => templatesQuery.refetch()} /></div> : null}{templatesQuery.isLoading ? <div className="mt-5 space-y-3">{[1, 2, 3].map((item) => <div className="h-20 animate-pulse rounded-xl bg-slate-100" key={item} />)}</div> : null}{pauseMutation.isError || resumeMutation.isError ? <p className="mt-4 text-sm font-bold text-red-600" role="alert">정기 거래 상태를 변경하지 못했습니다. 잠시 후 다시 시도해주세요.</p> : null}{!templatesQuery.isLoading && !templatesQuery.isError && templates.length ? <ul className="mt-4 divide-y divide-slate-100">{templates.map((template) => <li className={`flex flex-col gap-3 py-4 sm:flex-row sm:items-center ${template.paused ? 'opacity-65' : ''}`} key={template.id}><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="truncate text-base font-extrabold">{template.memo || template.category?.name || '정기 거래'}</strong><span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${template.type === 'EXPENSE' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'}`}>{template.type === 'EXPENSE' ? '지출' : '수입'}</span><span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${template.paused ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700'}`}>{template.paused ? '중지됨' : '활성'}</span></div><p className="mt-1 text-sm font-bold text-slate-700">{formatWon(template.amount)} · {template.frequency === 'MONTHLY' ? '매월' : '매주'} · {template.payer.nickname}</p><p className="mt-1 text-xs font-medium text-slate-500">시작 {template.startDate.replaceAll('-', '.')} {template.endDate ? `· 종료 ${template.endDate.replaceAll('-', '.')}` : ''}</p></div><div className="flex flex-wrap gap-2"><button className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-600" disabled={pauseMutation.isPending || resumeMutation.isPending} onClick={() => template.paused ? resumeMutation.mutate(template.id) : pauseMutation.mutate(template.id)} type="button">{template.paused ? <Play size={15} /> : <Pause size={15} />}{template.paused ? '재개' : '중지'}</button><button className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-600" onClick={() => startEdit(template)} type="button">수정</button><button aria-label={`${template.memo || template.category?.name || '정기 거래'} 삭제`} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-rose-200 px-3 text-sm font-bold text-rose-600 hover:bg-rose-50" disabled={deleteMutation.isPending} onClick={() => deleteTemplate(template)} type="button"><Trash2 size={15} />삭제</button></div></li>)}</ul> : null}{!templatesQuery.isLoading && !templatesQuery.isError && !templates.length ? <div className="mt-5"><EmptyState title="등록한 정기 거래가 없어요." description="월세, 구독료, 월급처럼 반복되는 거래를 먼저 추가해보세요." /></div> : null}</SurfaceCard>
       </section>
     </main>
   )
