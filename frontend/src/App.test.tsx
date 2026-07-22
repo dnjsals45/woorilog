@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -73,6 +73,7 @@ function renderApp(initialPath = '/') {
 
 afterEach(() => {
   clearAccessToken()
+  window.sessionStorage.clear()
   vi.restoreAllMocks()
 })
 
@@ -108,6 +109,47 @@ describe('App', () => {
     installApiMock()
     renderApp('/dashboard')
     expect(await screen.findByRole('button', { name: '개발자 로그인' })).toBeInTheDocument()
+  })
+
+  it('returns to an invitation link after developer login', async () => {
+    installApiMock((path, method) => {
+      if (path === '/api/invitations/links/invite-token' && method === 'GET') {
+        return response({
+          ledgerId: 2,
+          ledgerName: '우리 공동 장부',
+          ledgerType: 'GROUP',
+          inviterNickname: '초대한 사람',
+          status: 'PENDING',
+          expired: false,
+        })
+      }
+      return undefined
+    })
+    const actor = userEvent.setup()
+    renderApp('/invitations/links/invite-token?source=share#accept')
+
+    await actor.click(await screen.findByRole('button', { name: '개발자 로그인' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: '초대 링크' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 2, name: '우리 공동 장부' })).toBeInTheDocument()
+  })
+
+  it('does not automatically repeat a failed Kakao callback and allows an explicit retry', async () => {
+    const fetchSpy = installApiMock((path, method) => {
+      if (path === '/api/auth/kakao/callback' && method === 'POST') {
+        return response({ code: 'KAKAO_LOGIN_FAILED', message: '로그인 실패' }, 502)
+      }
+      return undefined
+    })
+    const actor = userEvent.setup()
+    renderApp('/auth/kakao/callback?code=failed-code')
+
+    expect(await screen.findByText('카카오 로그인에 실패했습니다. 다시 시도해주세요.')).toBeInTheDocument()
+    const callbackRequestCount = () => fetchSpy.mock.calls.filter(([input]) => requestUrl(input).includes('/api/auth/kakao/callback')).length
+    expect(callbackRequestCount()).toBe(1)
+
+    await actor.click(screen.getByRole('button', { name: '다시 시도' }))
+    await waitFor(() => expect(callbackRequestCount()).toBe(2))
   })
 
   it('clears an invalid access token and renders login', async () => {
@@ -288,9 +330,10 @@ describe('App', () => {
     const actor = userEvent.setup()
     renderApp('/calendar')
 
+    await actor.click(await screen.findByRole('gridcell', { name: '2026-07-21' }))
     await actor.click(await screen.findByRole('button', { name: '선택' }))
     expect(screen.queryByLabelText('다른 사람 거래 거래 선택')).not.toBeInTheDocument()
-    expect(screen.getByText('결제자만', { exact: false })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '다른 사람 거래 선택 불가' })).toBeInTheDocument()
     await actor.click(screen.getByRole('button', { name: '이날 전체 선택' }))
     expect(screen.getByLabelText('첫 내 거래 거래 선택')).toBeChecked()
     expect(screen.getByLabelText('둘째 내 거래 거래 선택')).toBeChecked()
@@ -330,6 +373,77 @@ describe('App', () => {
     expect(screen.getByRole('group', { name: '종료일 빠른 선택' })).toBeInTheDocument()
     expect(screen.getByText('비워두면 종료일 없이 계속 반복됩니다.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '생성 실행' })).not.toBeInTheDocument()
+  })
+
+  it('shows a paused recurring transaction and resumes it', async () => {
+    setAccessToken('access-token')
+    let paused = true
+    installApiMock((path, method) => {
+      const template = {
+        id: 9,
+        ledgerId: 1,
+        type: 'EXPENSE',
+        amount: 12000,
+        category: { id: 2, name: '카페', type: 'EXPENSE' },
+        payer: { id: 1, nickname: '개발자' },
+        memo: '음악 구독',
+        frequency: 'MONTHLY',
+        startDate: '2026-07-01',
+        nextDueDate: '2026-08-01',
+        endDate: null,
+        paused,
+      }
+      if (path === '/api/ledgers/1/recurring-transactions' && method === 'GET') return response([template])
+      if (path === '/api/recurring-transactions/9/resume' && method === 'POST') {
+        paused = false
+        return response({ ...template, paused: false })
+      }
+      return undefined
+    })
+    const actor = userEvent.setup()
+    renderApp('/recurring')
+
+    expect(await screen.findByText('음악 구독')).toBeInTheDocument()
+    expect(screen.getByText('중지됨')).toBeInTheDocument()
+    await actor.click(screen.getByRole('button', { name: '재개' }))
+    expect(await screen.findByRole('button', { name: '중지' })).toBeInTheDocument()
+  })
+
+  it('clears an incompatible import category when the candidate type changes', async () => {
+    setAccessToken('access-token')
+    installApiMock((path, method) => {
+      if (path === '/api/ledgers/1/transaction-imports/preview' && method === 'POST') {
+        return response({
+          candidates: [{
+            id: 'candidate-1',
+            type: 'EXPENSE',
+            amount: 12000,
+            transactionDate: '2026-07-09',
+            categoryId: 1,
+            categoryName: '식비',
+            memo: '점심',
+            rawText: '2026-07-09 식비 점심 12,000원',
+            confidence: 1,
+          }],
+          rejectedLines: 0,
+        })
+      }
+      return undefined
+    })
+    const actor = userEvent.setup()
+    renderApp('/imports')
+
+    await actor.type(await screen.findByRole('textbox', { name: '거래 내역 텍스트' }), '2026-07-09 식비 점심 12,000원')
+    await actor.click(screen.getByRole('button', { name: '텍스트 후보 만들기' }))
+    const typeSelect = await screen.findByLabelText('유형')
+    const categorySelect = screen.getByLabelText('카테고리')
+    expect(categorySelect).toHaveValue('1')
+
+    await actor.selectOptions(typeSelect, 'INCOME')
+
+    expect(categorySelect).toHaveValue('')
+    expect(within(categorySelect).queryByRole('option', { name: '식비' })).not.toBeInTheDocument()
+    expect(within(categorySelect).getByRole('option', { name: '급여' })).toBeInTheDocument()
   })
 
   it('renders card management as an independent page', async () => {
