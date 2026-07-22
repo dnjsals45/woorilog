@@ -105,6 +105,16 @@ class AuthAndLedgerIntegrationTest {
     }
 
     @Test
+    fun should_ReturnInvalidRequest_When_JsonBodyIsMalformed() {
+        mockMvc.perform(post("/api/auth/dev-login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"email":"broken@example.com"""))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+            .andExpect(jsonPath("$.message").isNotEmpty)
+    }
+
+    @Test
     fun should_ReturnUnauthorized_When_AccessMeWithoutToken() {
         mockMvc.perform(get("/api/me"))
             .andExpect(status().isUnauthorized)

@@ -1,7 +1,9 @@
 package com.woorilog.exception
 
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -10,6 +12,8 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+
+    private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(WoorilogException::class)
     fun handleWoorilogException(e: WoorilogException): ResponseEntity<ErrorResponse> {
@@ -25,6 +29,13 @@ class GlobalExceptionHandler {
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
             .body(ErrorResponse(code = "INVALID_REQUEST", message = errorMessage))
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleUnreadableRequestException(): ResponseEntity<ErrorResponse> {
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponse(code = "INVALID_REQUEST", message = "요청 값이 올바르지 않습니다."))
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException::class)
@@ -48,9 +59,10 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun handleGenericException(e: Exception): ResponseEntity<ErrorResponse> {
+        logger.error("Unhandled exception", e)
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ErrorResponse(code = "INTERNAL_SERVER_ERROR", message = e.message ?: "서버 내부 오류가 발생했습니다."))
+            .body(ErrorResponse(code = "INTERNAL_SERVER_ERROR", message = "서버 내부 오류가 발생했습니다."))
     }
 }
 
