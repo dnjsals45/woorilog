@@ -3,6 +3,13 @@
 이 문서는 V1 구현 순서를 미리 정리한 계획입니다.
 Codex analysis 단계에서 작업 분해와 handoff packet 작성에 참고할 수 있지만, 실제 작업은 요청 시점의 코드, 문서, 우선순위를 다시 확인한 뒤 나눕니다.
 
+## Current Status
+
+- 2026-07-22 기준 1~9단계의 V1 기능은 백엔드와 프론트엔드에 구현되어 있습니다.
+- 현재 구현 범위는 `docs/product/v1-scope.md`와 README의 `V1 Implementation Status`를 기준으로 확인합니다.
+- 10단계 Product Hardening 중 README, API/도메인/인증/테스트 문서와 주요 회귀 테스트는 반영되어 있습니다.
+- 배포·백업·개인정보 문서와 화면 디자인 고도화는 후속 작업이며, 남은 문서는 `docs/planning/documentation-backlog.md`에서 관리합니다.
+
 ## Principles
 
 - 기능은 문서, API 계약, 테스트와 함께 구현합니다.
@@ -53,7 +60,7 @@ Completion:
 
 Completion:
 
-- 사용자는 로그인 후 `/dashboard`에 진입할 수 있습니다.
+- 사용자는 로그인 후 원래 요청한 보호 경로 또는 기본 `/dashboard`에 진입할 수 있습니다.
 - 로컬 개발과 Playwright 테스트에서는 개발자 로그인으로 보호 화면에 진입할 수 있습니다.
 - 실제 사용자 로그인 흐름은 Kakao OAuth 기준으로 검증합니다.
 
@@ -144,7 +151,7 @@ Completion:
 
 Completion:
 
-- 사용자는 이미지/텍스트 기반 거래 후보를 확인할 수 있습니다.
+- 사용자는 이미지/텍스트 기반 거래 후보를 확인·수정하고 선택해 저장할 수 있습니다.
 
 ### 10. Product Hardening
 

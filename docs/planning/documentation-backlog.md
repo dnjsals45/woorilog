@@ -1,37 +1,30 @@
 # Documentation Backlog
 
-이 문서는 지금 당장 확정하지 않아도 되지만, 구현 단계가 오면 추가하거나 확장해야 할 문서를 정리합니다.
+이 문서는 현재 구현에 비해 아직 부족한 후속 문서를 정리합니다. 2026-07-22 기준 인증, API 계약, 도메인 모델, 환경 변수, 테스트 전략, OCR ADR은 기존 문서에 반영되어 있습니다.
 
-## Add Before Scaffold
+## Engineering Structure
 
 - `docs/engineering/architecture.md`: backend package 구조, frontend 폴더 구조, API client/query/component 책임 분리 기준
+- `docs/engineering/permissions.md`: 장부 멤버 role, 초대·예산·정산 변경 권한, 접근 불가 fallback
+- `docs/engineering/transaction-import.md`: Native Tesseract 입력/출력, 이미지 전처리, parser와 preview 저장 규칙, 실패 처리
+- `docs/engineering/privacy.md`: 영수증/거래 이미지, 거래 메모, 사용자 식별 정보 보관 기준
 
-## Add During Auth Foundation
-
-- `docs/engineering/auth-session.md`: Kakao OAuth, local/test-only developer login, JWT access/refresh token, cookie/header 전달 방식, logout/refresh 흐름 상세화
-- `docs/engineering/api-contract.md`: Auth endpoint별 request/response/errors 예시 확장
-
-## Add During Ledger And Transaction
+## Data Model
 
 - `docs/engineering/data-model.md`: 실제 entity 기준 ERD, 주요 index, unique 제약, cascade 정책
-- `docs/design/wireframes.md`: Dashboard, Calendar/Ledger, Transaction Edit, Budget Month Settings의 저해상도 화면 구조가 asset만으로 부족해질 때 추가
-- `docs/engineering/api-contract.md`: Ledger, Category, Transaction endpoint 예시 확장
-
-## Add During Collaboration
-
-- `docs/engineering/permissions.md`: 장부 멤버 role, 초대 가능 조건, 접근 불가 fallback, 링크 초대 만료 정책
-- `docs/design/invitation-flow.md`: 초대 생성, pending invitation, link accept의 화면 상태
-
-## Add During Import And OCR
-
-- `docs/engineering/transaction-import.md`: 서버 Native Tesseract OCR 입력/출력, 전처리, parser 입력/출력, preview 저장 여부, 실패 처리
-- `docs/engineering/privacy.md`: 영수증/거래 이미지, 거래 메모, 사용자 식별 정보 보관 기준
 
 ## Add Before Real Use
 
 - `docs/engineering/deployment.md`: 배포 환경, DB migration, secret 주입, rollback 기준
 - `docs/engineering/backup-restore.md`: 개인 금융 데이터 백업, 복구, export 기준
 - README screenshots: 실제 화면이 생긴 뒤 핵심 사용 흐름만 캡처
+
+## Deferred Design Docs
+
+기능 1차 구성이 끝난 뒤 디자인 작업과 함께 검토합니다.
+
+- `docs/design/wireframes.md`: Dashboard, Calendar/Ledger, Transaction Edit, Budget Month Settings 저해상도 화면 구조
+- `docs/design/invitation-flow.md`: 초대 생성, pending invitation, link accept 화면 상태
 
 ## Decision Log Candidates
 

@@ -103,6 +103,7 @@ cd frontend
 npm run lint
 npm run test
 npm run build
+npm run test:e2e
 ```
 
 Health check endpoint:
@@ -128,18 +129,19 @@ npm run build
 ## V1 Implementation Status
 
 - Auth/Ledger: developer login, rotating refresh-cookie session, personal/group ledger creation, switching, rename, archive, member removal/leave.
-- Transaction: categories, transaction create/update/delete/detail/month list, quick transaction, closed-month mutation guard.
-- Budget/Dashboard: month budget settings, close/reopen, selected-month dashboard summary, category-aware monthly statistics.
+- Transaction: category groups and categories, cash/card payment methods, installments, create/update/detail/month list, single and bulk delete, quick transaction, closed-month mutation guard.
+- Budget/Dashboard: personal category budgets, fixed budget templates, group member allocations, close/reopen, selected-month dashboard summary, category-aware monthly statistics, next card payment estimate.
 - Invitation: direct invitation, link invitation, pending invitations, accept/reject/cancel.
-- Recurring Transaction: weekly/monthly templates, pause/resume, due query, duplicate-safe generation.
-- Transaction Import: Tesseract.js web OCR, editable preview candidates, and confirmed transaction persistence.
-- Settlement/Notification: monthly member settlement with reversible payment history, event notifications and read state.
+- Recurring Transaction: weekly/monthly templates, pause/resume, summary closing day, scheduled generation, duplicate-safe generation.
+- Transaction Import: backend Native Tesseract OCR and image preprocessing, editable text/image preview candidates, single or selected bulk persistence.
+- Settlement/Notification: monthly member settlement with reversible payment history, invitation/month-close/budget-overrun notifications, individual/all read state.
 
 ## Known Limitations
 
 - Kakao login requires a Kakao Developers REST API key, client secret, and registered redirect URI in the deployment environment.
 - Invitation links are single-use in the current V1 implementation.
 - OCR accuracy depends on image quality; candidates must be reviewed before saving.
+- Native Tesseract OCR requires the `kor` and `eng` traineddata files when the backend runs outside Docker.
 
 ## Development Plan
 

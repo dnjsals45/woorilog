@@ -19,6 +19,7 @@
 ### Integration Tests
 
 - auth callback, refresh, logout
+- protected route login return and failed Kakao callback retry guard
 - default personal ledger creation
 - ledger CRUD and switching
 - invitation accept/reject/link flow
@@ -32,7 +33,9 @@
 - dashboard/statistics query
 - settlement calculation/payment history and ledger/member management
 - notification creation/read state
+- notification read-all behavior when more than 50 unread items exist
 - transaction import preview
+- malformed JSON error response
 
 ### Command
 
@@ -51,7 +54,9 @@ cd backend
 - transaction create/edit form behavior
 - ledger month settings save behavior
 - invitation decision behavior
-- recurring transaction settings behavior
+- invitation link login return behavior
+- recurring transaction create/edit/pause/resume behavior
+- transaction import candidate type/category consistency
 - month navigation, quick-entry preset, period category aggregation
 - notification and settlement interaction
 

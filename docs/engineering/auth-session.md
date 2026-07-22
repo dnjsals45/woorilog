@@ -13,6 +13,8 @@ Endpoint별 상세 계약은 [API Contract](./api-contract.md)를 따릅니다.
 - access token은 프론트엔드 메모리에만 보관합니다.
 - refresh token은 `HttpOnly`, `SameSite=Lax` cookie로 전달하며 JavaScript에서 읽지 않습니다.
 - `POST /api/auth/refresh`는 기존 refresh token을 폐기하고 새 access/refresh token을 발급합니다.
+- 인증이 필요한 내부 경로에서 로그인으로 이동한 경우 프론트엔드는 원래의 path, query, hash를 임시 보관하고 로그인 완료 후 해당 경로로 복귀합니다.
+- 로그인 복귀 경로는 `/`로 시작하는 동일 앱 내부 경로만 허용하며 외부 URL은 사용하지 않습니다.
 
 ## Local / Test Login
 
@@ -29,6 +31,7 @@ Endpoint별 상세 계약은 [API Contract](./api-contract.md)를 따릅니다.
 - Kakao OAuth endpoint는 authorization URL을 만들고, callback code를 Kakao token/user API와 교환해 우리로그 access token을 발급합니다. 환경 변수가 없을 때만 `501 NOT_CONFIGURED`를 반환합니다.
 - developer login은 `local` profile에서만 기본 활성화됩니다. 홈 배포 등 다른 profile에서는 `DEV_LOGIN_ENABLED=true`을 명시하지 않는 한 `403 FORBIDDEN`을 반환합니다.
 - logout은 현재 refresh token을 폐기하고 cookie를 만료시킨 뒤 `204 No Content`를 반환합니다.
+- Kakao callback 교환이 실패하면 자동으로 반복 요청하지 않고, 사용자가 명시적으로 재시도하거나 로그인 화면으로 돌아갑니다.
 
 ## Deployment
 

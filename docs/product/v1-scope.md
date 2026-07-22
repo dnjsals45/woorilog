@@ -90,6 +90,7 @@ V1은 우리로그를 실제 생활에서 사용할 수 있게 만드는 첫 완
 - 반복 거래 목록 조회
 - 반복 거래 생성
 - 반복 거래 수정
+- 반복 거래 일시정지와 재개
 - 반복 거래 삭제(이미 등록된 과거 거래 유지)
 - 시작일 거래 자동 등록과 이후 발생분 자동 등록
 - 집계 마감일 기준 반복 지출·수입 합계 표시
@@ -120,6 +121,10 @@ V1은 우리로그를 실제 생활에서 사용할 수 있게 만드는 첫 완
 - ledger month settings
 - statistics
 - settings
+- recurring transactions
+- card management
+- category management
+- transaction import
 - notifications
 - help / not found
 - invitation link page

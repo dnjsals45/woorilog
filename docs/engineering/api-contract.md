@@ -23,6 +23,9 @@
 }
 ```
 
+- validation 실패와 malformed/unreadable JSON body는 `400 INVALID_REQUEST`를 반환합니다.
+- 처리하지 못한 서버 오류는 `500 INTERNAL_SERVER_ERROR`를 반환하며 내부 exception message를 공개하지 않습니다.
+
 ## Endpoint Groups
 
 ### Health
@@ -1838,6 +1841,12 @@ Success status: `200 OK`
 - 멤버별 실제 지출, 할당 비율에 따른 부담액, 잔액, 필요한 송금과 기존 송금 기록을 조회합니다.
 - `POST`는 송금을 일부 또는 전액 기록한 뒤 다시 계산된 동일 응답을 반환합니다.
 
+### Auth
+
+- authenticated
+- current user must be a ledger member.
+- 현재 V1에서는 계산된 송금 방향과 잔액이 유효하면 어느 장부 멤버든 송금을 기록할 수 있습니다.
+
 ### POST Request
 
 ```json
@@ -1863,7 +1872,7 @@ Success status: `200 OK`
 ```
 
 - 송금액은 0보다 커야 하며 현재 남은 송금액을 초과할 수 없습니다.
-- `DELETE /api/settlements/{paymentId}`는 기록을 취소하고 `204 No Content`를 반환합니다.
+- `DELETE /api/settlements/{paymentId}`는 기록한 사용자 또는 장부 OWNER가 기록을 취소하고 `204 No Content`를 반환합니다.
 
 ## Notification APIs
 
@@ -1886,8 +1895,9 @@ Success status: `200 OK`
 }
 ```
 
+- `notifications`는 최신순 최근 50개이며 `unreadCount`는 저장된 전체 미읽음 알림 수입니다.
 - `POST /api/notifications/{notificationId}/read`는 읽음 처리된 알림을 반환합니다.
-- `POST /api/notifications/read-all`은 모든 알림을 읽음 처리하고 `204 No Content`를 반환합니다.
+- `POST /api/notifications/read-all`은 최근 50개 제한과 무관하게 현재 사용자의 모든 미읽음 알림을 읽음 처리하고 `204 No Content`를 반환합니다.
 
 ## Endpoint Template
 
