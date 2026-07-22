@@ -2,6 +2,8 @@ package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.woorilog.domain.NotificationType
+import com.woorilog.service.NotificationService
 import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional
 class SettlementAndManagementIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
+    @Autowired private lateinit var notificationService: NotificationService
 
     @Test
     fun should_ManageSettlementNotificationAndClosedMonth_When_GroupLedgerIsUsed() {
@@ -129,6 +132,36 @@ class SettlementAndManagementIntegrationTest {
         mockMvc.perform(delete("/api/transactions/${transaction["id"].asLong()}")
             .header("Authorization", "Bearer ${owner.token}"))
             .andExpect(status().isNoContent)
+    }
+
+    @Test
+    fun should_MarkEveryUnreadNotification_When_MoreThanFiftyExist() {
+        val user = login("many-notifications@example.com", "알림사용자")
+        repeat(51) { index ->
+            notificationService.notifyUser(
+                user.userId,
+                NotificationType.SYSTEM,
+                "알림 $index",
+                "전체 읽음 검증 알림입니다.",
+                null,
+                "read-all-${user.userId}-$index",
+            )
+        }
+
+        mockMvc.perform(get("/api/notifications")
+            .header("Authorization", "Bearer ${user.token}"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.unreadCount").value(51))
+            .andExpect(jsonPath("$.notifications", hasSize<Any>(50)))
+
+        mockMvc.perform(post("/api/notifications/read-all")
+            .header("Authorization", "Bearer ${user.token}"))
+            .andExpect(status().isNoContent)
+
+        mockMvc.perform(get("/api/notifications")
+            .header("Authorization", "Bearer ${user.token}"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.unreadCount").value(0))
     }
 
     private fun login(email: String, nickname: String): Login {

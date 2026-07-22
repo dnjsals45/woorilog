@@ -30,10 +30,7 @@ class NotificationService(
     }
 
     fun markAllRead(userId: Long) {
-        val now = clock.instant()
-        val unread = notificationRepository.findTop50ByUserIdOrderByCreatedAtDesc(userId).filter { it.readAt == null }
-        unread.forEach { it.readAt = now }
-        notificationRepository.saveAll(unread)
+        notificationRepository.markAllReadByUserId(userId, clock.instant())
     }
 
     fun notifyUser(userId: Long, type: NotificationType, title: String, message: String, targetPath: String?, uniqueKey: String) {
