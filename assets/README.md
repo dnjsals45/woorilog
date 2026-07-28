@@ -6,11 +6,6 @@
 
 ```text
 assets/
-  design/
-    Desktop/
-    Landing/
-    Mobile/
-    README.md
   local/       # git ignore
   exports/     # git ignore
   tmp/         # git ignore
@@ -20,8 +15,8 @@ assets/
 
 Git에 올립니다:
 
-- 구현 기준이 되는 화면 목업 PNG
-- 랜딩 hero처럼 제품 방향을 정하는 reference image
+- 제품 문서에서 지속적으로 사용하는 소형 reference
+- 출처와 사용 목적이 명확한 공용 asset
 - asset 사용 기준을 설명하는 README
 
 Git에 올리지 않습니다:
@@ -34,5 +29,5 @@ Git에 올리지 않습니다:
 
 ## Runtime Rule
 
-`assets/design`은 디자인 reference 폴더입니다.
-프론트엔드에서 직접 import하지 않고, 실제 앱에 필요한 파일만 `frontend/src/assets` 또는 `frontend/public/assets`로 복사해 사용합니다.
+실제 앱에서 사용하는 파일은 `frontend/src/assets` 또는 `frontend/public/assets`에 둡니다.
+일회성 목업과 비교용 이미지는 저장소에 계속 보관하지 않고, 확정된 판단을 `docs/design`과 실제 코드에 반영합니다.
