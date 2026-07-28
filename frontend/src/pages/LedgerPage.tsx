@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, ScanText, Search, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useMeQuery } from '../features/auth/model/authQueries'
@@ -30,6 +30,8 @@ export function LedgerPage() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<number>>(() => new Set())
   const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null)
+  const [calendarCollapsed, setCalendarCollapsed] = useState(false)
+  const [page, setPage] = useState(1)
 
   if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) return <Navigate to="/login" replace />
 
@@ -42,6 +44,12 @@ export function LedgerPage() {
   const totalIncome = transactions.filter((item) => item.type === 'INCOME').reduce((sum, item) => sum + item.amount, 0)
   const totalExpense = transactions.filter((item) => item.type === 'EXPENSE').reduce((sum, item) => sum + item.amount, 0)
   const selectedExpense = visibleTransactions.filter((item) => item.type === 'EXPENSE').reduce((sum, item) => sum + item.amount, 0)
+  const pageSize = 6
+  const pageCount = Math.max(1, Math.ceil(visibleTransactions.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const paginatedTransactions = visibleTransactions.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const pageStart = visibleTransactions.length ? (currentPage - 1) * pageSize + 1 : 0
+  const pageEnd = Math.min(currentPage * pageSize, visibleTransactions.length)
   const selectableTransactions = visibleTransactions.filter((transaction) => transaction.payer.id === meQuery.data?.user.id)
   const allVisibleSelected = selectableTransactions.length > 0 && selectableTransactions.every((transaction) => selectedTransactionIds.has(transaction.id))
 
@@ -55,6 +63,7 @@ export function LedgerPage() {
     const next = new Date(year, month - 1 + offset, 1)
     setBudgetMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`)
     setSelectedDate(null)
+    setPage(1)
     clearSelectedTransactions()
   }
 
@@ -128,33 +137,39 @@ export function LedgerPage() {
     : `${budgetMonth.replace('-', '년 ')}월 전체 거래`
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[1240px] px-4 py-4 sm:px-6 md:p-8 lg:p-10">
+    <main className="product-page product-page--wide">
       <PageHeader
         eyebrow="LEDGER"
-        title="가계부"
-        description="오늘 바로 입력하고 날짜별 지출과 수입을 확인합니다."
-        actions={<div className="flex gap-2"><button aria-label="거래 검색" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" onClick={() => setSearchOpen((value) => !value)} type="button"><Search size={19} /></button><button aria-expanded={filterOpen} aria-label="거래 필터" className={`flex size-11 items-center justify-center rounded-xl border bg-white shadow-sm ${typeFilter === 'ALL' ? 'border-slate-200 text-slate-600' : 'border-emerald-300 text-emerald-700'}`} onClick={() => setFilterOpen((value) => !value)} type="button"><SlidersHorizontal size={19} /></button><Link aria-label="거래 가져오기" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" to="/imports"><ScanText size={19} /></Link><button className="hidden min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(14,159,110,0.18)] lg:flex" onClick={() => openTransactionEntry({ transactionDate: selectedDate ?? undefined })} type="button"><Plus size={18} />거래 추가</button></div>}
+        title="거래 내역"
+        description="날짜별 기록을 확인하고 필요한 거래를 바로 추가하세요."
+        actions={<div className="flex gap-2"><button aria-label="거래 검색" className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm" onClick={() => setSearchOpen((value) => !value)} type="button"><Search size={19} /></button><button aria-expanded={filterOpen} aria-label="거래 필터" className={`flex size-11 items-center justify-center rounded-xl border bg-white shadow-sm ${typeFilter === 'ALL' ? 'border-slate-200 text-slate-600' : 'border-emerald-300 text-emerald-700'}`} onClick={() => setFilterOpen((value) => !value)} type="button"><SlidersHorizontal size={19} /></button><button className="hidden min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(14,159,110,0.18)] min-[1041px]:flex" onClick={() => openTransactionEntry({ transactionDate: selectedDate ?? undefined })} type="button"><Plus size={18} />거래 추가</button></div>}
       />
 
-      {searchOpen ? <label className="mt-4 block"><span className="sr-only">거래 검색어</span><div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm"><Search className="text-slate-400" size={18} /><input autoFocus className="min-w-0 flex-1 border-0 bg-transparent text-base outline-none" onChange={(event) => { setSearchText(event.target.value); clearSelectedTransactions() }} placeholder="내역, 카테고리, 결제자 검색" value={searchText} /></div></label> : null}
-      {filterOpen ? <div aria-label="거래 유형 필터" className="mt-3 flex gap-2" role="group">{([['ALL', '전체'], ['EXPENSE', '지출'], ['INCOME', '수입']] as const).map(([value, label]) => <button aria-pressed={typeFilter === value} className={`min-h-10 rounded-xl px-4 text-sm font-bold ${typeFilter === value ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`} key={value} onClick={() => { setTypeFilter(value); clearSelectedTransactions() }} type="button">{label}</button>)}</div> : null}
+      {searchOpen ? <label className="mt-4 block"><span className="sr-only">거래 검색어</span><div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm"><Search className="text-slate-400" size={18} /><input autoFocus className="min-w-0 flex-1 border-0 bg-transparent text-base outline-none" onChange={(event) => { setSearchText(event.target.value); setPage(1); clearSelectedTransactions() }} placeholder="내역, 카테고리, 결제자 검색" value={searchText} /></div></label> : null}
+      {filterOpen ? <div aria-label="거래 유형 필터" className="mt-3 flex gap-2" role="group">{([['ALL', '전체'], ['EXPENSE', '지출'], ['INCOME', '수입']] as const).map(([value, label]) => <button aria-pressed={typeFilter === value} className={`min-h-10 rounded-xl px-4 text-sm font-bold ${typeFilter === value ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`} key={value} onClick={() => { setTypeFilter(value); setPage(1); clearSelectedTransactions() }} type="button">{label}</button>)}</div> : null}
       {transactionsQuery.isError ? <div className="mt-5"><ErrorState onRetry={() => transactionsQuery.refetch()} /></div> : null}
 
-      <section className="mt-5 hidden grid-cols-3 gap-5 lg:grid"><Summary label="총 수입" value={totalIncome} color="text-blue-600" /><Summary label="총 지출" value={totalExpense} color="text-orange-500" /><Summary label="잔액" value={totalIncome - totalExpense} color="text-emerald-700" /></section>
+      <SurfaceCard className="mt-5 hidden p-0 lg:block">
+        <div className="grid grid-cols-3 divide-x divide-[var(--wl-color-border)]">
+          <Summary label="총 수입" value={totalIncome} color="text-blue-600" />
+          <Summary label="총 지출" value={totalExpense} color="text-orange-500" />
+          <Summary label="잔액" value={totalIncome - totalExpense} color="text-emerald-700" />
+        </div>
+      </SurfaceCard>
 
-      {!transactionsQuery.isError ? <section className="mt-5 grid gap-5 xl:grid-cols-[390px_1fr]">
-        <SurfaceCard className="h-fit">
-          <div className="flex items-center justify-between"><button aria-label="이전 달" className="flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => moveMonth(-1)} type="button"><ChevronLeft size={20} /></button><label><span className="sr-only">조회 월</span><input className="w-40 border-0 bg-transparent text-center text-base font-extrabold outline-none" onChange={(event) => { setBudgetMonth(event.target.value); setSelectedDate(null); clearSelectedTransactions() }} type="month" value={budgetMonth} /></label><button aria-label="다음 달" className="flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => moveMonth(1)} type="button"><ChevronRight size={20} /></button></div>
-          <div className="mt-5"><CalendarGrid budgetMonth={budgetMonth} onSelectDate={(date) => { setSelectedDate((current) => current === date ? null : date); clearSelectedTransactions() }} selectedDate={selectedDate} transactionDates={transactionDates} /></div>
-          {selectedDate ? <button className="mt-4 w-full text-center text-xs font-bold text-emerald-700" onClick={() => { setSelectedDate(null); clearSelectedTransactions() }} type="button">선택 해제하고 월 전체 보기</button> : null}
+      {!transactionsQuery.isError ? <section className="mt-5 grid items-start gap-5 xl:grid-cols-[0.45fr_0.55fr]">
+        <SurfaceCard className="h-fit xl:min-h-[650px]">
+          <div className="flex items-center justify-between"><button aria-label="이전 달" className="flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => moveMonth(-1)} type="button"><ChevronLeft size={20} /></button><strong aria-live="polite" className="min-w-32 text-center text-base">{budgetMonth.replace('-', '년 ')}월</strong><div className="flex items-center"><button aria-label="다음 달" className="flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => moveMonth(1)} type="button"><ChevronRight size={20} /></button><button aria-expanded={!calendarCollapsed} className="ml-1 min-h-10 rounded-lg px-2 text-xs font-bold text-emerald-700 min-[901px]:hidden" onClick={() => setCalendarCollapsed((current) => !current)} type="button">{calendarCollapsed ? '펼치기' : '접기'}</button></div></div>
+          <div className={`mt-5 ${calendarCollapsed ? 'hidden min-[901px]:block' : ''}`}><CalendarGrid budgetMonth={budgetMonth} onSelectDate={(date) => { setSelectedDate((current) => current === date ? null : date); setPage(1); clearSelectedTransactions() }} selectedDate={selectedDate} transactionDates={transactionDates} /></div>
+          {!calendarCollapsed && selectedDate ? <button className="mt-4 w-full text-center text-xs font-bold text-emerald-700" onClick={() => { setSelectedDate(null); setPage(1); clearSelectedTransactions() }} type="button">선택 해제하고 월 전체 보기</button> : null}
         </SurfaceCard>
 
-        <SurfaceCard labelledBy="transaction-list-title">
+        <SurfaceCard className="xl:min-h-[650px]" labelledBy="transaction-list-title">
           <CardHeading eyebrow="TIMELINE" id="transaction-list-title" title={selectedTitle} trailing={<div className="flex items-center gap-3"><div className="text-right"><p className="text-xs font-bold text-slate-400">{visibleTransactions.length}건</p><p className="mt-1 text-sm font-black text-slate-800">{formatWon(selectedExpense)}</p></div>{!selectionMode ? <button className="min-h-10 rounded-xl border border-slate-200 px-3 text-sm font-extrabold text-slate-600" onClick={() => { setSelectionMode(true); clearSelectedTransactions() }} type="button">선택</button> : null}</div>} />
           {selectionMode ? <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-3"><button className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-extrabold text-slate-700 disabled:text-slate-300" disabled={!selectableTransactions.length || bulkDeleteMutation.isPending} onClick={toggleAllVisibleTransactions} type="button">{selectedDate ? '이날 전체 선택' : '현재 목록 전체 선택'}</button><span aria-live="polite" className="mr-auto text-sm font-bold text-slate-600">{selectedTransactionIds.size}건 선택</span><button className="min-h-10 rounded-lg bg-red-600 px-3 text-sm font-extrabold text-white disabled:bg-red-200" disabled={!selectedTransactionIds.size || bulkDeleteMutation.isPending} onClick={deleteSelectedTransactions} type="button">{selectedTransactionIds.size}건 삭제</button><button className="min-h-10 rounded-lg px-3 text-sm font-extrabold text-slate-500" disabled={bulkDeleteMutation.isPending} onClick={exitSelectionMode} type="button">취소</button></div> : null}
           {bulkDeleteError ? <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700" role="alert">{bulkDeleteError}</p> : null}
           {transactionsQuery.isLoading ? <div className="mt-5 space-y-3">{[1,2,3].map((item) => <div className="h-16 animate-pulse rounded-2xl bg-slate-100" key={item} />)}</div> : null}
-          {!transactionsQuery.isLoading && visibleTransactions.length ? <ul className="mt-4 divide-y divide-slate-100">{visibleTransactions.map((transaction) => {
+          {!transactionsQuery.isLoading && visibleTransactions.length ? <ul className="mt-4 divide-y divide-slate-100">{paginatedTransactions.map((transaction) => {
             const canDelete = transaction.payer.id === meQuery.data?.user.id
             const transactionName = transaction.memo || transaction.category?.name || '거래 내역'
 
@@ -172,8 +187,18 @@ export function LedgerPage() {
               {deleteError?.transactionId === transaction.id ? <p className="pb-3 pl-1 text-xs font-bold text-red-600" role="alert">{deleteError.message}</p> : null}
             </li>
           })}</ul> : null}
-          {!transactionsQuery.isLoading && !visibleTransactions.length ? <EmptyState title={selectedDate ? '이날의 거래 기록이 없습니다.' : '이번 달 거래가 없습니다.'} description="하단의 + 버튼을 눌러 첫 거래를 입력해보세요." /> : null}
-          <button className="mt-5 min-h-12 w-full rounded-xl bg-emerald-600 text-sm font-extrabold text-white xl:hidden" onClick={() => openTransactionEntry({ transactionDate: selectedDate ?? undefined })} type="button"><Plus className="mr-1 inline" size={18} />거래 추가</button>
+          {!transactionsQuery.isLoading && !visibleTransactions.length ? <EmptyState title={selectedDate ? '이날의 거래 기록이 없습니다.' : '이번 달 거래가 없습니다.'} description="거래 추가 버튼을 눌러 첫 거래를 입력해보세요." /> : null}
+          {!transactionsQuery.isLoading && visibleTransactions.length ? (
+            <nav aria-label="거래 페이지 이동" className="relative mt-4 flex min-h-12 items-center justify-center border-t border-[var(--wl-color-border)] pt-4">
+              <span className="absolute left-0 text-xs font-semibold text-[var(--wl-color-text-secondary)]">{pageStart}–{pageEnd} / {visibleTransactions.length}건</span>
+              <div className="flex items-center gap-2">
+                <button aria-label="이전 거래 페이지" className="flex size-10 items-center justify-center rounded-lg text-[var(--wl-color-text-secondary)] hover:bg-[var(--wl-color-surface-subtle)] disabled:opacity-30" disabled={currentPage === 1} onClick={() => setPage((current) => Math.max(1, current - 1))} type="button"><ChevronLeft aria-hidden="true" size={18} /></button>
+                <span className="min-w-12 text-center text-sm font-bold">{currentPage} / {pageCount}</span>
+                <button aria-label="다음 거래 페이지" className="flex size-10 items-center justify-center rounded-lg text-[var(--wl-color-text-secondary)] hover:bg-[var(--wl-color-surface-subtle)] disabled:opacity-30" disabled={currentPage === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))} type="button"><ChevronRight aria-hidden="true" size={18} /></button>
+              </div>
+            </nav>
+          ) : null}
+          <button className="mt-5 min-h-12 w-full rounded-xl bg-emerald-600 text-sm font-extrabold text-white min-[1041px]:hidden" onClick={() => openTransactionEntry({ transactionDate: selectedDate ?? undefined })} type="button"><Plus className="mr-1 inline" size={18} />거래 추가</button>
         </SurfaceCard>
       </section> : null}
     </main>
@@ -181,5 +206,5 @@ export function LedgerPage() {
 }
 
 function Summary({ label, value, color }: { label: string; value: number; color: string }) {
-  return <SurfaceCard><p className="dashboard-eyebrow">MONTH TOTAL</p><p className="mt-1 text-sm font-bold text-slate-500">{label}</p><p className={`mt-3 text-3xl font-black tracking-[-0.04em] ${color}`}>{formatWon(value)}</p></SurfaceCard>
+  return <div className="px-6 py-5"><p className="text-xs font-bold text-slate-500">{label}</p><p className={`mt-2 text-2xl font-black tracking-[-0.04em] ${color}`}>{formatWon(value)}</p></div>
 }
