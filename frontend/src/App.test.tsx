@@ -555,11 +555,76 @@ describe('App', () => {
     expect(deleteRequested).toBe(true)
   })
 
-  it('renders statistics aggregated for the selected period', async () => {
+  it('renders the selected month with trend and category analysis', async () => {
     setAccessToken('access-token')
     installApiMock()
     renderApp('/stats')
-    expect(await screen.findByRole('heading', { level: 2, name: '월별 지출 추이' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 2, name: '월별 소비 흐름' })).toBeInTheDocument()
     expect(screen.getAllByText('식비').length).toBeGreaterThan(0)
+  })
+
+  it('pages ledger transactions six at a time', async () => {
+    setAccessToken('access-token')
+    const transactions = Array.from({ length: 7 }, (_, index) => ({
+      id: index + 1,
+      ledgerId: 1,
+      type: 'EXPENSE',
+      amount: (index + 1) * 1000,
+      transactionDate: '2026-07-28',
+      category: { id: 1, name: '식비', type: 'EXPENSE' },
+      payer: { id: 1, nickname: '개발자' },
+      memo: `${index + 1}번째 거래`,
+      paymentMethod: 'CASH',
+      card: null,
+      installment: null,
+    }))
+    installApiMock((path, method) => {
+      if (path === '/api/ledgers/1/months/2026-07/transactions' && method === 'GET') {
+        return response(transactions)
+      }
+      return undefined
+    })
+    const actor = userEvent.setup()
+    renderApp('/calendar')
+
+    expect(await screen.findByText('1–6 / 7건')).toBeInTheDocument()
+    expect(screen.getByText('1번째 거래')).toBeInTheDocument()
+    expect(screen.queryByText('7번째 거래')).not.toBeInTheDocument()
+
+    await actor.click(screen.getByRole('button', { name: '다음 거래 페이지' }))
+
+    expect(await screen.findByText('7–7 / 7건')).toBeInTheDocument()
+    expect(screen.getByText('7번째 거래')).toBeInTheDocument()
+    expect(screen.queryByText('1번째 거래')).not.toBeInTheDocument()
+  })
+
+  it('shows transactions for the category selected in statistics', async () => {
+    setAccessToken('access-token')
+    installApiMock((path, method) => {
+      if (path === '/api/ledgers/1/months/2026-07/transactions' && method === 'GET') {
+        return response([{
+          id: 11,
+          ledgerId: 1,
+          type: 'EXPENSE',
+          amount: 120000,
+          transactionDate: '2026-07-20',
+          category: { id: 1, name: '식비', type: 'EXPENSE' },
+          payer: { id: 1, nickname: '개발자' },
+          memo: '이달 장보기',
+          paymentMethod: 'CASH',
+          card: null,
+          installment: null,
+        }])
+      }
+      return undefined
+    })
+    const actor = userEvent.setup()
+    renderApp('/stats')
+
+    const categorySegment = await screen.findByRole('button', { name: '식비 100% 120,000원' })
+    await actor.click(categorySegment)
+
+    expect(await screen.findByText('이달 장보기')).toBeInTheDocument()
+    expect(categorySegment).toHaveAttribute('aria-pressed', 'true')
   })
 })
