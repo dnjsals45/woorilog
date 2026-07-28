@@ -9,7 +9,6 @@ import { LedgerPage } from './pages/LedgerPage'
 import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { TransactionEditPage } from './pages/TransactionEditPage'
-import { TransactionImportPage } from './pages/TransactionImportPage'
 import { StatisticsPage } from './pages/StatisticsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { RecurringTransactionPage } from './pages/RecurringTransactionPage'
@@ -35,7 +34,6 @@ export default function App() {
           <Route path="/cards" element={<CardManagementPage />} />
           <Route path="/recurring" element={<RecurringTransactionPage />} />
           <Route path="/categories" element={<CategoryManagementPage />} />
-          <Route path="/imports" element={<TransactionImportPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/ledgers/:ledgerId/months/:budgetMonth" element={<BudgetMonthPage />} />

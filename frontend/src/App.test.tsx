@@ -423,7 +423,7 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: '중지' })).toBeInTheDocument()
   })
 
-  it('clears an incompatible import category when the candidate type changes', async () => {
+  it('imports text candidates inside transaction entry and clears an incompatible category', async () => {
     setAccessToken('access-token')
     installApiMock((path, method) => {
       if (path === '/api/ledgers/1/transaction-imports/preview' && method === 'POST') {
@@ -445,10 +445,12 @@ describe('App', () => {
       return undefined
     })
     const actor = userEvent.setup()
-    renderApp('/imports')
+    renderApp('/calendar')
 
+    await actor.click((await screen.findAllByRole('button', { name: '거래 추가' }))[0])
+    await actor.click(await screen.findByRole('tab', { name: '문자 내역' }))
     await actor.type(await screen.findByRole('textbox', { name: '거래 내역 텍스트' }), '2026-07-09 식비 점심 12,000원')
-    await actor.click(screen.getByRole('button', { name: '텍스트 후보 만들기' }))
+    await actor.click(screen.getByRole('button', { name: '거래 후보 확인' }))
     const typeSelect = await screen.findByLabelText('유형')
     const categorySelect = screen.getByLabelText('카테고리')
     expect(categorySelect).toHaveValue('1')
