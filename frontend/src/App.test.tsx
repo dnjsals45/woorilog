@@ -462,6 +462,30 @@ describe('App', () => {
     expect(within(categorySelect).getByRole('option', { name: '급여' })).toBeInTheDocument()
   })
 
+  it('keeps settlement and month closing out of budget settings', async () => {
+    setAccessToken('access-token')
+    installApiMock((path, method) => {
+      if (path === '/api/ledgers/1/months/2026-07' && method === 'GET') {
+        return response({
+          ledgerId: 1,
+          budgetMonth: '2026-07',
+          totalBudgetAmount: 500000,
+          fixedBudgetTotalAmount: 0,
+          closed: false,
+          categoryBudgets: [],
+          memberAllocations: [{ userId: 1, nickname: '개발자', amount: 500000 }],
+        })
+      }
+      return undefined
+    })
+
+    renderApp('/ledgers/1/months/2026-07')
+
+    expect(await screen.findByRole('heading', { level: 1, name: '예산 설정' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '정산 요약' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '월 마감' })).not.toBeInTheDocument()
+  })
+
   it('renders card management as an independent page', async () => {
     setAccessToken('access-token')
     installApiMock()
