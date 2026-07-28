@@ -20,18 +20,21 @@
 | [Copilot Money](https://www.copilot.money/) | 대시보드, 지출 요약, 카테고리 시각화 | 은행 연동 중심 전제는 제외하고, 정보 밀도와 카드 구성을 참고합니다. |
 | [뱅크샐러드](https://app.banksalad.com/) | 한국어 금융 정보 표현, 자산/소비 요약 | 자산 관리 범위까지 넓히지는 않고, 한국어 금액/카테고리 표현을 참고합니다. |
 
-## Internal Mockups
+## Production References
 
 | Reference | Use For | Notes |
 | --- | --- | --- |
-| [`assets/design`](../../assets/design/README.md) | 앱 내부 화면 구조, 색감, 정보 위계, 반응형 기준 | 실제 운영 화면이 아니라 구현 전 디자인 레퍼런스입니다. 구현 중 접근성, 반응형, 실제 데이터 길이를 기준으로 조정합니다. |
+| [Design System](./design-system.md) | 전역 색상, 타이포그래피, 표면과 motion | 제품 디자인 판단의 문서 원본입니다. |
+| [Screen Specs](./screen-specs.md) | 화면별 정보 위계, 상호작용과 상태 | 화면 구현과 함께 갱신합니다. |
+| [`frontend/src/styles`](../../frontend/src/styles/) | 실제 token과 화면 스타일 | 실행 결과와 문서가 다르면 함께 수정합니다. |
+| [`frontend/src/pages`](../../frontend/src/pages/) | 실제 route 화면과 반응형 구현 | 브라우저 검수의 대상입니다. |
 
 ## Platform References
 
 | Reference | Use For | Notes |
 | --- | --- | --- |
 | [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines) | iOS 모바일 상호작용, safe area, touch target | 모바일 우선 화면의 기본 UX 기준으로 확인합니다. |
-| [Material Design 3 Navigation Bar](https://m3.material.io/components/navigation-bar/overview) | 하단 내비게이션 구조 | Dashboard, Ledger, Budget, Stats, Settings 이동 구조를 검토할 때 참고합니다. |
+| [Material Design 3 Navigation Bar](https://m3.material.io/components/navigation-bar/overview) | 하단 내비게이션 구조 | 홈, 거래, 중앙 기록 action, 예산, 분석의 5개 항목을 검토할 때 참고합니다. |
 | [Material Design 3 Top App Bar](https://m3.material.io/components/app-bars/overview) | 상단 장부 선택기와 화면 액션 | 현재 장부 맥락과 1-2개 주요 액션만 드러내는 기준으로 참고합니다. |
 
 ## Implementation References
@@ -40,12 +43,12 @@
 | --- | --- | --- |
 | [Kakao Login REST API](https://developers.kakao.com/docs/en/kakaologin/rest-api) | Kakao OAuth login/callback | Auth 구현 전 redirect URI, token 요청, user info 범위를 다시 확인합니다. |
 
-## Screens To Collect
+## Reference Gaps During Implementation
 
-구현 전에 다음 화면은 저해상도 스케치나 참고 스크린샷을 모아 비교합니다.
+추가 레퍼런스는 실제 프론트엔드 이관 중 다음 조건에서 정보 위계나 상호작용이 불분명할 때만 수집합니다.
 
-- Dashboard: 월 예산, 누적 지출, 남은 예산, 최근 거래가 동시에 보이는 화면
-- Calendar / Ledger: 날짜별 거래 탐색과 빠른 추가가 공존하는 화면
-- Budget Month Settings: 월 총 예산, 카테고리 예산, 멤버별 할당 편집 화면
-- Settings: 장부 전환, 멤버, 초대, 반복 거래가 섞이지 않는 설정 구조
-- Invitation Link: 로그인 전/후 초대 수락 상태 화면
+- 긴 거래명, 큰 금액, 많은 카테고리와 같은 실제 데이터 edge case
+- loading, empty, error, 권한 없음 상태
+- 실제 chart library의 keyboard, touch, tooltip 동작
+- 모바일 키보드와 bottom sheet, safe area가 함께 나타나는 상태
+- 다크 모드가 제품 요구사항으로 별도 확정되는 경우

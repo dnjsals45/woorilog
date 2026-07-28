@@ -5,8 +5,9 @@
 
 ## Source Reference
 
-- Background image: `assets/design/Landing/landing-desk-bg.png`
-- Landing mockups: `assets/design/Landing/*.png`
+- Screen specification: [Landing / Login / Onboarding](./screen-specs.md#landing--login--onboarding)
+- Page implementation: [`frontend/src/pages/LandingPage.tsx`](../../frontend/src/pages/LandingPage.tsx)
+- Runtime background: [`frontend/src/assets/landing/landing-desk-bg.jpg`](../../frontend/src/assets/landing/landing-desk-bg.jpg)
 
 ## Direction
 
@@ -18,7 +19,7 @@
 
 ## Implementation Notes
 
-- 랜딩 구현은 현재 저장소의 디자인 문서와 `assets/design`만 기준으로 삼습니다.
+- 전역 시각 규칙은 [Design System](./design-system.md)을 따릅니다.
 - 외부 ref 프로젝트에 의존하지 않습니다.
 - 실제 구현에서는 수동 SVG icon보다 프로젝트에서 채택한 icon library를 우선합니다.
 - 모바일에서는 배경 이미지를 숨기거나 상단 보조 이미지로 축소하고, CTA와 로그인 흐름을 먼저 보여줍니다.

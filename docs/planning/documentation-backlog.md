@@ -19,12 +19,12 @@
 - `docs/engineering/backup-restore.md`: 개인 금융 데이터 백업, 복구, export 기준
 - README screenshots: 실제 화면이 생긴 뒤 핵심 사용 흐름만 캡처
 
-## Deferred Design Docs
+## Design QA
 
-기능 1차 구성이 끝난 뒤 디자인 작업과 함께 검토합니다.
-
-- `docs/design/wireframes.md`: Dashboard, Calendar/Ledger, Transaction Edit, Budget Month Settings 저해상도 화면 구조
-- `docs/design/invitation-flow.md`: 초대 생성, pending invitation, link accept 화면 상태
+- README screenshots: 실제 서비스 데이터가 준비되면 핵심 흐름만 캡처
+- 접근성 검수 기록: keyboard, focus, screen reader label, reduced motion
+- edge state 검수 기록: 긴 거래명, 큰 금액, 빈 월, 많은 거래와 많은 카테고리
+- 초대 흐름 상세 명세: pending, 로그인 복귀, 만료와 이미 수락된 상태를 구현 변경 시 추가
 
 ## Decision Log Candidates
 

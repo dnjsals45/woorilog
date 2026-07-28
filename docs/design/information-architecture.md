@@ -19,6 +19,8 @@ Protected App
   Category Management
   Transaction Edit
   Invitation Link
+  Notifications
+  Help
 ```
 
 ## Routes
@@ -36,8 +38,10 @@ Protected App
 | `/settings` | 장부, 별칭, 초대 관리 |
 | `/categories` | 거래 카테고리와 통계 대분류 관리 |
 | `/transactions/:transactionId` | 거래 상세/수정 |
-| `/ledgers/:ledgerId/months/:budgetMonth` | 월 예산과 월 마감 설정 |
+| `/ledgers/:ledgerId/months/:budgetMonth` | 월 예산과 개인 카테고리/공동 멤버 할당 설정 |
 | `/invitations/links/:token` | 초대 링크 조회/수락 |
+| `/notifications` | 장부 알림 확인과 읽음 처리 |
+| `/help` | 주요 기능 도움말 |
 
 ## Screen Priority Rule
 
@@ -51,14 +55,16 @@ Protected App
 
 ## Mobile Navigation
 
-- Dashboard: 현재 장부의 요약과 빠른 검토
-- Ledger/Calendar: 거래 탐색과 기록
-- FAB: 거래 입력
-- Budget: 월 예산 설정과 마감
-- Stats: 소비 흐름과 카테고리 통계
+- `홈`: 현재 장부의 요약과 빠른 검토
+- `거래`: 날짜별 거래 탐색과 상세 확인
+- `기록`: 중앙 action으로 거래 입력 sheet 열기
+- `예산`: 월 예산과 개인 카테고리/공동 멤버 할당 설정
+- `분석`: 소비 흐름과 카테고리 통계
 - Recurring Transactions: 정기 거래 설정, 자동 등록 상태, 집계 기간별 합계 확인
 - Card Management: 카드 등록과 다음 카드값 확인의 기준이 되는 확정일 관리
 - Settings: 장부/별칭/초대 관리
 - Category Management: 카테고리 생성·수정과 통계 대분류 연결
+
+모바일 하단 navigation은 `홈 / 거래 / 기록 / 예산 / 분석` 5개 항목으로 고정합니다. 설정과 관리 기능은 보조 메뉴에서 진입하며, 거래 입력을 위한 별도 확장형 FAB는 함께 표시하지 않습니다.
 
 장부 선택기에는 현재 장부 전환과 `새 개인 장부`, `새 공동 장부` 생성 진입점을 함께 둡니다.

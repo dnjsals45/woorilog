@@ -97,7 +97,6 @@ Completion:
 - member allocation
 - category budget
 - update month settings
-- close/reopen month
 - frontend budget month settings
 
 Completion:

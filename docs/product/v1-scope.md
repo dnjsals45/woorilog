@@ -70,19 +70,10 @@ V1은 우리로그를 실제 생활에서 사용할 수 있게 만드는 첫 완
 - 개인 장부의 카테고리별 월 예산 설정
 - 개인 장부의 고정비 템플릿 관리와 신규 월 예산의 기본값 반영
 - 공동 장부의 월 총 예산과 멤버별 월 분담/할당 설정
-- 월 마감
-- 월 재오픈
-- 마감 월의 예산·거래·반복 거래 변경 차단
-
-### Settlement
-
-- 월별 멤버 정산 계산
-- 일부/전체 송금 기록
-- 송금 기록 취소와 잔액 재계산
 
 ### Notification
 
-- 직접 초대, 월 마감, 예산 초과 알림
+- 직접 초대와 예산 초과 알림
 - 알림 목록과 개별/전체 읽음 처리
 
 ### Recurring Transaction
@@ -124,11 +115,13 @@ V1은 우리로그를 실제 생활에서 사용할 수 있게 만드는 첫 완
 - recurring transactions
 - card management
 - category management
-- transaction import
+- transaction import integrated into global transaction entry
 - notifications
 - help / not found
 - invitation link page
 - protected navigation layout
+
+서버에는 기존 월 마감과 정산 API가 남아 있지만 현재 V1 프론트엔드 예산 설정 화면에서는 노출하지 않습니다. 다시 제품 범위에 포함할 때는 별도 사용자 흐름과 화면 명세를 먼저 확정합니다.
 
 ## Completion Criteria
 
