@@ -1,4 +1,4 @@
-import { Check, LinkIcon } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError } from '../shared/api/client'
 import { useMeQuery } from '../features/auth/model/authQueries'
@@ -6,6 +6,7 @@ import {
   useAcceptLinkInvitationMutation,
   useLinkInvitationPreviewQuery,
 } from '../features/invitation/model/invitationQueries'
+import { PageHeader, SurfaceCard } from '../shared/ui/DesignPrimitives'
 
 export function InvitationLinkPage() {
   const params = useParams()
@@ -26,19 +27,14 @@ export function InvitationLinkPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col px-5 py-6 sm:px-8">
-      <header className="border-b border-slate-200 pb-6">
-        <Link className="text-sm font-medium text-emerald-700" to="/dashboard">
-          대시보드로 돌아가기
-        </Link>
-        <p className="wl-page-header-label mt-5">Invitation</p>
-        <div className="mt-2 flex items-center gap-2 text-slate-950">
-          <LinkIcon size={26} className="text-[var(--wl-color-primary)]" aria-hidden="true" />
-          <h1 className="text-3xl font-bold tracking-tight">초대 링크</h1>
-        </div>
-      </header>
+    <main className="product-page product-page--narrow flex flex-col">
+      <PageHeader
+        actions={<Link className="dashboard-text-button" to="/dashboard">대시보드로 돌아가기</Link>}
+        description="초대받은 장부 정보를 확인하고 참여 여부를 결정하세요."
+        title="초대 링크"
+      />
 
-      <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <SurfaceCard className="mt-6">
         {previewQuery.isLoading ? (
           <p className="text-slate-500">초대를 확인하는 중입니다.</p>
         ) : null}
@@ -78,7 +74,7 @@ export function InvitationLinkPage() {
             ) : null}
           </>
         ) : null}
-      </section>
+      </SurfaceCard>
     </main>
   )
 }

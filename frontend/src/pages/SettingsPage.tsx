@@ -1,5 +1,5 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Archive, BookOpen, Check, Copy, LinkIcon, LogOut, Mail, Send, Settings, UserMinus, Users, X } from 'lucide-react'
+import { Archive, BookOpen, Check, Copy, LinkIcon, LogOut, Mail, Send, UserMinus, Users, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ApiClientError } from '../shared/api/client'
 import { useLogoutMutation, useMeQuery } from '../features/auth/model/authQueries'
@@ -14,6 +14,7 @@ import {
   usePendingInvitationsQuery,
 } from '../features/invitation/model/invitationQueries'
 import type { InvitationStatus, InvitationType } from '../features/invitation/api/invitationApi'
+import { PageHeader, SurfaceCard } from '../shared/ui/DesignPrimitives'
 
 export function SettingsPage() {
   const navigate = useNavigate()
@@ -100,35 +101,27 @@ export function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[1200px] flex-col px-4 py-4 sm:px-6 md:p-8 lg:p-10">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="wl-page-header-label">Workspace</p>
-          <div className="mt-2 flex items-center gap-2 text-slate-950">
-            <Settings size={26} className="text-[var(--wl-color-primary)]" aria-hidden="true" />
-            <h1 className="text-3xl font-bold tracking-tight">설정</h1>
-          </div>
-          <p className="mt-2 text-sm text-slate-500">
-            {currentLedger?.name ?? '현재 장부'}의 초대와 받은 초대를 관리합니다.
-          </p>
-        </div>
-        <div className="flex items-center gap-3"><Link className="text-sm font-bold text-[var(--wl-color-primary-dark)]" to="/dashboard">대시보드로 돌아가기</Link><button aria-label="설정에서 로그아웃" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-200 px-3 text-sm font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50" disabled={logoutMutation.isPending} onClick={handleLogout} type="button"><LogOut size={16} />{logoutMutation.isPending ? '로그아웃 중...' : '로그아웃'}</button></div>
-      </header>
+    <main className="product-page product-page--standard flex flex-col">
+      <PageHeader
+        actions={<div className="flex items-center gap-2"><Link className="dashboard-text-button" to="/dashboard">대시보드로 돌아가기</Link><button aria-label="설정에서 로그아웃" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 text-sm font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50" disabled={logoutMutation.isPending} onClick={handleLogout} type="button"><LogOut size={16} />{logoutMutation.isPending ? '로그아웃 중...' : '로그아웃'}</button></div>}
+        description={`${currentLedger?.name ?? '현재 장부'}의 장부 정보, 멤버와 초대를 관리합니다.`}
+        title="설정"
+      />
 
       <section aria-label="장부 기본 설정" className="mt-6 grid gap-5 lg:grid-cols-2">
-        <article className="rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)]">
+        <SurfaceCard>
           <div className="flex items-center gap-2"><BookOpen className="text-[var(--wl-color-primary)]" size={21} /><h2 className="text-lg font-bold">장부 정보</h2></div>
           <dl className="mt-6 divide-y divide-slate-100 text-sm"><div className="flex justify-between py-3"><dt className="text-slate-500">장부 이름</dt><dd className="font-bold">{currentLedger?.name ?? '현재 장부'}</dd></div><div className="flex justify-between py-3"><dt className="text-slate-500">장부 유형</dt><dd className="font-bold">{currentLedger?.type === 'GROUP' ? '공동 장부' : '개인 장부'}</dd></div></dl>
           {currentLedger ? currentLedger.ownerId === meQuery.data?.user.id ? <><form className="mt-5 flex gap-2" key={currentLedger.id} onSubmit={handleRenameLedger}><label className="sr-only" htmlFor="ledger-name">장부 이름 변경</label><input className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-base" defaultValue={currentLedger.name} id="ledger-name" name="ledgerName" required /><button className="rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white disabled:bg-slate-300" disabled={renameLedgerMutation.isPending} type="submit">이름 저장</button></form><button className="mt-3 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-red-600" disabled={archiveLedgerMutation.isPending} onClick={handleArchiveLedger} type="button"><Archive size={17} />장부 보관</button></> : <button className="mt-5 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-red-600" disabled={leaveLedgerMutation.isPending} onClick={handleLeaveLedger} type="button"><UserMinus size={17} />공동 장부 나가기</button> : null}
-        </article>
-        <article className="rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)]">
+        </SurfaceCard>
+        <SurfaceCard>
           <div className="flex items-center gap-2"><Users className="text-[var(--wl-color-primary)]" size={21} /><h2 className="text-lg font-bold">함께 쓰는 멤버</h2></div>
           <div className="mt-5 space-y-3">{membersQuery.data?.map((member) => <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3" key={member.userId}><span className="font-semibold">{member.nickname}</span><span className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400">{member.userId === currentLedger?.ownerId ? '소유자' : '멤버'}</span>{currentLedger && currentLedger.ownerId === meQuery.data?.user.id && member.userId !== currentLedger.ownerId ? <button aria-label={`${member.nickname} 내보내기`} className="flex size-9 items-center justify-center rounded-lg text-red-500 hover:bg-red-50" disabled={removeMemberMutation.isPending} onClick={() => handleRemoveMember(member.userId, member.nickname)} type="button"><UserMinus size={16} /></button> : null}</span></div>)}{!membersQuery.data?.length ? <p className="text-sm text-slate-500">참여 중인 멤버가 없습니다.</p> : null}</div>
-        </article>
+        </SurfaceCard>
       </section>
 
       <section className="grid gap-4 py-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <SurfaceCard>
           <div className="flex items-center gap-2 text-slate-950">
             <Mail size={20} aria-hidden="true" />
             <h2 className="text-lg font-semibold">장부 초대</h2>
@@ -226,9 +219,9 @@ export function SettingsPage() {
               </div>
             </>
           )}
-        </div>
+        </SurfaceCard>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <SurfaceCard>
           <h2 className="text-lg font-semibold text-slate-950">받은 초대</h2>
           <div className="mt-4 space-y-3">
             {pendingInvitationsQuery.data?.length ? (
@@ -266,11 +259,11 @@ export function SettingsPage() {
               </p>
             )}
           </div>
-        </div>
+        </SurfaceCard>
       </section>
 
       {canManageInvitations ? (
-        <section className="rounded-[1.5rem] border border-[var(--wl-color-border)] bg-white p-5 shadow-[var(--wl-shadow-card)]">
+        <SurfaceCard>
           <h2 className="text-lg font-semibold text-slate-950">보낸 초대</h2>
           <div className="mt-4 divide-y divide-slate-100">
             {ledgerInvitationsQuery.data?.length ? (
@@ -301,7 +294,7 @@ export function SettingsPage() {
               <p className="py-4 text-sm text-slate-500">보낸 초대가 없습니다.</p>
             )}
           </div>
-        </section>
+        </SurfaceCard>
       ) : null}
 
     </main>

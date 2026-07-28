@@ -27,8 +27,8 @@ export function KakaoCallbackPage() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[var(--wl-color-background)] px-5 text-slate-700">
-      <section className="rounded-3xl border border-[var(--wl-color-border)] bg-white px-6 py-5 text-center font-semibold shadow-[var(--wl-shadow-card)]">
+    <main className="auth-surface flex min-h-dvh items-center justify-center px-5 text-slate-700">
+      <section className="auth-card px-6 py-5 text-center font-semibold">
         <p>{loginMutation.isError ? '카카오 로그인에 실패했습니다. 다시 시도해주세요.' : '카카오 로그인 처리 중입니다.'}</p>
         {loginMutation.isError ? <div className="mt-4 flex flex-wrap justify-center gap-2"><button className="min-h-10 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white" onClick={() => { loginMutation.reset(); mutate(code) }} type="button">다시 시도</button><Link className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" to="/login">로그인으로 돌아가기</Link></div> : null}
       </section>

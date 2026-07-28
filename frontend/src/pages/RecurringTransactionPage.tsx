@@ -93,7 +93,7 @@ export function RecurringTransactionPage() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[1240px] px-4 py-4 sm:px-6 md:p-8 lg:p-10">
+    <main className="product-page product-page--wide">
       <PageHeader
         eyebrow="RECURRING"
         title="정기 거래"

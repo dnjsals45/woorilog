@@ -94,9 +94,9 @@ export function LandingPage() {
     <main className="min-h-dvh bg-[#f8faf8] text-[#111827] antialiased">
       <header className="sticky top-0 z-50 border-b border-[#e5ede8] bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link className="flex items-center gap-2" to="/"><House className="size-6 text-[#0e9f6e]" strokeWidth={2.5} /><strong className="text-lg tracking-tight">우리로그</strong></Link>
-          <nav aria-label="랜딩 메뉴" className="hidden items-center gap-8 md:flex"><a className="text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#features">기능</a><a className="text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#support">도움말</a></nav>
-          <Link className="inline-flex h-9 items-center justify-center rounded-lg border border-[#e5ede8] bg-white px-4 text-sm font-medium shadow-sm hover:border-[#0e9f6e] hover:text-[#0e9f6e]" to={startPath}>{getAccessToken() ? '내 장부' : '로그인'}</Link>
+          <Link className="flex min-h-11 items-center gap-2" to="/"><House className="size-6 text-[#0e9f6e]" strokeWidth={2.5} /><strong className="text-lg tracking-tight">우리로그</strong></Link>
+          <nav aria-label="랜딩 메뉴" className="hidden items-center gap-6 md:flex"><a className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#features">기능</a><a className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#support">도움말</a></nav>
+          <Link className="inline-flex h-11 items-center justify-center rounded-lg border border-[#e5ede8] bg-white px-4 text-sm font-medium shadow-sm hover:border-[#0e9f6e] hover:text-[#0e9f6e]" to={startPath}>{getAccessToken() ? '내 장부' : '로그인'}</Link>
         </div>
       </header>
 

@@ -74,10 +74,10 @@ export function TransactionEditPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-5 pb-10 pt-8 sm:px-8 lg:justify-center lg:py-12">
+    <main className="product-page product-page--narrow flex flex-col lg:justify-center">
       <header className="mb-5 flex items-center gap-4">
-        <Link aria-label="장부로 돌아가기" className="flex size-11 items-center justify-center rounded-full border border-[var(--wl-color-border)] bg-white text-slate-600" to="/calendar"><ArrowLeft size={19} /></Link>
-        <div><p className="wl-page-header-label">Transaction</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">거래 상세</h1></div>
+        <Link aria-label="거래 내역으로 돌아가기" className="flex size-11 items-center justify-center rounded-xl border border-[var(--wl-color-border)] bg-white text-slate-600" to="/calendar"><ArrowLeft size={19} /></Link>
+        <div><h1 className="text-2xl font-bold tracking-[-0.03em] text-slate-950">거래 상세</h1><p className="mt-1 text-sm text-slate-500">기록된 거래 정보를 확인하고 수정합니다.</p></div>
       </header>
 
       {transactionQuery.isLoading ? (
@@ -90,7 +90,7 @@ export function TransactionEditPage() {
 
       {transactionQuery.data ? (
         <form
-          className="rounded-[1.75rem] border border-[var(--wl-color-border)] bg-white p-6 shadow-[var(--wl-shadow-card)] sm:p-8"
+          className="dashboard-card p-6 sm:p-8"
           key={transactionQuery.data.id}
           onSubmit={handleSubmit}
         >

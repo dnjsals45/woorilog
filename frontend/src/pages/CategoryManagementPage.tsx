@@ -77,7 +77,7 @@ export function CategoryManagementPage() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[1040px] px-4 py-4 sm:px-6 md:p-8 lg:p-10">
+    <main className="product-page product-page--medium">
       <PageHeader eyebrow="CATEGORIES" title="카테고리 관리" description="거래에 사용할 카테고리를 만들고 통계 분류를 연결합니다." actions={<button className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 shadow-sm" onClick={() => navigate(-1)} type="button"><ArrowLeft size={17} />이전으로</button>} />
 
       {categoriesQuery.isError || groupsQuery.isError ? <div className="mt-5"><ErrorState onRetry={() => { categoriesQuery.refetch(); groupsQuery.refetch() }} /></div> : null}
