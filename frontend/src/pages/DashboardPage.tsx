@@ -1,19 +1,41 @@
-import { Bell, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import type { ReactNode } from 'react'
-import { useState } from 'react'
+import {
+  ArrowLeftRight,
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Plus,
+  Repeat2,
+  Wallet,
+} from 'lucide-react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { useDashboardSummaryQuery } from '../features/budget/model/budgetQueries'
 import { useMeQuery } from '../features/auth/model/authQueries'
+import { useDashboardSummaryQuery } from '../features/budget/model/budgetQueries'
 import { useLedgersQuery } from '../features/ledger/model/ledgerQueries'
+import { useNotificationsQuery } from '../features/notification/model/notificationQueries'
+import { useSettlementSummaryQuery } from '../features/settlement/model/settlementQueries'
 import { ApiClientError } from '../shared/api/client'
 import { formatBudgetMonth } from '../shared/lib/date'
 import { formatWon } from '../shared/lib/money'
-import { CalendarGrid } from '../shared/ui/CalendarGrid'
 import { CategoryBadge } from '../shared/ui/CategoryBadge'
 import { EmptyState, ErrorState } from '../shared/ui/DesignPrimitives'
 import { useTransactionEntry } from '../shared/ui/TransactionEntryContext'
-import { useNotificationsQuery } from '../features/notification/model/notificationQueries'
-import { useSettlementSummaryQuery } from '../features/settlement/model/settlementQueries'
+
+const categoryColors = [
+  'var(--wl-data-coral)',
+  'var(--wl-data-blue)',
+  'var(--wl-data-violet)',
+  'var(--wl-data-amber)',
+  'var(--wl-data-neutral)',
+]
+
+type CategoryChartItem = {
+  amount: number
+  color: string
+  key: string
+  label: string
+}
 
 export function DashboardPage() {
   const { openTransactionEntry } = useTransactionEntry()
@@ -21,10 +43,14 @@ export function DashboardPage() {
   const meQuery = useMeQuery()
   const ledgersQuery = useLedgersQuery()
   const [budgetMonth, setBudgetMonth] = useState(formatBudgetMonth())
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null)
+  const [previewCategoryKey, setPreviewCategoryKey] = useState<string | null>(null)
   const dashboardQuery = useDashboardSummaryQuery(budgetMonth)
 
-  const currentLedger = dashboardQuery.data?.currentLedger ?? ledgersQuery.data?.ledgers?.find((ledger) => ledger.id === ledgersQuery.data?.currentLedgerId) ?? meQuery.data?.currentLedger
-  const currentBudgetMonth = dashboardQuery.data?.budgetMonth ?? formatBudgetMonth()
+  const currentLedger = dashboardQuery.data?.currentLedger
+    ?? ledgersQuery.data?.ledgers?.find((ledger) => ledger.id === ledgersQuery.data?.currentLedgerId)
+    ?? meQuery.data?.currentLedger
+  const currentBudgetMonth = dashboardQuery.data?.budgetMonth ?? budgetMonth
   const notificationsQuery = useNotificationsQuery()
   const settlementQuery = useSettlementSummaryQuery(currentLedger?.id, currentBudgetMonth)
   const totalBudget = dashboardQuery.data?.totalBudgetAmount ?? 0
@@ -33,54 +59,549 @@ export function DashboardPage() {
   const remainingBudget = dashboardQuery.data?.remainingBudgetAmount ?? 0
   const committedExpense = totalExpense + scheduledRecurringExpense
   const usage = totalBudget ? Math.min(100, Math.round((committedExpense / totalBudget) * 100)) : 0
-  const memberTotal = dashboardQuery.data?.memberSpending.reduce((sum, member) => sum + member.amount, 0) ?? 0
-  const categoryItems = dashboardQuery.data?.categorySpending.filter((item) => item.amount > 0) ?? []
+  const memberSpending = dashboardQuery.data?.memberSpending ?? []
+  const memberTotal = memberSpending.reduce((sum, member) => sum + member.amount, 0)
+  const categoryItems = toCategoryChartItems(dashboardQuery.data?.categorySpending ?? [])
   const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0)
-  const monthDates = dashboardQuery.data?.recentTransactions.map((transaction) => transaction.transactionDate) ?? []
+  const activeCategoryKey = previewCategoryKey ?? selectedCategoryKey
+  const settlementAmount = settlementQuery.data?.transfers.reduce(
+    (sum, transfer) => sum + transfer.amount,
+    0,
+  ) ?? 0
+  const firstTransfer = settlementQuery.data?.transfers[0]
+  const isGroupLedger = currentLedger?.type === 'GROUP'
 
-  if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) return <Navigate to="/login" replace />
+  if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
+    return <Navigate replace to="/login" />
+  }
 
   function moveMonth(offset: number) {
     const [year, month] = budgetMonth.split('-').map(Number)
-    const next = new Date(year, month - 1 + offset, 1)
-    setBudgetMonth(formatBudgetMonth(next))
+    setBudgetMonth(formatBudgetMonth(new Date(year, month - 1 + offset, 1)))
+    setSelectedCategoryKey(null)
+    setPreviewCategoryKey(null)
   }
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[1240px] px-4 py-4 sm:px-6 md:p-8 lg:p-10">
-      <header className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div><p className="text-xs font-bold text-emerald-700">오늘의 우리로그</p><h1 className="mt-0.5 text-xl font-extrabold tracking-[-0.03em] text-slate-950 sm:text-2xl md:text-3xl">{meQuery.data?.user.nickname ?? '사용자'}님, 좋은 하루예요!</h1><p className="mt-1 text-xs font-medium text-slate-500 sm:text-sm">{currentBudgetMonth.replace('-', '년 ')}월도 함께 알차게 기록하고 있어요.</p></div>
-        <div className="flex items-center gap-2"><div className="flex min-h-11 w-[200px] items-center justify-between rounded-xl border border-slate-200 bg-white px-1 shadow-sm sm:min-h-12 sm:w-[220px]"><button aria-label="이전 달 보기" className="flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => moveMonth(-1)} type="button"><ChevronLeft size={18} /></button><span className="text-sm font-extrabold text-slate-700 sm:text-base">{currentBudgetMonth.replace('-', '년 ')}월</span><button aria-label="다음 달 보기" className="flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => moveMonth(1)} type="button"><ChevronRight size={18} /></button></div><button aria-label={`알림 보기${notificationsQuery.data?.unreadCount ? `, 읽지 않은 알림 ${notificationsQuery.data.unreadCount}개` : ''}`} className="relative flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm sm:size-12" onClick={() => navigate('/notifications')} type="button"><Bell size={19} />{notificationsQuery.data?.unreadCount ? <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">{Math.min(notificationsQuery.data.unreadCount, 99)}</span> : null}</button><span aria-label={`${meQuery.data?.user.nickname ?? '사용자'} 프로필`} className="flex size-11 items-center justify-center rounded-full bg-[#ffe4d6] text-sm font-black text-rose-700 sm:size-12">{(meQuery.data?.user.nickname ?? '사').slice(0, 1)}</span></div>
+    <main className="dashboard-page">
+      <header className="dashboard-page-header">
+        <div className="dashboard-page-heading">
+          <p className="dashboard-greeting">
+            안녕하세요, {meQuery.data?.user.nickname ?? '사용자'}님
+          </p>
+          <div className="dashboard-ledger-title-row">
+            <h1>{currentLedger?.name ?? '현재 장부'}</h1>
+            <span className="dashboard-context-pill">
+              {isGroupLedger ? '공동 장부' : '개인 장부'}
+            </span>
+          </div>
+          <p className="dashboard-page-description">
+            {currentBudgetMonth.replace('-', '년 ')}월도 예산과 지출을 확인하세요.
+          </p>
+        </div>
+
+        <div className="dashboard-header-actions">
+          <div
+            aria-label={`조회 월 선택, ${currentBudgetMonth.replace('-', '년 ')}월`}
+            className="dashboard-month-picker"
+            role="group"
+          >
+            <button aria-label="이전 달 보기" onClick={() => moveMonth(-1)} type="button">
+              <ChevronLeft aria-hidden="true" size={18} />
+            </button>
+            <strong>{currentBudgetMonth.replace('-', '. ')}</strong>
+            <button aria-label="다음 달 보기" onClick={() => moveMonth(1)} type="button">
+              <ChevronRight aria-hidden="true" size={18} />
+            </button>
+          </div>
+          <button
+            aria-label={`알림 보기${notificationsQuery.data?.unreadCount ? `, 읽지 않은 알림 ${notificationsQuery.data.unreadCount}개` : ''}`}
+            className="dashboard-icon-button"
+            onClick={() => navigate('/notifications')}
+            type="button"
+          >
+            <Bell aria-hidden="true" size={19} />
+            {notificationsQuery.data?.unreadCount ? (
+              <span className="dashboard-notification-count">
+                {Math.min(notificationsQuery.data.unreadCount, 99)}
+              </span>
+            ) : null}
+          </button>
+          <button
+            className="dashboard-primary-button"
+            onClick={() => openTransactionEntry()}
+            type="button"
+          >
+            <Plus aria-hidden="true" size={18} />
+            거래 추가
+          </button>
+        </div>
       </header>
 
-      {meQuery.isLoading || dashboardQuery.isLoading ? <p className="py-10 text-slate-500">대시보드를 불러오는 중입니다.</p> : null}
-      {dashboardQuery.isError ? <div className="mt-5"><ErrorState onRetry={() => dashboardQuery.refetch()} /></div> : null}
+      {meQuery.isLoading || dashboardQuery.isLoading ? <DashboardSkeleton /> : null}
+      {dashboardQuery.isError ? (
+        <div className="dashboard-query-state">
+          <ErrorState onRetry={() => dashboardQuery.refetch()} />
+        </div>
+      ) : null}
+
       {meQuery.isSuccess && dashboardQuery.isSuccess ? (
         <>
-          <section className="mt-5 grid grid-cols-1 items-stretch gap-4 sm:gap-5 xl:grid-cols-12">
-            <article className="relative overflow-hidden rounded-[24px] border border-emerald-100 bg-[linear-gradient(135deg,#ffffff_0%,#f0fbf5_100%)] p-4 shadow-[0_16px_42px_rgba(30,74,52,0.08)] sm:p-5 lg:p-6 xl:col-span-8"><div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-emerald-100/55 blur-2xl" /><div className="relative grid gap-4 lg:grid-cols-[1fr_220px] lg:items-end"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-extrabold sm:text-lg lg:text-xl">{currentLedger?.name ?? '현재 장부'}</h2><span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">사용 중</span></div><p className="mt-3 text-xs font-bold text-slate-500 sm:text-sm">이번 달 남은 예산</p><p className={`mt-1 break-all text-4xl font-black leading-tight tracking-[-0.045em] sm:text-[2.5rem] lg:text-[2.75rem] ${remainingBudget < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{formatWon(remainingBudget)}</p><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-slate-600 sm:text-sm"><span>총 예산 <strong className="ml-1 text-slate-900">{formatWon(totalBudget)}</strong></span><span>사용 <strong className="ml-1 text-slate-900">{formatWon(totalExpense)}</strong></span><span>예정 정기비 <strong className="ml-1 text-slate-900">{formatWon(scheduledRecurringExpense)}</strong></span></div><Progress value={usage} /><div className="mt-2 flex justify-between text-[11px] font-bold text-slate-500 sm:text-xs"><span>{usage}% 사용·예정</span><span>{Math.max(100 - usage, 0)}% 남음</span></div></div><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1"><button className="min-h-12 rounded-[14px] bg-emerald-600 px-5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(14,159,110,0.18)] hover:bg-emerald-700" onClick={openTransactionEntry} type="button"><Plus className="mr-1 inline" size={18} />거래 추가</button>{currentLedger ? <Link className="flex min-h-12 items-center justify-center rounded-[14px] border border-emerald-200 bg-white/80 px-5 text-sm font-extrabold text-emerald-800 hover:bg-emerald-50" to={`/ledgers/${currentLedger.id}/months/${currentBudgetMonth}`}>예산 설정</Link> : null}</div></div></article>
-            <article className="dashboard-card xl:col-span-4"><div className="dashboard-card-header"><div><p className="dashboard-eyebrow">SHARED</p><h2 className="dashboard-card-title">공동 사용 현황</h2></div><span className="text-xs font-bold text-slate-400">{dashboardQuery.data?.memberSpending.length ?? 0}명</span></div><div className="mt-5 space-y-3">{dashboardQuery.data?.memberSpending.length ? dashboardQuery.data.memberSpending.map((member, index) => { const share = memberTotal ? Math.round(member.amount / memberTotal * 100) : 0; return <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3" key={member.userId}><div className="flex items-center gap-3"><span className={`flex size-9 items-center justify-center rounded-full text-sm font-black text-white ${index % 2 ? 'bg-[#ff8a7a]' : 'bg-emerald-600'}`}>{member.nickname.slice(0, 1)}</span><div className="min-w-0 flex-1"><div className="flex justify-between text-sm font-extrabold"><span className="truncate">{member.nickname}</span><span>{share}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100"><div className={`h-full rounded-full ${index % 2 ? 'bg-[#ff8a7a]' : 'bg-emerald-600'}`} style={{ width: `${share}%` }} /></div></div></div></div> }) : <div className="dashboard-empty">구성원별 지출이 아직 없어요.</div>}</div></article>
+          <section aria-labelledby="dashboard-summary-title" className="dashboard-summary">
+            <header className="dashboard-summary-header">
+              <h2 id="dashboard-summary-title">이번 달 요약</h2>
+              {currentLedger ? (
+                <Link to={`/ledgers/${currentLedger.id}/months/${currentBudgetMonth}`}>
+                  예산 설정
+                </Link>
+              ) : null}
+            </header>
+            <div className="dashboard-summary-body">
+              <article className="dashboard-primary-metric">
+                <p className="dashboard-metric-label">이번 달 지출</p>
+                <p className="dashboard-primary-amount">{formatWon(totalExpense)}</p>
+                <p className="dashboard-primary-note">
+                  총 예산 {formatWon(totalBudget)}
+                  {scheduledRecurringExpense ? ` · 예정 ${formatWon(scheduledRecurringExpense)}` : ''}
+                </p>
+                <BudgetProgress value={usage} />
+                <div className="dashboard-progress-caption">
+                  <span>{totalBudget ? `예산 사용·예정 ${usage}%` : '예산을 설정해 주세요'}</span>
+                  <span>
+                    {remainingBudget < 0
+                      ? `${formatWon(Math.abs(remainingBudget))} 초과`
+                      : `${formatWon(remainingBudget)} 남음`}
+                  </span>
+                </div>
+              </article>
+
+              <div className="dashboard-metric-group">
+                <SummaryMetric
+                  icon={<Wallet aria-hidden="true" size={18} />}
+                  label="남은 예산"
+                  note={remainingBudget < 0 ? '예산 초과' : `전체 예산의 ${totalBudget ? Math.max(0, 100 - usage) : 0}%`}
+                  tone={remainingBudget < 0 ? 'danger' : 'blue'}
+                  value={formatWon(remainingBudget)}
+                />
+                <SummaryMetric
+                  icon={<Repeat2 aria-hidden="true" size={18} />}
+                  label="예정 정기비"
+                  note={scheduledRecurringExpense ? '남은 예산에 반영됨' : '예정된 정기 지출 없음'}
+                  tone="amber"
+                  value={formatWon(scheduledRecurringExpense)}
+                />
+                <SummaryMetric
+                  icon={<ArrowLeftRight aria-hidden="true" size={18} />}
+                  label="정산 금액"
+                  note={
+                    settlementQuery.isLoading
+                      ? '정산 정보를 확인하는 중'
+                      : firstTransfer
+                        ? `${firstTransfer.fromNickname} → ${firstTransfer.toNickname}`
+                        : '정산 완료'
+                  }
+                  tone="violet"
+                  value={settlementQuery.isLoading ? '—' : formatWon(settlementAmount)}
+                />
+              </div>
+            </div>
           </section>
 
-          <section className="mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.8fr_1fr]">
-            <Card><div className="dashboard-card-header"><div><Kicker>RECENT TRANSACTIONS</Kicker><h2 className="dashboard-card-title">최근 거래</h2></div><Link className="dashboard-text-button" to="/calendar">전체 보기</Link></div>{dashboardQuery.data?.recentTransactions.length ? <ul className="mt-4 divide-y divide-slate-100">{dashboardQuery.data.recentTransactions.slice(0, 4).map((transaction) => <li key={transaction.id}><Link className="flex items-center gap-3 rounded-xl px-1 py-3 hover:bg-slate-50" to={`/transactions/${transaction.id}`}><CategoryBadge name={transaction.category?.name} /><span className="min-w-0 flex-1"><strong className="block truncate text-sm font-extrabold">{transaction.memo || transaction.category?.name || '거래'}</strong><span className="mt-1 block truncate text-xs font-medium text-slate-400">{transaction.transactionDate.replaceAll('-', '.')} · {transaction.payer.nickname}</span></span><strong className={`shrink-0 text-sm font-black ${transaction.type === 'INCOME' ? 'text-blue-600' : 'text-slate-900'}`}>{transaction.type === 'INCOME' ? '+' : '-'}{formatWon(transaction.amount)}</strong></Link></li>)}</ul> : <EmptyState title="최근 등록된 거래가 없어요." description="첫 거래를 기록하면 이곳에서 바로 확인할 수 있어요." />}</Card>
-            <Card><div className="dashboard-card-header"><div><Kicker>NEXT CARD PAYMENT</Kicker><h2 className="dashboard-card-title">다음 카드값 예상</h2></div><Link className="dashboard-text-button" to="/cards">관리</Link></div>{dashboardQuery.data?.cardPaymentSummaries?.length ? <ul className="mt-4 space-y-3">{dashboardQuery.data.cardPaymentSummaries.map((summary) => <li className="rounded-xl bg-emerald-50/70 p-3" key={summary.cardId}><div className="flex items-center justify-between gap-3"><strong className="truncate text-sm">{summary.cardName}</strong><strong className="shrink-0 text-sm text-emerald-700">{formatWon(summary.totalAmount)}</strong></div><p className="mt-1 text-xs font-medium text-slate-500">{summary.expectedPaymentMonth.replace('-', '년 ')}월 결제 예상 · {summary.statementClosingDate.replaceAll('-', '.')} 확정</p></li>)}</ul> : <EmptyState title="등록된 카드가 없어요." description="카드 관리에서 카드와 확정일을 등록해보세요." />}</Card>
-            <Card><Kicker>QUICK ENTRY</Kicker><h2 className="dashboard-card-title">빠른 기록</h2><div className="mt-5 grid grid-cols-5 gap-2 lg:grid-cols-2">{[{ label: '커피', categoryName: '카페' }, { label: '식비', categoryName: '식비' }, { label: '마트', categoryName: '생활' }, { label: '교통', categoryName: '교통' }].map(({ label, categoryName }) => <button className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-emerald-50 px-1 text-[11px] font-extrabold text-emerald-800 lg:min-h-11 lg:flex-row lg:text-sm" key={label} onClick={() => openTransactionEntry({ categoryName, memo: label })} type="button"><CategoryBadge name={label} size="sm" />{label}</button>)}<button className="flex min-h-16 flex-col items-center justify-center rounded-xl border border-dashed border-emerald-300 text-[11px] font-extrabold text-emerald-700 lg:col-span-2 lg:min-h-10 lg:text-sm" onClick={() => openTransactionEntry()} type="button"><Plus size={17} />더보기</button></div></Card>
-            <Card className="bg-[linear-gradient(135deg,#ffffff,#effbf5)]"><div className="dashboard-card-header"><div><Kicker>SETTLEMENT</Kicker><h2 className="dashboard-card-title">정산 요약</h2></div><span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${settlementQuery.data?.transfers.length ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>{settlementQuery.data?.transfers.length ? '정산 필요' : '정산 완료'}</span></div><p className="mt-6 text-sm font-bold text-slate-500">현재 남은 정산 금액</p><p className="mt-2 text-3xl font-black tracking-[-0.04em] text-emerald-700">{formatWon(settlementQuery.data?.transfers.reduce((sum, transfer) => sum + transfer.amount, 0) ?? 0)}</p>{settlementQuery.data?.transfers[0] ? <p className="mt-2 text-xs font-bold text-slate-500">{settlementQuery.data.transfers[0].fromNickname} → {settlementQuery.data.transfers[0].toNickname}</p> : null}{currentLedger ? <Link className="mt-5 flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 text-sm font-extrabold text-white" to={`/ledgers/${currentLedger.id}/months/${currentBudgetMonth}`}>정산 내역 보기</Link> : null}</Card>
-          </section>
+          <div className="dashboard-main-grid">
+            <DashboardPanel
+              action={<Link to="/calendar">전체 보기</Link>}
+              description="가장 최근에 기록한 4건"
+              title="최근 거래"
+            >
+              {dashboardQuery.data.recentTransactions.length ? (
+                <ul className="dashboard-transaction-list">
+                  {dashboardQuery.data.recentTransactions.slice(0, 4).map((transaction) => (
+                    <li key={transaction.id}>
+                      <Link
+                        className="dashboard-transaction-row"
+                        to={`/transactions/${transaction.id}`}
+                      >
+                        <CategoryBadge name={transaction.category?.name} size="sm" />
+                        <span className="dashboard-transaction-copy">
+                          <strong>
+                            {transaction.memo || transaction.category?.name || '거래'}
+                          </strong>
+                          <span>
+                            {transaction.transactionDate.replaceAll('-', '.')} ·{' '}
+                            {transaction.payer.nickname} ·{' '}
+                            {transaction.card?.name
+                              ?? (transaction.paymentMethod === 'CARD' ? '카드' : '현금')}
+                          </span>
+                        </span>
+                        <strong
+                          className={`dashboard-transaction-amount ${transaction.type === 'INCOME' ? 'is-income' : ''}`}
+                        >
+                          {transaction.type === 'INCOME' ? '+' : '-'}
+                          {formatWon(transaction.amount)}
+                          <span>{transaction.type === 'INCOME' ? '수입' : '지출'}</span>
+                        </strong>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="dashboard-panel-empty">
+                  <EmptyState
+                    action={(
+                      <button
+                        className="dashboard-empty-action"
+                        onClick={() => openTransactionEntry()}
+                        type="button"
+                      >
+                        <Plus aria-hidden="true" size={16} />
+                        거래 기록
+                      </button>
+                    )}
+                    description="첫 거래를 기록하면 이곳에서 바로 확인할 수 있어요."
+                    title="최근 등록된 거래가 없어요."
+                  />
+                </div>
+              )}
+            </DashboardPanel>
 
-          <section className="mt-5 hidden gap-5 lg:grid lg:grid-cols-[1fr_1.05fr]">
-            <Card className="p-6"><Kicker>Analytics</Kicker><h2 className="mt-2 text-xl font-bold">소비 분석</h2><div className="mt-5 flex items-center gap-8"><div className="relative size-32 rounded-full" style={{ background: categoryGradient(categoryItems, categoryTotal) }}><div className="absolute inset-8 rounded-full bg-white" /></div><div className="space-y-1 text-sm">{categoryItems.slice(0, 4).map((item) => <p key={item.categoryName}>{item.categoryName} {categoryTotal ? Math.round(item.amount / categoryTotal * 100) : 0}%</p>)}</div></div></Card>
-            <Card className="p-6"><Kicker>Calendar</Kicker><h2 className="mt-2 text-xl font-bold">미니 캘린더</h2><div className="mt-4"><CalendarGrid budgetMonth={currentBudgetMonth} compact transactionDates={monthDates} /></div></Card>
-          </section>
+            <div className="dashboard-side-column">
+              <DashboardPanel
+                action={<Link to="/stats">분석 보기</Link>}
+                description="금액이 큰 순서로 표시"
+                title="카테고리별 지출"
+              >
+                {categoryItems.length ? (
+                  <CategoryDonut
+                    activeKey={activeCategoryKey}
+                    items={categoryItems}
+                    onPreview={setPreviewCategoryKey}
+                    onSelect={(key) => setSelectedCategoryKey((current) => current === key ? null : key)}
+                    selectedKey={selectedCategoryKey}
+                    total={categoryTotal}
+                  />
+                ) : (
+                  <div className="dashboard-panel-empty">
+                    <EmptyState
+                      description="지출을 기록하면 카테고리별 비중을 확인할 수 있어요."
+                      title="표시할 카테고리 지출이 없어요."
+                    />
+                  </div>
+                )}
+              </DashboardPanel>
 
+              <DashboardPanel
+                action={
+                  currentLedger ? (
+                    <Link to={`/ledgers/${currentLedger.id}/months/${currentBudgetMonth}`}>
+                      예산 보기
+                    </Link>
+                  ) : null
+                }
+                description={isGroupLedger ? '멤버별 결제 금액' : '이번 달 결제 금액'}
+                title={isGroupLedger ? '함께 쓴 비용' : '내 지출 기록'}
+              >
+                {memberSpending.length ? (
+                  <div className="dashboard-shared-body">
+                    <div className="dashboard-shared-total">
+                      <div>
+                        <p>{isGroupLedger ? '공동 비용 합계' : '결제 합계'}</p>
+                        <strong>{formatWon(memberTotal)}</strong>
+                      </div>
+                      <span className={settlementAmount ? 'needs-settlement' : ''}>
+                        {settlementQuery.isLoading
+                          ? '확인 중'
+                          : settlementAmount
+                            ? '정산 필요'
+                            : '정산할 금액 없음'}
+                      </span>
+                    </div>
+                    <ul className="dashboard-member-list">
+                      {memberSpending.map((member, index) => (
+                        <li key={member.userId}>
+                          <span>
+                            <i style={{ background: categoryColors[index % categoryColors.length] }} />
+                            {member.nickname}님이 결제
+                          </span>
+                          <strong>{formatWon(member.amount)}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="dashboard-shared-note">
+                      {firstTransfer
+                        ? `${firstTransfer.fromNickname}님이 ${firstTransfer.toNickname}님에게 ${formatWon(firstTransfer.amount)}을 보내면 정산됩니다.`
+                        : '현재 정산할 금액이 없습니다.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="dashboard-panel-empty">
+                    <EmptyState
+                      description="거래를 기록하면 결제자별 금액을 확인할 수 있어요."
+                      title="이번 달 결제 기록이 없어요."
+                    />
+                  </div>
+                )}
+              </DashboardPanel>
+            </div>
+          </div>
+
+          <section aria-label="대시보드 보조 기능" className="dashboard-support-grid">
+            <DashboardPanel description="자주 쓰는 항목으로 바로 시작" title="빠른 기록">
+              <div className="dashboard-quick-actions">
+                {[
+                  { label: '커피', categoryName: '카페' },
+                  { label: '식비', categoryName: '식비' },
+                  { label: '마트', categoryName: '생활' },
+                  { label: '교통', categoryName: '교통' },
+                ].map(({ label, categoryName }) => (
+                  <button
+                    aria-label={label}
+                    key={label}
+                    onClick={() => openTransactionEntry({ categoryName, memo: label })}
+                    type="button"
+                  >
+                    <CategoryBadge name={label} size="sm" />
+                    <span>{label}</span>
+                  </button>
+                ))}
+                <button
+                  className="dashboard-quick-more"
+                  onClick={() => openTransactionEntry()}
+                  type="button"
+                >
+                  <Plus aria-hidden="true" size={17} />
+                  직접 입력
+                </button>
+              </div>
+            </DashboardPanel>
+
+            <DashboardPanel
+              action={<Link to="/cards">카드 관리</Link>}
+              description="등록한 카드의 다음 예상 금액"
+              title="다음 카드값"
+            >
+              {dashboardQuery.data.cardPaymentSummaries?.length ? (
+                <ul className="dashboard-card-payment-list">
+                  {dashboardQuery.data.cardPaymentSummaries.slice(0, 3).map((summary) => (
+                    <li key={summary.cardId}>
+                      <span className="dashboard-card-payment-icon">
+                        <CreditCard aria-hidden="true" size={18} />
+                      </span>
+                      <span>
+                        <strong>{summary.cardName}</strong>
+                        <small>{summary.expectedPaymentMonth.replace('-', '년 ')}월 예상 결제</small>
+                      </span>
+                      <strong>{formatWon(summary.totalAmount)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="dashboard-panel-empty">
+                  <EmptyState
+                    description="카드를 등록하면 다음 예상 금액을 확인할 수 있어요."
+                    title="등록된 카드가 없어요."
+                  />
+                </div>
+              )}
+            </DashboardPanel>
+          </section>
         </>
       ) : null}
     </main>
   )
 }
 
-function Card({ children, className = '' }: { children: ReactNode; className?: string }) { return <article className={`dashboard-card ${className}`}>{children}</article> }
-function Kicker({ children }: { children: ReactNode }) { return <p className="dashboard-eyebrow">{children}</p> }
-function Progress({ value }: { value: number }) { return <div aria-label={`예산 ${value}% 사용`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={value} className="mt-4 h-2 overflow-hidden rounded-full bg-[#d7f2e5] lg:h-3" role="progressbar"><div className="h-full rounded-full bg-[linear-gradient(90deg,#0e9f6e,#51c993)] transition-[width] duration-500" style={{ width: `${value}%` }} /></div> }
-function categoryGradient(items: Array<{ amount: number }>, total: number) { const colors = ['#10a376', '#2e64e8', '#ff7017', '#8255ef']; let cursor = 0; const stops = items.slice(0, 4).map((item, index) => { const start = cursor; cursor += total ? item.amount / total * 100 : 0; return `${colors[index]} ${start}% ${cursor}%` }); return stops.length ? `conic-gradient(${stops.join(',')})` : 'conic-gradient(#d7f2e5 0 100%)' }
+function DashboardPanel({
+  action,
+  children,
+  description,
+  title,
+}: {
+  action?: ReactNode
+  children: ReactNode
+  description: string
+  title: string
+}) {
+  return (
+    <section className="dashboard-panel">
+      <header className="dashboard-panel-header">
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+        {action ? <div className="dashboard-panel-action">{action}</div> : null}
+      </header>
+      {children}
+    </section>
+  )
+}
+
+function SummaryMetric({
+  icon,
+  label,
+  note,
+  tone,
+  value,
+}: {
+  icon: ReactNode
+  label: string
+  note: string
+  tone: 'amber' | 'blue' | 'danger' | 'violet'
+  value: string
+}) {
+  return (
+    <article className={`dashboard-secondary-metric is-${tone}`}>
+      <span className="dashboard-secondary-icon">{icon}</span>
+      <div>
+        <p className="dashboard-metric-label">{label}</p>
+        <p className="dashboard-secondary-amount">{value}</p>
+        <p className="dashboard-secondary-note">{note}</p>
+      </div>
+    </article>
+  )
+}
+
+function BudgetProgress({ value }: { value: number }) {
+  return (
+    <div
+      aria-label="이번 달 예산 사용률"
+      aria-valuemax={100}
+      aria-valuemin={0}
+      aria-valuenow={value}
+      className="dashboard-budget-progress"
+      role="progressbar"
+    >
+      <span style={{ width: `${value}%` }} />
+    </div>
+  )
+}
+
+function CategoryDonut({
+  activeKey,
+  items,
+  onPreview,
+  onSelect,
+  selectedKey,
+  total,
+}: {
+  activeKey: string | null
+  items: CategoryChartItem[]
+  onPreview: (key: string | null) => void
+  onSelect: (key: string) => void
+  selectedKey: string | null
+  total: number
+}) {
+  const activeItem = items.find((item) => item.key === activeKey)
+  const segments = items.map((item, index) => {
+    const percentage = total ? (item.amount / total) * 100 : 0
+    const offset = items
+      .slice(0, index)
+      .reduce((sum, previousItem) => sum + (total ? (previousItem.amount / total) * 100 : 0), 0)
+
+    return { ...item, offset, percentage }
+  })
+  const chartLabel = items
+    .map((item) => `${item.label} ${total ? Math.round((item.amount / total) * 100) : 0}%`)
+    .join(', ')
+
+  return (
+    <div className="dashboard-category-chart">
+      <div className="dashboard-donut">
+        <svg
+          aria-label={`카테고리 지출 비율: ${chartLabel}`}
+          className="dashboard-donut-svg"
+          role="img"
+          viewBox="0 0 120 120"
+        >
+          <circle className="dashboard-donut-track" cx="60" cy="60" r="46" />
+          {segments.map((segment) => (
+            <circle
+              aria-hidden="true"
+              className={`dashboard-donut-segment ${activeKey === segment.key ? 'is-active' : ''} ${activeKey && activeKey !== segment.key ? 'is-muted' : ''}`}
+              cx="60"
+              cy="60"
+              key={segment.key}
+              onClick={() => onSelect(segment.key)}
+              onMouseEnter={() => onPreview(segment.key)}
+              onMouseLeave={() => onPreview(null)}
+              pathLength="100"
+              r="46"
+              style={{
+                '--segment-color': segment.color,
+                strokeDasharray: `${segment.percentage} ${100 - segment.percentage}`,
+                strokeDashoffset: -segment.offset,
+              } as CSSProperties}
+              transform="rotate(-90 60 60)"
+            />
+          ))}
+        </svg>
+        <div className="dashboard-donut-center">
+          <span>{activeItem ? activeItem.label : '총 지출'}</span>
+          <strong>{formatWon(activeItem?.amount ?? total)}</strong>
+        </div>
+      </div>
+
+      <div className="dashboard-category-list">
+        {items.map((item) => {
+          const percentage = total ? Math.round((item.amount / total) * 100) : 0
+          return (
+            <button
+              aria-label={`${item.label} 카테고리, ${formatWon(item.amount)}, ${percentage}%`}
+              aria-pressed={selectedKey === item.key}
+              className={`${activeKey === item.key ? 'is-active' : ''} ${activeKey && activeKey !== item.key ? 'is-muted' : ''}`}
+              key={item.key}
+              onBlur={() => onPreview(null)}
+              onClick={() => onSelect(item.key)}
+              onFocus={() => onPreview(item.key)}
+              onMouseEnter={() => onPreview(item.key)}
+              onMouseLeave={() => onPreview(null)}
+              type="button"
+            >
+              <CategoryBadge name={item.label} size="sm" />
+              <span>{item.label}</span>
+              <strong>
+                {formatWon(item.amount)}
+                <small>{percentage}%</small>
+              </strong>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div aria-label="대시보드를 불러오는 중입니다." className="dashboard-skeleton" role="status">
+      <span />
+      <div>
+        <span />
+        <span />
+      </div>
+    </div>
+  )
+}
+
+function toCategoryChartItems(
+  items: Array<{ amount: number; categoryGroupId: number; categoryName: string }>,
+): CategoryChartItem[] {
+  const sorted = items.filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount)
+  const visible = sorted.length > 5 ? sorted.slice(0, 4) : sorted
+  const result = visible.map((item, index) => ({
+    amount: item.amount,
+    color: categoryColors[index],
+    key: String(item.categoryGroupId),
+    label: item.categoryName,
+  }))
+
+  if (sorted.length > 5) {
+    result.push({
+      amount: sorted.slice(4).reduce((sum, item) => sum + item.amount, 0),
+      color: categoryColors[4],
+      key: 'other',
+      label: '기타',
+    })
+  }
+
+  return result
+}

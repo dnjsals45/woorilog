@@ -165,7 +165,7 @@ describe('App', () => {
     const actor = userEvent.setup()
     renderApp('/login')
     await actor.click(screen.getByRole('button', { name: '개발자 로그인' }))
-    expect(await screen.findByText('이번 달 남은 예산')).toBeInTheDocument()
+    expect(await screen.findByText('남은 예산')).toBeInTheDocument()
     expect(await screen.findByText('예정 정기비')).toBeInTheDocument()
     expect(screen.getByText('50,000원')).toBeInTheDocument()
     expect(await screen.findByText('정산 완료')).toBeInTheDocument()
@@ -179,6 +179,20 @@ describe('App', () => {
     const previous = await screen.findByRole('button', { name: '이전 달 보기' })
     await actor.click(previous)
     expect(await screen.findByText(/2026년 06월도/)).toBeInTheDocument()
+  })
+
+  it('focuses a dashboard category from the chart legend', async () => {
+    setAccessToken('access-token')
+    installApiMock()
+    const actor = userEvent.setup()
+    renderApp('/dashboard')
+
+    const category = await screen.findByRole('button', {
+      name: '식비 카테고리, 120,000원, 100%',
+    })
+    await actor.click(category)
+
+    expect(category).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('uses total budget and member allocations only for a group ledger', async () => {
