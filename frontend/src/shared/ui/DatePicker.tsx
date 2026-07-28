@@ -94,13 +94,13 @@ export function DatePicker({ value, onChange, ariaLabel, name, disabled = false,
   return (
     <div className={`woorilog-date-picker relative ${className}`}>
       {name ? <input name={name} type="hidden" value={value} /> : null}
-      <button aria-expanded={open} aria-haspopup="dialog" aria-label={ariaLabel} className="flex h-12 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 text-left text-base font-bold text-slate-900 outline-none transition hover:border-emerald-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100 disabled:text-slate-400" disabled={disabled} onClick={() => setOpen((current) => !current)} ref={triggerRef} type="button"><span>{toDisplayValue(value)}</span><CalendarDays aria-hidden="true" className="shrink-0 text-emerald-700" size={19} /></button>
+      <button aria-expanded={open} aria-haspopup="dialog" aria-label={ariaLabel} className="flex h-12 w-full items-center justify-between gap-3 rounded-xl border border-[var(--wl-color-border-strong)] bg-[var(--wl-color-surface)] px-4 text-left text-base font-bold text-[var(--wl-color-text-main)] outline-none transition hover:border-[var(--wl-color-primary)] disabled:bg-[var(--wl-color-surface-subtle)] disabled:text-[var(--wl-color-text-secondary)]" disabled={disabled} onClick={() => setOpen((current) => !current)} ref={triggerRef} type="button"><span>{toDisplayValue(value)}</span><CalendarDays aria-hidden="true" className="shrink-0 text-[var(--wl-color-primary-dark)]" size={19} /></button>
       {open && popoverPosition ? createPortal(
-        <div aria-label={`${ariaLabel} 달력`} className="woorilog-date-picker fixed z-[70] w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_18px_42px_rgba(15,23,42,0.18)]" role="dialog" style={popoverPosition}>
+        <div aria-label={`${ariaLabel} 달력`} className="woorilog-date-picker fixed z-[70] w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] p-3 shadow-[var(--wl-shadow-modal)]" role="dialog" style={popoverPosition}>
           <DayPicker animate locale={ko} mode="single" navLayout="around" onSelect={selectDate} selected={selectedDate} />
-          <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-            <button className="min-h-10 rounded-lg px-3 text-sm font-bold text-emerald-700 hover:bg-emerald-50" onClick={() => selectDate(new Date())} type="button">오늘</button>
-            <span>{clearable ? <button aria-label={`${ariaLabel} 지우기`} className="flex size-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100" onClick={() => { onChange(''); setOpen(false) }} type="button"><X size={18} /></button> : null}</span>
+          <div className="mt-2 flex items-center justify-between gap-2 border-t border-[var(--wl-color-border)] pt-3">
+            <button className="min-h-11 rounded-lg px-3 text-sm font-bold text-[var(--wl-color-primary-dark)] hover:bg-[var(--wl-brand-50)]" onClick={() => selectDate(new Date())} type="button">오늘</button>
+            <span>{clearable ? <button aria-label={`${ariaLabel} 지우기`} className="flex size-11 items-center justify-center rounded-lg text-[var(--wl-color-text-secondary)] hover:bg-[var(--wl-color-surface-subtle)]" onClick={() => { onChange(''); setOpen(false) }} type="button"><X size={18} /></button> : null}</span>
           </div>
         </div>,
         document.body,

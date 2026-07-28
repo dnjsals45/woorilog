@@ -29,7 +29,7 @@ const navigation = [
   { label: '대시보드', to: '/dashboard', icon: LayoutDashboard },
   { label: '가계부', to: '/calendar', icon: BookOpen },
   { label: '통계', to: '/stats', icon: BarChart3 },
-  { label: '예산·정산', to: '/budget', icon: PiggyBank, budget: true },
+  { label: '예산 설정', to: '/budget', icon: PiggyBank, budget: true },
   { label: '정기 거래', to: '/recurring', icon: Repeat },
   { label: '카드 관리', to: '/cards', icon: CreditCard },
   { label: '설정', to: '/settings', icon: Settings },
@@ -93,21 +93,21 @@ export function AppShell() {
   const sidebar = (
     <div className="flex h-full flex-col">
       <Brand />
-      <nav aria-label="주요 메뉴" className="mt-10 space-y-1.5">
+      <nav aria-label="주요 메뉴" className="wl-sidebar-navigation mt-10 space-y-1.5">
         {navigation.map(({ label, to, icon: Icon, budget }) => {
           const path = resolvePath(budget, to)
           return (
-            <button className={`flex min-h-12 w-full items-center gap-3 rounded-[14px] px-4 text-sm font-extrabold transition ${isActive(path) ? 'bg-[#e7f7ef] text-emerald-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`} key={label} onClick={() => closeAndNavigate(path)} type="button">
+            <button className={`flex min-h-12 w-full items-center gap-3 rounded-[14px] px-4 text-sm font-extrabold transition ${isActive(path) ? 'bg-[var(--wl-color-primary-soft)] text-[var(--wl-color-primary-dark)]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`} key={label} onClick={() => closeAndNavigate(path)} type="button">
               <Icon size={19} strokeWidth={2} /><span>{label}</span>
             </button>
           )
         })}
       </nav>
-      <button className={`mt-4 flex min-h-11 w-full items-center gap-3 rounded-[14px] px-4 text-sm font-extrabold transition ${isActive('/categories') ? 'bg-[#e7f7ef] text-emerald-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`} onClick={() => closeAndNavigate('/categories')} type="button"><Tags size={18} strokeWidth={2} />카테고리 관리</button>
+      <button className={`wl-sidebar-category mt-4 flex min-h-11 w-full items-center gap-3 rounded-[14px] px-4 text-sm font-extrabold transition ${isActive('/categories') ? 'bg-[var(--wl-color-primary-soft)] text-[var(--wl-color-primary-dark)]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`} onClick={() => closeAndNavigate('/categories')} type="button"><Tags size={18} strokeWidth={2} />카테고리 관리</button>
 
-      <div className="mt-auto space-y-4">
+      <div className="wl-sidebar-bottom mt-auto flex flex-col gap-4">
         {currentLedger ? (
-          <section className="rounded-[20px] border border-slate-200 bg-slate-50/70 p-4">
+          <section className="wl-sidebar-ledger rounded-[20px] border border-slate-200 bg-slate-50/70 p-4">
             <p className="text-xs font-bold text-slate-400">현재 장부</p>
             <p className="mt-2 text-xs font-extrabold text-emerald-700">{currentLedger.type === 'GROUP' ? `공동 장부 · ${membersQuery.data?.length ?? 0}명` : '개인 장부'}</p>
             {ledgersQuery.data?.ledgers?.length ? (
@@ -117,39 +117,39 @@ export function AppShell() {
             ) : <p className="mt-1 truncate text-sm font-black">{currentLedger.name}</p>}
             {switchLedgerMutation.isError ? <p className="mt-2 text-xs font-bold text-red-600" role="alert">장부를 전환하지 못했습니다.</p> : null}
             <details className="mt-3 border-t border-slate-200 pt-3"><summary className="cursor-pointer text-xs font-extrabold text-emerald-700">+ 새 장부 만들기</summary><form className="mt-3 space-y-2" onSubmit={handleCreateLedger}><div className="grid grid-cols-2 gap-2">{(['PERSONAL', 'GROUP'] as const).map((type) => <button className={`min-h-10 rounded-lg border text-xs font-bold ${newLedgerType === type ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600'}`} key={type} onClick={() => setNewLedgerType(type)} type="button">{type === 'PERSONAL' ? '개인 장부' : '공동 장부'}</button>)}</div><label className="sr-only" htmlFor="new-ledger-name">새 장부 이름</label><input className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold" id="new-ledger-name" onChange={(event) => setNewLedgerName(event.target.value)} placeholder="새 장부 이름" required value={newLedgerName} />{createLedgerMutation.isError ? <p className="text-xs font-bold text-red-600" role="alert">장부를 만들지 못했습니다.</p> : null}<button className="min-h-10 w-full rounded-lg bg-emerald-600 text-xs font-extrabold text-white disabled:bg-slate-300" disabled={createLedgerMutation.isPending} type="submit">{createLedgerMutation.isPending ? '만드는 중...' : '장부 만들기'}</button></form></details>
-            <div aria-label={`장부 구성원 ${membersQuery.data?.length ?? 0}명`} className="mt-4 flex -space-x-2">
+            <div aria-label={`장부 구성원 ${membersQuery.data?.length ?? 0}명`} className="wl-sidebar-members mt-4 flex -space-x-2">
               {membersQuery.data?.slice(0, 5).map((member, index) => <span className={`flex size-9 items-center justify-center rounded-full border-2 border-white text-xs font-black ${index % 2 ? 'bg-[#ffe4d6] text-rose-700' : 'bg-[#d9f4e7] text-emerald-700'}`} key={member.userId} title={member.nickname}>{member.nickname.slice(0, 1)}</span>)}
             </div>
           </section>
         ) : null}
-        <div className="border-t border-slate-100 pt-3">
-          {meQuery.data ? <div className="mb-2 flex items-center justify-between gap-2 rounded-xl px-3 py-2"><span className="flex min-w-0 items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">{meQuery.data.user.nickname.slice(0, 1)}</span><span className="truncate text-sm font-extrabold">{meQuery.data.user.nickname}</span></span><button aria-label="로그아웃" className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })} type="button"><LogOut size={16} />{logoutMutation.isPending ? '처리 중' : '로그아웃'}</button></div> : null}
-          <button className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold text-slate-500 hover:bg-slate-50" onClick={() => closeAndNavigate('/help')} type="button"><CircleHelp size={18} />도움말</button>
+        <div className="wl-sidebar-profile border-t border-slate-100 pt-3">
+          {meQuery.data ? <div className="wl-sidebar-user mb-2 flex items-center justify-between gap-2 rounded-xl px-3 py-2"><span className="flex min-w-0 items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">{meQuery.data.user.nickname.slice(0, 1)}</span><span className="truncate text-sm font-extrabold">{meQuery.data.user.nickname}</span></span><button aria-label="로그아웃" className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })} type="button"><LogOut size={16} />{logoutMutation.isPending ? '처리 중' : '로그아웃'}</button></div> : null}
+          <button className="wl-sidebar-help flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold text-slate-500 hover:bg-slate-50" onClick={() => closeAndNavigate('/help')} type="button"><CircleHelp size={18} />도움말</button>
         </div>
       </div>
     </div>
   )
 
-  const mobileItems = ['대시보드', '가계부', '예산·정산', '통계']
+  const mobileItems = ['대시보드', '가계부', '예산 설정', '통계']
     .map((label) => navigation.find((item) => item.label === label))
     .filter((item): item is (typeof navigation)[number] => Boolean(item))
 
   return (
     <TransactionEntryContext.Provider value={{ openTransactionEntry: (preset) => { setTransactionEntryPreset(preset && 'nativeEvent' in preset ? undefined : preset); setTransactionEntryKey((value) => value + 1); setTransactionEntryOpen(true) } }}>
-      <div className="wl-app-shell min-h-dvh bg-[#f8faf8] text-slate-950">
-        <header className="fixed inset-x-0 top-0 z-40 border-b border-[#e5ede8] bg-white/95 backdrop-blur md:hidden">
+      <div className="wl-app-shell min-h-dvh bg-[var(--wl-color-background)] text-[var(--wl-color-text-main)]">
+        <header className="fixed inset-x-0 top-0 z-40 border-b border-[var(--wl-color-border)] bg-white/95 backdrop-blur min-[1041px]:hidden">
           <div className="mx-auto flex h-14 max-w-[480px] items-center justify-between px-4"><Brand /><button aria-expanded={drawerOpen} aria-label="메뉴 열기" className="flex size-11 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-50" onClick={() => setDrawerOpen(true)} type="button"><Menu size={22} /></button></div>
         </header>
 
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] border-r border-[#e5ede8] bg-white p-7 md:block">{sidebar}</aside>
-        {drawerOpen ? <div className="fixed inset-0 z-50 md:hidden"><button aria-label="메뉴 닫기" className="absolute inset-0 bg-slate-950/30 backdrop-blur-[2px]" onClick={() => setDrawerOpen(false)} type="button" /><aside aria-label="모바일 메뉴" className="relative h-full w-[min(86vw,320px)] overflow-y-auto bg-white p-7 shadow-2xl"><button aria-label="메뉴 닫기" className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-50" onClick={() => setDrawerOpen(false)} type="button"><X size={20} /></button>{sidebar}</aside></div> : null}
+        <aside className="wl-desktop-sidebar fixed inset-y-0 left-0 z-30 hidden w-[240px] border-r border-[var(--wl-color-border)] bg-white p-5 min-[1041px]:block">{sidebar}</aside>
+        {drawerOpen ? <div className="fixed inset-0 z-50 min-[1041px]:hidden"><button aria-label="메뉴 닫기" className="absolute inset-0 bg-slate-950/30 backdrop-blur-[2px]" onClick={() => setDrawerOpen(false)} type="button" /><aside aria-label="모바일 메뉴" className="relative h-full w-[min(86vw,320px)] overflow-y-auto bg-white p-7 shadow-2xl"><button aria-label="메뉴 닫기" className="absolute right-4 top-4 flex size-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-50" onClick={() => setDrawerOpen(false)} type="button"><X size={20} /></button>{sidebar}</aside></div> : null}
 
-        <div className="min-h-dvh pb-16 pt-14 md:pb-0 md:pl-[280px] md:pt-0"><div className="mx-auto max-w-[480px] md:max-w-none"><Outlet /></div></div>
+        <div className="min-h-dvh pb-16 pt-14 min-[1041px]:pb-0 min-[1041px]:pl-[240px] min-[1041px]:pt-0"><div className="wl-app-content"><Outlet /></div></div>
 
-        <nav aria-label="모바일 주요 메뉴" className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e5ede8] bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.04)] md:hidden">
+        <nav aria-label="모바일 주요 메뉴" className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--wl-color-border)] bg-white shadow-[var(--wl-shadow-bottom-nav)] min-[1041px]:hidden">
           <div className="relative mx-auto grid min-h-14 max-w-[480px] grid-cols-5 items-center px-2 pb-[env(safe-area-inset-bottom)]">
             {mobileItems.map(({ label, to, icon: Icon, budget }, index) => { const path = resolvePath(budget, to); const column = index < 2 ? index + 1 : index + 2; return <NavLink className={`flex h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-extrabold ${isActive(path) ? 'text-emerald-700' : 'text-slate-500'}`} key={label} style={{ gridColumnStart: column }} to={path}><Icon size={18} strokeWidth={2} /><span>{label}</span></NavLink> })}
-            <button aria-label="거래 추가" className="absolute bottom-3 left-1/2 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-600 text-white shadow-[0_8px_24px_-4px_rgba(14,159,110,0.3)] hover:bg-emerald-700" onClick={() => setTransactionEntryOpen(true)} type="button"><Plus size={28} strokeWidth={2.5} /></button>
+            <button aria-label="거래 추가" className="absolute bottom-3 left-1/2 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--wl-color-primary)] text-white shadow-[var(--wl-shadow-primary)] hover:bg-[var(--wl-color-primary-dark)]" onClick={() => setTransactionEntryOpen(true)} type="button"><Plus size={28} strokeWidth={2.5} /></button>
           </div>
         </nav>
         <TransactionEntrySheet key={transactionEntryKey} onClose={() => setTransactionEntryOpen(false)} open={transactionEntryOpen} preset={transactionEntryPreset} />

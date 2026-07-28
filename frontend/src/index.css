@@ -2,35 +2,52 @@
 @import '@daypicker/react/style.css';
 @import './styles/tokens.css';
 @import './styles/app-shell.css';
+@import './styles/dashboard.css';
+@import './styles/product-pages.css';
 
 @theme {
-  --color-primary: var(--color-primary);
-  --color-primary-dark: var(--color-primary-dark);
-  --color-primary-soft: var(--color-primary-soft);
-  --color-background: var(--color-background);
-  --color-card: var(--color-card);
-  --color-border: var(--color-border);
-  --color-text-main: var(--color-text-main);
-  --color-text-secondary: var(--color-text-secondary);
-  --color-income: var(--color-income);
-  --color-expense: var(--color-expense);
-  --color-danger: var(--color-danger);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
-  --radius-xl: var(--radius-xl);
-  --shadow-sm: var(--shadow-sm);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-fab: 0 8px 24px -4px rgba(14, 159, 110, 0.3);
-  --shadow-bottom-nav: 0 -4px 16px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.01);
-  --shadow-modal: 0 16px 36px rgba(0, 0, 0, 0.12);
+  --color-primary: var(--wl-color-primary);
+  --color-primary-dark: var(--wl-color-primary-dark);
+  --color-primary-soft: var(--wl-color-primary-soft);
+  --color-background: var(--wl-color-background);
+  --color-card: var(--wl-color-surface);
+  --color-surface-subtle: var(--wl-color-surface-subtle);
+  --color-border: var(--wl-color-border);
+  --color-border-strong: var(--wl-color-border-strong);
+  --color-text-main: var(--wl-color-text-main);
+  --color-text-body: var(--wl-color-text-body);
+  --color-text-secondary: var(--wl-color-text-secondary);
+  --color-income: var(--wl-color-income);
+  --color-expense: var(--wl-color-expense);
+  --color-danger: var(--wl-color-danger);
+  --color-data-blue: var(--wl-data-blue);
+  --color-data-blue-soft: var(--wl-data-blue-soft);
+  --color-data-coral: var(--wl-data-coral);
+  --color-data-coral-soft: var(--wl-data-coral-soft);
+  --color-data-amber: var(--wl-data-amber);
+  --color-data-amber-soft: var(--wl-data-amber-soft);
+  --color-data-violet: var(--wl-data-violet);
+  --color-data-violet-soft: var(--wl-data-violet-soft);
+  --color-data-neutral: var(--wl-data-neutral);
+  --color-data-neutral-soft: var(--wl-data-neutral-soft);
+  --radius-sm: var(--wl-radius-sm);
+  --radius-md: var(--wl-radius-md);
+  --radius-lg: var(--wl-radius-lg);
+  --radius-xl: var(--wl-radius-xl);
+  --radius-sheet: var(--wl-radius-sheet);
+  --radius-pill: var(--wl-radius-pill);
+  --shadow-sm: var(--wl-shadow-sm);
+  --shadow-md: var(--wl-shadow-md);
+  --shadow-lg: var(--wl-shadow-lg);
+  --shadow-fab: var(--wl-shadow-primary);
+  --shadow-bottom-nav: var(--wl-shadow-bottom-nav);
+  --shadow-card: var(--wl-shadow-card);
+  --shadow-modal: var(--wl-shadow-modal);
 }
 
 :root {
   font-family:
-    Pretendard, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont,
     sans-serif;
   color: var(--wl-color-text-main);
   background: var(--wl-color-background);
@@ -41,13 +58,13 @@
 }
 
 .woorilog-date-picker .rdp-root {
-  --rdp-accent-color: #059669;
-  --rdp-accent-background-color: #ecfdf5;
+  --rdp-accent-color: var(--wl-color-primary);
+  --rdp-accent-background-color: var(--wl-brand-50);
   --rdp-day_button-height: 2.7rem;
   --rdp-day_button-width: 2.7rem;
   --rdp-day-height: 2.8rem;
   --rdp-day-width: 2.8rem;
-  color: #1e293b;
+  color: var(--wl-color-text-main);
 }
 
 .woorilog-date-picker .rdp-month_caption {
@@ -55,16 +72,16 @@
 }
 
 .woorilog-date-picker .rdp-weekday {
-  color: #64748b;
+  color: var(--wl-color-text-secondary);
   font-weight: 700;
 }
 
 .woorilog-date-picker .rdp-day_button:hover {
-  background: #ecfdf5;
+  background: var(--wl-brand-50);
 }
 
 .woorilog-date-picker .rdp-selected .rdp-day_button {
-  background: #059669;
+  background: var(--wl-color-primary);
   color: white;
 }
 
@@ -72,32 +89,36 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100dvh;
-  background: var(--wl-color-background);
+  background:
+    radial-gradient(circle at 86% 0%, rgb(22 128 93 / 4.5%), transparent 30rem),
+    var(--wl-color-background);
 }
 
 button,
 a {
   transition:
-    color 150ms ease-out,
-    background-color 150ms ease-out,
-    border-color 150ms ease-out,
-    transform 100ms ease-out,
-    opacity 100ms ease-out;
+    color var(--motion-fast) ease-out,
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
+    box-shadow var(--motion-fast) ease-out,
+    opacity var(--motion-fast) ease-out;
 }
 
 button:active:not(:disabled) {
-  transform: scale(0.97);
-  opacity: 0.9;
+  opacity: 0.86;
 }
 
 .dashboard-card {
   min-height: 100%;
   border: 1px solid var(--wl-color-border);
   border-radius: 1.125rem;
-  background: #fff;
+  background: var(--wl-color-surface);
   padding: 1.5rem;
   box-shadow: var(--wl-shadow-card);
-  transition: box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease;
+  transition:
+    background-color var(--motion-base) var(--ease-product),
+    border-color var(--motion-base) ease,
+    box-shadow var(--motion-base) var(--ease-product);
 }
 
 .dashboard-card-header {
@@ -111,14 +132,14 @@ button:active:not(:disabled) {
   margin-top: 2px;
   color: var(--wl-color-text-main);
   font-size: 1.1875rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.025em;
 }
 
 .dashboard-eyebrow {
-  color: var(--wl-color-primary);
+  color: var(--wl-color-primary-dark);
   font-size: 0.6875rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.12em;
 }
 
@@ -142,7 +163,7 @@ button:active:not(:disabled) {
   padding: 0 12px;
   color: var(--wl-color-text-secondary);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .dashboard-month-button {
@@ -159,7 +180,7 @@ button:active:not(:disabled) {
 .card-warm {
   border: 1px solid var(--wl-color-border);
   border-radius: 18px;
-  background: #fff;
+  background: var(--wl-color-surface);
   padding: 24px;
   box-shadow: var(--shadow-sm);
 }
@@ -168,16 +189,9 @@ button:active:not(:disabled) {
   width: 100%;
   border: 1px solid var(--wl-color-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--wl-color-surface);
   padding: 12px 16px;
   color: var(--wl-color-text-main);
-}
-
-@media (hover: hover) {
-  .dashboard-card:hover {
-    border-color: #d1e2d7;
-    box-shadow: var(--wl-shadow-card-hover);
-  }
 }
 
 @media (max-width: 767px) {
@@ -197,7 +211,12 @@ button:active:not(:disabled) {
 
 button,
 a {
+  cursor: pointer;
   font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 button,
@@ -214,4 +233,40 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--wl-color-primary) 35%, transparent);
   outline-offset: 2px;
+}
+
+.wl-category-mark {
+  border-color: var(--wl-color-border);
+  background: var(--wl-data-neutral-soft);
+  color: var(--wl-data-neutral);
+}
+
+.wl-category-mark--brand {
+  border-color: #cae9dd;
+  background: var(--wl-brand-100);
+  color: var(--wl-brand-700);
+}
+
+.wl-category-mark--blue {
+  border-color: #d7defb;
+  background: var(--wl-data-blue-soft);
+  color: var(--wl-data-blue);
+}
+
+.wl-category-mark--coral {
+  border-color: #f7d4da;
+  background: var(--wl-data-coral-soft);
+  color: var(--wl-data-coral);
+}
+
+.wl-category-mark--amber {
+  border-color: #f4ddb7;
+  background: var(--wl-data-amber-soft);
+  color: #b86f08;
+}
+
+.wl-category-mark--violet {
+  border-color: #ddd4f8;
+  background: var(--wl-data-violet-soft);
+  color: var(--wl-data-violet);
 }

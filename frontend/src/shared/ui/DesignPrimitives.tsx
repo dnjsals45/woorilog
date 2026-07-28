@@ -12,12 +12,14 @@ export function PageHeader({
   description: string
   actions?: ReactNode
 }) {
+  const showEyebrow = Boolean(eyebrow && !/^[A-Z\s]+$/.test(eyebrow))
+
   return (
-    <header className="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
+    <header className="flex flex-col gap-4 border-b border-[var(--wl-color-border)] pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        {eyebrow ? <p className="dashboard-eyebrow">{eyebrow}</p> : null}
-        <h1 className="mt-1 text-2xl font-extrabold tracking-[-0.035em] text-slate-950 sm:text-3xl">{title}</h1>
-        <p className="mt-1 text-sm font-medium text-slate-500">{description}</p>
+        {showEyebrow ? <p className="dashboard-eyebrow">{eyebrow}</p> : null}
+        <h1 className="text-2xl font-bold tracking-[-0.035em] text-[var(--wl-color-text-main)] sm:text-3xl">{title}</h1>
+        <p className="mt-1.5 text-sm font-medium leading-6 text-[var(--wl-color-text-secondary)]">{description}</p>
       </div>
       {actions ? <div className="shrink-0">{actions}</div> : null}
     </header>
@@ -47,20 +49,31 @@ export function CardHeading({
   id?: string
   trailing?: ReactNode
 }) {
+  const showEyebrow = Boolean(eyebrow && !/^[A-Z\s]+$/.test(eyebrow))
+
   return (
     <div className="dashboard-card-header">
-      <div><p className="dashboard-eyebrow">{eyebrow}</p><h2 className="dashboard-card-title" id={id}>{title}</h2></div>
+      <div>{showEyebrow ? <p className="dashboard-eyebrow">{eyebrow}</p> : null}<h2 className="dashboard-card-title" id={id}>{title}</h2></div>
       {trailing}
     </div>
   )
 }
 
-export function EmptyState({ title, description }: { title: string; description: string }) {
+export function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string
+  description: string
+  action?: ReactNode
+}) {
   return (
     <div className="dashboard-empty flex flex-col items-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-400"><Inbox size={23} aria-hidden="true" /></span>
-      <strong className="mt-3 text-sm text-slate-800">{title}</strong>
-      <span className="mt-1 max-w-xs text-xs font-medium leading-5 text-slate-400">{description}</span>
+      <span className="flex size-12 items-center justify-center rounded-full bg-[var(--wl-data-neutral-soft)] text-[var(--wl-data-neutral)]"><Inbox size={23} aria-hidden="true" /></span>
+      <strong className="mt-3 text-sm text-[var(--wl-color-text-main)]">{title}</strong>
+      <span className="mt-1 max-w-xs text-xs font-medium leading-5 text-[var(--wl-color-text-secondary)]">{description}</span>
+      {action ? <div className="dashboard-empty-action-slot mt-4">{action}</div> : null}
     </div>
   )
 }
@@ -76,10 +89,10 @@ export function ErrorState({
 }) {
   return (
     <div className="dashboard-empty flex flex-col items-center" role="alert">
-      <span className="flex size-12 items-center justify-center rounded-full bg-red-50 text-red-600"><AlertTriangle size={23} aria-hidden="true" /></span>
-      <strong className="mt-3 text-sm text-slate-800">{title}</strong>
-      <span className="mt-1 max-w-sm text-center text-xs font-medium leading-5 text-slate-500">{description}</span>
-      {onRetry ? <button className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700" onClick={onRetry} type="button"><RotateCcw size={16} />다시 시도</button> : null}
+      <span className="flex size-12 items-center justify-center rounded-full bg-[var(--wl-danger-soft)] text-[var(--wl-color-danger)]"><AlertTriangle size={23} aria-hidden="true" /></span>
+      <strong className="mt-3 text-sm text-[var(--wl-color-text-main)]">{title}</strong>
+      <span className="mt-1 max-w-sm text-center text-xs font-medium leading-5 text-[var(--wl-color-text-secondary)]">{description}</span>
+      {onRetry ? <button className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] px-4 text-sm font-bold text-[var(--wl-color-text-body)] hover:border-[var(--wl-color-border-strong)] hover:bg-[var(--wl-brand-50)]" onClick={onRetry} type="button"><RotateCcw size={16} />다시 시도</button> : null}
     </div>
   )
 }
