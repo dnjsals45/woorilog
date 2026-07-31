@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Superseded in part
+
+- 세션과 Flyway 결정은 유지합니다.
+- 정산 결정은 새 [V1 Scope](../../product/v1-scope.md)에서 멤버 간 정산을 제외하면서 V1 제품 계약에서는 더 이상 사용하지 않습니다. 기존 데이터 보존은 [Data Migration](../data-migration.md)을 따릅니다.
 
 ## Context
 
@@ -28,4 +31,4 @@ Accepted
 - 보호 화면 새로고침 시 refresh endpoint를 먼저 호출합니다.
 - 운영 환경은 `JWT_SECRET`, DB credential, secure cookie 설정을 반드시 제공해야 합니다.
 - 모든 schema 변경은 새 migration으로 추가합니다.
-- 정산 완료 기록은 취소할 수 있으며 이후 남은 정산액을 다시 계산합니다.
+- 기존 구현의 정산 완료 기록은 migration 전까지 취소할 수 있으며 이후 남은 정산액을 다시 계산합니다. 새 V1에서는 정산 쓰기 API와 화면을 제공하지 않습니다.

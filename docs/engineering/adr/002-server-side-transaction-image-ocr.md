@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Superseded in part
+
+- 서버 Native Tesseract, 임시 이미지 처리와 전처리 결정은 유지합니다.
+- 직접 입력 텍스트 preview 유지 결정은 새 V1의 영수증·카드사 앱 이미지 일괄 가져오기 계약으로 대체합니다. 최신 기준은 [Transaction Import](../transaction-import.md)를 따릅니다.
 
 ## Context
 
@@ -24,7 +27,7 @@ Accepted
 - `시간 + #결제수단 + 잔액` 행이 감지되는 목록형 화면은 PSM 11 희소 레이아웃 OCR을 한 번 더 실행합니다. 금액 순서를 기준으로 기본 OCR의 상호명과 희소 OCR의 누락 거래를 결합하고 잔액 행은 후보에서 제외합니다.
 - 업로드는 PNG/JPEG, 10MB 이하로 제한하고, 최소/최대 해상도와 전체 픽셀 수를 검증합니다.
 - 원본과 전처리 이미지는 임시 디렉터리에서만 사용하고 요청 종료 시 삭제합니다.
-- 직접 입력 텍스트 preview API는 별도로 유지합니다.
+- 여러 이미지의 정상 후보를 하나의 검토 session으로 합치며 직접 입력 텍스트 preview API는 새 V1에서 제거합니다.
 
 ## Consequences
 

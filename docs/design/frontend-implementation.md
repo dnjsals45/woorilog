@@ -69,7 +69,7 @@ frontend/src/
 - `AppShell.tsx`와 `app-shell.css`가 데스크톱 sidebar, 장부 선택기와 모바일 navigation을 담당합니다.
 - `dashboard.css`는 대시보드 전용 밀도와 차트 표현을 담당합니다.
 - `product-pages.css`는 나머지 제품 화면, form, sheet와 semantic color 호환 규칙을 담당합니다.
-- 거래 추가는 `TransactionEntrySheet` 안에서 직접 입력, 영수증, 문자 내역을 전환합니다.
+- 현재 거래 추가는 `TransactionEntrySheet` 안에서 직접 입력, 영수증, 문자 내역을 전환합니다. 새 V1에서는 직접 입력과 여러 영수증·카드사 앱 캡처 검토 흐름으로 교체합니다.
 - 거래 화면은 안정적인 달력 프레임, 6건 단위 pagination과 좁은 화면에서만 제공하는 달력 접기를 사용합니다.
 - 통계 화면은 6/12개월 결합 차트와 동기화된 category donut/stack, 선택 카테고리 거래 목록을 제공합니다.
 - 예산 설정 화면은 총예산, 실제·예정 지출, 개인 카테고리 예산 또는 공동 멤버 할당에 집중합니다.

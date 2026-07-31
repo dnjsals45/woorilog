@@ -1,6 +1,6 @@
 # Tech Stack
 
-이 문서는 V1에서 사용할 기술 스택 기준입니다. 실제 버전은 초기 scaffold 이후 확정합니다.
+이 문서는 V1 구현에 사용하는 현재 기술 스택과 저장소 기준을 정리합니다. 정확한 버전은 `backend/build.gradle.kts`, `frontend/package.json`과 lockfile을 원본으로 사용합니다.
 
 ## Product Direction
 
@@ -20,6 +20,7 @@
 - Spring Validation
 - Spring Data JPA
 - MySQL 8.x
+- Flyway
 - JJWT
 - JUnit 5
 - Spring MVC Test
@@ -32,8 +33,8 @@ Backend decisions:
 - User-facing authentication is Kakao OAuth only.
 - Local development and automated tests may expose a developer login path for Playwright and manual UI verification.
 - Session is based on JWT access/refresh tokens using JJWT.
-- MySQL migration tooling is deferred during early development because schema changes are expected to be frequent.
-- Flyway is the preferred migration candidate before real long-lived data is accumulated.
+- 모든 schema 변경은 Flyway migration으로 추가하고 운영 JPA schema mode는 `validate`를 사용합니다.
+- 새 V1의 월 단위 데이터 전환은 [Data Migration](./data-migration.md)의 확장·backfill·전환 순서를 따릅니다.
 
 ## Frontend
 
@@ -58,6 +59,7 @@ Frontend decisions:
 - Simple filters and local-only controls can use component state without React Hook Form.
 - 거래 이미지 OCR은 backend의 Native Tesseract로 수행하고 frontend는 multipart 업로드와 preview 편집을 담당합니다.
 - Chart library adoption is deferred until dashboard/statistics implementation. Recharts is the default candidate for simple budget and spending charts.
+- 새 V1의 서버 상태 query key는 사용자·장부·예산 기간을 구분해 개인정보가 다른 cache entry에 섞이지 않게 합니다.
 
 ## Local Infrastructure
 
@@ -87,9 +89,10 @@ npm run build
 
 ## CI
 
-Initial CI should run:
+현재 CI는 PR과 `main` push에서 다음을 실행합니다.
 
 - backend test
 - frontend lint
 - frontend test
 - frontend build
+- Playwright Chromium smoke

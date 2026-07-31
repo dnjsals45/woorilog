@@ -1,199 +1,218 @@
 # API Contract
 
-이 문서는 현재 구현된 API 계약의 기준선입니다.
-새 제품 목표는 [V1 Scope](../product/v1-scope.md)를 원본으로 사용하며, [Implementation Plan](../planning/implementation-plan.md)의 기능 단계마다 계약과 구현을 함께 갱신합니다.
+이 문서는 [V1 Scope](../product/v1-scope.md)의 호출자 계약입니다. V1 화면은 이 계약의 endpoint와 DTO를 사용하며, 마이그레이션 검증을 위해 남아 있는 이전 구현의 내부 read model과 전환 대상은 [이전 API 전환](#이전-api-전환)에서 별도로 관리합니다. 데이터 구조와 권한은 [Domain Model](./domain-model.md)과 [Permissions](./permissions.md)를 따릅니다.
 
-## Common Rules
+## 공통 규칙
 
-- API prefix: `/api`
-- Protected API는 JWT Bearer token 인증을 요구합니다.
-- Authorization header: `Authorization: Bearer <accessToken>`
-- response DTO는 내부 entity를 직접 노출하지 않습니다.
-- date는 ISO-8601 형식을 사용합니다.
-- budget month는 `YYYY-MM` 형식을 사용합니다.
-- money는 정수 minor unit 또는 decimal 계열로 표현하고, endpoint별 단위를 명시합니다.
+### Base와 인증
 
-## Error Format
+- API prefix는 `/api`입니다. `GET /health`만 prefix 밖에 둡니다.
+- 인증 API와 공개 초대 조회를 제외한 API는 `Authorization: Bearer <accessToken>`을 요구합니다.
+- access token은 response body, refresh token은 `HttpOnly`, `SameSite=Lax` cookie로 전달합니다.
+- HTTPS 운영 환경의 refresh cookie는 `Secure`를 사용합니다.
+- resource id만 받는 endpoint도 resource가 속한 장부의 권한을 다시 검사합니다.
 
-초기 기준:
+### 형식
+
+| 값 | 형식 |
+| --- | --- |
+| id | JSON number, 서버 `Long` |
+| money | 원화 정수 number |
+| date | `YYYY-MM-DD` |
+| instant | UTC ISO-8601, 예: `2026-07-31T12:30:00Z` |
+| timezone | IANA zone id, 예: `Asia/Seoul` |
+| percentage | 0 이상 decimal number, 예: `82.5` |
+| cursor | 서버가 발급한 opaque string |
+
+- `null`은 필드가 개념상 존재하지만 현재 값이 없거나 적용되지 않을 때 사용합니다.
+- optional 필드는 권한에 따라 숨겨야 하는 민감 정보에만 사용합니다. 예를 들어 상대방이 거래를 볼 때 `paymentMethod.displayName`은 key 자체를 반환하지 않습니다.
+- 빈 목록은 `[]`, 내용 없는 성공은 `204 No Content`를 사용합니다.
+- enum은 이 문서에 적힌 대문자 문자열만 사용합니다. 알 수 없는 enum을 조용히 기본값으로 바꾸지 않습니다.
+
+### Pagination
+
+거래·알림·기간 목록은 cursor pagination을 사용합니다.
+
+```json
+{
+  "items": [],
+  "nextCursor": null
+}
+```
+
+- `limit` 기본값은 20, 최댓값은 100입니다.
+- `nextCursor`가 `null`이면 다음 페이지가 없습니다.
+- 정렬은 endpoint에 명시하며 cursor는 정렬 조건과 filter가 같을 때만 재사용합니다.
+
+### Error
 
 ```json
 {
   "code": "INVALID_REQUEST",
-  "message": "요청 값이 올바르지 않습니다."
+  "message": "요청 값이 올바르지 않습니다.",
+  "fieldErrors": {
+    "amount": "0보다 커야 합니다."
+  }
 }
 ```
 
-- validation 실패와 malformed/unreadable JSON body는 `400 INVALID_REQUEST`를 반환합니다.
-- 처리하지 못한 서버 오류는 `500 INTERNAL_SERVER_ERROR`를 반환하며 내부 exception message를 공개하지 않습니다.
+- `fieldErrors`는 validation 실패에서만 optional입니다.
+- malformed JSON과 validation 실패는 `400 INVALID_REQUEST`입니다.
+- 인증이 없거나 만료되면 `401 UNAUTHORIZED`, 권한이 없으면 `403 FORBIDDEN`입니다.
+- 존재하지만 조회할 수 없는 개인 거래 등은 존재 여부를 숨기기 위해 `404 RESOURCE_NOT_FOUND`를 사용합니다.
+- 처리하지 못한 오류는 `500 INTERNAL_SERVER_ERROR`이고 내부 exception message를 공개하지 않습니다.
 
-## Endpoint Groups
+공통 오류:
 
-### Health
+| status | code | 의미 |
+| --- | --- | --- |
+| 400 | `INVALID_REQUEST` | body, query 또는 상태 전이 validation 실패 |
+| 401 | `UNAUTHORIZED` | 인증 필요 또는 access token 오류 |
+| 403 | `FORBIDDEN` | 알려진 장부 자원에 대한 동작 권한 없음 |
+| 404 | `RESOURCE_NOT_FOUND` | 자원이 없거나 조회 사실을 숨겨야 함 |
+| 409 | `CONFLICT` | 현재 상태와 충돌하거나 중복 요청 |
+| 410 | `RESOURCE_EXPIRED` | 초대·import session 등 만료된 임시 자원 |
+| 500 | `INTERNAL_SERVER_ERROR` | 공개할 수 없는 서버 오류 |
 
-- `GET /health`
+## 공통 DTO
 
-### Auth
+### UserSummary
 
-- `GET /api/auth/kakao/login-url`
-- `POST /api/auth/kakao/callback`
-- `GET /api/me`
-- `POST /api/auth/logout`
-- `POST /api/auth/refresh`
-- `POST /api/auth/dev-login`
+```json
+{
+  "id": 1,
+  "nickname": "민지"
+}
+```
 
-`POST /api/auth/dev-login` is available only in local/test environments. It exists for local UI verification and Playwright automation, not as a production login method.
+`email`과 OAuth provider 식별자는 일반 사용자 요약에 노출하지 않습니다.
 
-## POST /api/auth/dev-login
+### LedgerSummary
 
-### Purpose
+```json
+{
+  "id": 10,
+  "name": "우리 생활비",
+  "type": "SHARED",
+  "role": "OWNER",
+  "accessState": "ACTIVE",
+  "partner": {
+    "id": 2,
+    "nickname": "준호"
+  },
+  "budgetCycle": {
+    "startType": "DAY_OF_MONTH",
+    "startDay": 10
+  }
+}
+```
 
-- local/test 환경에서 실제 Kakao 계정 없이 보호 화면에 진입합니다.
-- DEV provider user를 upsert하고 기본 개인 장부를 보장합니다.
+- `type`: `PERSONAL`, `SHARED`
+- `role`: `OWNER`, `MEMBER`; 개인 장부 소유자는 `OWNER`
+- `accessState`: `ACTIVE`, `FORMER_READ_ONLY`
+- `partner`는 상대방이 없거나 개인 장부면 `null`입니다.
+- `startType`: `DAY_OF_MONTH`, `LAST_DAY_OF_MONTH`; 후자는 `startDay=null`입니다.
 
-### Auth
+### BudgetSource
+
+```json
+{
+  "type": "PERSONAL",
+  "ownerUserId": 1
+}
+```
+
+- `type`: `PERSONAL`, `SHARED`
+- `SHARED`이면 `ownerUserId=null`입니다.
+- 사용자는 본인 `PERSONAL` 또는 `SHARED`만 거래 차감 대상으로 제출할 수 있습니다.
+
+### TransactionScope
+
+구조와 enum은 `BudgetSource`와 같습니다. 공동 장부의 모든 거래에 적용하며, 예산을 차감하지 않는 수입과 이체도 개인·공동 공개 범위를 잃지 않게 합니다. 개인 장부는 항상 소유자의 `PERSONAL` scope입니다.
+
+### CategorySnapshot
+
+```json
+{
+  "categoryId": 31,
+  "groupCode": "FOOD",
+  "groupName": "식비",
+  "categoryName": "장보기"
+}
+```
+
+미분류 거래는 `categoryId`, `groupCode`, `groupName`, `categoryName`이 모두 `null`입니다.
+
+### TransactionSummary
+
+```json
+{
+  "id": 501,
+  "ledgerId": 10,
+  "type": "EXPENSE",
+  "transferType": null,
+  "amount": 32400,
+  "merchant": "동네마트",
+  "occurredOn": "2026-07-31",
+  "occurredAt": null,
+  "memo": "주말 장보기",
+  "category": {
+    "categoryId": 31,
+    "groupCode": "FOOD",
+    "groupName": "식비",
+    "categoryName": "장보기"
+  },
+  "scope": {
+    "type": "SHARED",
+    "ownerUserId": null
+  },
+  "budgetSource": {
+    "type": "SHARED",
+    "ownerUserId": null
+  },
+  "payer": {
+    "id": 1,
+    "nickname": "민지"
+  },
+  "paymentMethod": {
+    "type": "CARD",
+    "displayName": "생활비 카드"
+  },
+  "sharedWithPartner": null,
+  "schedule": null,
+  "lastModifiedBy": {
+    "id": 1,
+    "nickname": "민지"
+  },
+  "lastModifiedAt": "2026-07-31T12:30:00Z"
+}
+```
+
+- `type`: `EXPENSE`, `INCOME`, `TRANSFER`
+- `transferType`: `OWN_ACCOUNTS`, `OUTBOUND`, `INBOUND`; `TRANSFER`가 아니면 `null`
+- `budgetSource`: 예산을 차감하지 않는 수입과 일부 이체면 `null`
+- `scope`: 공동 장부의 개인·공동 공개 범위입니다. 개인 장부는 소유자의 `PERSONAL`입니다.
+- `sharedWithPartner`: 공동 장부의 개인 scope 거래면 boolean, 공동 scope와 개인 장부 거래면 `null`
+- `schedule`: 일반 거래면 `null`, 자동 거래면 `{kind, planId, sequence, totalSequences}`
+- `paymentMethod`: 미입력이면 `null`. 조회자가 결제자가 아니면 `displayName` key를 생략합니다.
+
+## Health와 인증
+
+### `GET /health`
 
 - public
-- production에서는 비활성화되어야 합니다.
-
-### Request
-
-Body:
+- `200 OK`
 
 ```json
 {
-  "email": "dev@woorilog.local",
-  "nickname": "우리로그 개발자"
+  "status": "UP"
 }
 ```
 
-### Response
+### `GET /api/auth/kakao/login-url`
 
-Success status:
-
-```text
-200 OK
-```
-
-Body:
-
-```json
-{
-  "accessToken": "jwt-access-token",
-  "expiresInSeconds": 1800,
-  "user": {
-    "id": 1,
-    "email": "dev@woorilog.local",
-    "nickname": "우리로그 개발자",
-    "lastUsedLedgerId": 1
-  },
-  "currentLedger": {
-    "id": 1,
-    "name": "우리로그 개발자의 개인 장부",
-    "type": "PERSONAL",
-    "ownerId": 1,
-    "recurringSummaryClosingDay": 31
-  }
-}
-```
-
-### Errors
-
-| status | code | when |
-| --- | --- | --- |
-| 400 | INVALID_REQUEST | email or nickname validation failed |
-| 403 | FORBIDDEN | developer login disabled |
-
-## GET /api/me
-
-### Purpose
-
-- 현재 인증된 사용자와 현재 사용 장부를 조회합니다.
-
-### Auth
-
-- authenticated
-
-### Response
-
-```json
-{
-  "user": {
-    "id": 1,
-    "email": "dev@woorilog.local",
-    "nickname": "우리로그 개발자",
-    "lastUsedLedgerId": 1
-  },
-  "currentLedger": {
-    "id": 1,
-    "name": "우리로그 개발자의 개인 장부",
-    "type": "PERSONAL",
-    "ownerId": 1,
-    "recurringSummaryClosingDay": 31
-  }
-}
-```
-
-## POST /api/auth/logout
-
-### Auth
-
-- refresh cookie가 있으면 해당 세션을 폐기합니다. access token이 만료된 상태에서도 호출할 수 있습니다.
-
-### Response
-
-```text
-204 No Content
-```
-
-## POST /api/auth/refresh
-
-### Purpose
-
-- HttpOnly refresh cookie로 새 access token을 발급하고 refresh token을 회전합니다.
-- 사용한 refresh token은 즉시 폐기되며 재사용할 수 없습니다.
-
-### Response
-
-Success status: `200 OK`
-
-```json
-{
-  "accessToken": "jwt-access-token",
-  "expiresInSeconds": 1800,
-  "user": {
-    "id": 1,
-    "email": "dev@woorilog.local",
-    "nickname": "우리로그 개발자",
-    "lastUsedLedgerId": 1
-  },
-  "currentLedger": {
-    "id": 1,
-    "name": "우리로그 개발자의 개인 장부",
-    "type": "PERSONAL",
-    "ownerId": 1,
-    "recurringSummaryClosingDay": 31
-  }
-}
-```
-
-응답은 회전된 `woorilog.refreshToken` HttpOnly, SameSite=Lax cookie를 함께 설정합니다. 운영 HTTPS 환경에서는 `REFRESH_COOKIE_SECURE=true`를 사용합니다.
-
-### Errors
-
-| status | code | when |
-| --- | --- | --- |
-| 401 | REFRESH_TOKEN_REQUIRED | refresh cookie가 없음 |
-| 401 | INVALID_REFRESH_TOKEN | token이 유효하지 않거나 만료·폐기·재사용됨 |
-
-## GET /api/auth/kakao/login-url
-
-### Purpose
-
-- Kakao authorization code 요청 URL을 반환합니다.
-- `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`가 모두 설정되어야 합니다.
-
-### Response
+- public
+- Kakao authorization URL을 반환합니다.
 
 ```json
 {
@@ -201,1731 +220,919 @@ Success status: `200 OK`
 }
 ```
 
-### Errors
-
-| status | code | when |
+| status | code | 조건 |
 | --- | --- | --- |
-| 501 | `NOT_CONFIGURED` | Kakao OAuth 환경 변수가 설정되지 않았을 때 |
+| 501 | `NOT_CONFIGURED` | Kakao OAuth 환경 변수 누락 |
 
-## POST /api/auth/kakao/callback
+### `POST /api/auth/kakao/callback`
 
-### Purpose
-
-- Kakao authorization code를 교환하고 우리로그 access token을 반환합니다.
-
-### Request
+- public
+- authorization code를 한 번 교환하고 기본 개인 장부를 보장합니다.
 
 ```json
 {
-  "code": "kakao-authorization-code"
+  "code": "authorization-code"
 }
 ```
 
-### Response
-
-- `POST /api/auth/dev-login`과 같은 인증 응답을 반환합니다.
-
-### Errors
-
-| status | code | when |
-| --- | --- | --- |
-| 400 | `INVALID_REQUEST` | authorization code가 비어 있을 때 |
-| 502 | `KAKAO_AUTH_FAILED` | Kakao token 또는 user API 호출이 실패했을 때 |
-| 501 | `NOT_CONFIGURED` | Kakao OAuth 환경 변수가 설정되지 않았을 때 |
-
-## GET /api/ledgers
-
-### Purpose
-
-- 인증 사용자가 접근 가능한 장부 목록과 현재 사용 장부 id를 조회합니다.
-
-### Auth
-
-- authenticated
-
-### Response
+`200 OK`:
 
 ```json
 {
-  "currentLedgerId": 1,
-  "ledgers": [
+  "accessToken": "jwt-access-token",
+  "expiresInSeconds": 1800,
+  "user": {
+    "id": 1,
+    "nickname": "민지",
+    "nicknameConfirmed": false,
+    "timezone": "Asia/Seoul"
+  },
+  "currentLedger": {
+    "id": 1,
+    "name": "민지의 개인 장부",
+    "type": "PERSONAL",
+    "role": "OWNER",
+    "accessState": "ACTIVE",
+    "partner": null,
+    "budgetCycle": {
+      "startType": "DAY_OF_MONTH",
+      "startDay": 1
+    }
+  }
+}
+```
+
+신규 사용자는 `nicknameConfirmed=false`여도 인증 상태이며, 닉네임 확정과 초대 확인을 제외한 제품 쓰기 API는 `409 NICKNAME_CONFIRMATION_REQUIRED`를 반환합니다.
+
+### `POST /api/auth/dev-login`
+
+- local/test 전용 public endpoint입니다.
+- request: `{ "email": "dev@woorilog.local", "nickname": "개발자" }`
+- response는 Kakao callback과 같고 닉네임은 확정된 상태입니다.
+- 운영에서 `403 DEV_LOGIN_DISABLED`를 반환합니다.
+
+### `POST /api/auth/refresh`
+
+- refresh cookie로 access token을 재발급하고 refresh token을 회전합니다.
+- response body는 callback 응답과 같습니다.
+
+| status | code | 조건 |
+| --- | --- | --- |
+| 401 | `REFRESH_TOKEN_REQUIRED` | cookie 없음 |
+| 401 | `INVALID_REFRESH_TOKEN` | 만료·폐기·재사용 |
+
+### `POST /api/auth/logout`
+
+- 현재 refresh token을 폐기하고 cookie를 만료시킵니다.
+- `204 No Content`; access token이 만료됐어도 refresh cookie로 호출할 수 있습니다.
+
+### `GET /api/me`
+
+- authenticated
+- callback과 같은 `user`, `currentLedger`를 반환합니다. `accessToken`과 `expiresInSeconds`는 반환하지 않습니다.
+
+### `PATCH /api/me/profile`
+
+- authenticated
+- 최초 서비스 닉네임 확정 또는 이후 닉네임 변경입니다.
+
+```json
+{
+  "nickname": "민지",
+  "timezone": "Asia/Seoul"
+}
+```
+
+- `200 OK`: 갱신된 user
+- 닉네임은 공백 제거 후 1~20자입니다.
+
+## 장부와 멤버십
+
+### `GET /api/ledgers`
+
+- authenticated
+- 기본 개인 장부를 먼저, 활성 공동 장부를 최근 사용 순으로, 과거 읽기 전용 장부를 마지막에 반환합니다.
+
+```json
+{
+  "items": [
     {
       "id": 1,
-      "name": "우리로그 개발자의 개인 장부",
+      "name": "민지의 개인 장부",
       "type": "PERSONAL",
-      "ownerId": 1,
-      "recurringSummaryClosingDay": 31
+      "role": "OWNER",
+      "accessState": "ACTIVE",
+      "partner": null,
+      "budgetCycle": {
+        "startType": "DAY_OF_MONTH",
+        "startDay": 1
+      }
     }
   ]
 }
 ```
 
-## GET /api/ledgers/{ledgerId}/members
+### `POST /api/ledgers/shared`
 
-### Purpose
-
-- 장부 멤버를 조회합니다. 거래 결제자 선택과 월별 멤버 할당에 사용합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the ledger.
-
-### Response
+- authenticated, nickname confirmed
+- 공동 장부를 만들고 요청 사용자를 `OWNER`로 추가하며 현재 기간 전체 예산을 생성합니다.
 
 ```json
-[
-  {
-    "userId": 1,
-    "nickname": "우리로그 개발자",
-    "role": "OWNER"
+{
+  "name": "우리 생활비",
+  "totalBudget": 2000000,
+  "budgetCycle": {
+    "startType": "DAY_OF_MONTH",
+    "startDay": 10
   }
-]
-```
-
-## POST /api/ledgers/personal
-
-### Purpose
-
-- 추가 개인 장부를 생성하고 현재 사용 장부로 전환합니다.
-
-### Auth
-
-- authenticated
-
-### Request
-
-```json
-{
-  "name": "생활비 장부"
 }
 ```
 
-### Response
+- `201 Created`: `{ "ledger": LedgerSummary, "currentBudgetPeriod": BudgetPeriodDetail }`
+- `name`은 공백 제거 후 1~30자, `totalBudget`은 0 이상입니다.
+- `LAST_DAY_OF_MONTH`이면 `startDay`는 `null`, `DAY_OF_MONTH`이면 1~28입니다.
+
+### `POST /api/ledgers/{ledgerId}/use`
+
+- active 또는 former read-only member
+- 마지막 사용 장부를 바꾸고 `{ "currentLedger": LedgerSummary }`를 반환합니다.
+
+### `PATCH /api/ledgers/{ledgerId}`
+
+- active member
 
 ```json
 {
-  "id": 2,
-  "name": "생활비 장부",
-  "type": "PERSONAL",
-  "ownerId": 1,
-  "recurringSummaryClosingDay": 31
+  "name": "신혼 생활비",
+  "budgetCycle": {
+    "startType": "LAST_DAY_OF_MONTH",
+    "startDay": null
+  }
 }
 ```
 
-## POST /api/ledgers/group
+- 필드는 optional이며 하나 이상 필요합니다.
+- 예산 기간 규칙 변경은 다음 시작하지 않은 기간부터 적용합니다.
 
-### Purpose
+### `GET /api/ledgers/{ledgerId}/members`
 
-- 공동 장부를 생성하고 현재 사용 장부로 전환합니다.
-
-### Auth
-
-- authenticated
-
-### Request
+- active member; former member에게는 본인 참여 정보와 과거 조회 표시에 필요한 닉네임만 반환합니다.
 
 ```json
 {
-  "name": "가족 장부"
+  "items": [
+    {
+      "user": { "id": 1, "nickname": "민지" },
+      "role": "OWNER",
+      "status": "ACTIVE",
+      "joinedAt": "2026-07-01T00:00:00Z",
+      "leftAt": null
+    }
+  ]
 }
 ```
 
-### Response
+### `POST /api/ledgers/{ledgerId}/ownership-transfer`
+
+- owner only; 활성 member가 있어야 합니다.
 
 ```json
 {
-  "id": 3,
-  "name": "가족 장부",
-  "type": "GROUP",
-  "ownerId": 1,
-  "recurringSummaryClosingDay": 31
+  "newOwnerUserId": 2
 }
 ```
 
-## POST /api/ledgers/{ledgerId}/use
+- `200 OK`: 갱신된 member 목록
+- `409 ACTIVE_MEMBER_REQUIRED`, `409 ALREADY_OWNER`
 
-### Purpose
+### `DELETE /api/ledgers/{ledgerId}/members/{userId}`
 
-- 접근 가능한 장부를 현재 사용 장부로 전환합니다.
+- owner only; owner 본인은 대상으로 지정할 수 없습니다.
+- 멤버를 내보내고 예약 거래를 일시정지합니다.
+- `204 No Content`
+- `409 MEMBER_NOT_ACTIVE`
 
-### Auth
+### `DELETE /api/ledgers/{ledgerId}/members/me`
 
-- authenticated
-- current user must be a member of the ledger.
+- active member only. owner는 소유권 이전 전 호출할 수 없습니다.
+- `204 No Content`
+- `409 OWNER_TRANSFER_REQUIRED`
 
-### Response
+## 링크 초대
+
+### `POST /api/ledgers/{ledgerId}/invitations/links`
+
+- owner only
+- 기존 활성 링크를 `REPLACED`로 바꾸고 30분 링크를 만듭니다.
+
+`201 Created`:
 
 ```json
 {
-  "id": 2,
-  "name": "생활비 장부",
-  "type": "PERSONAL",
-  "ownerId": 1,
-  "recurringSummaryClosingDay": 31
+  "invitationId": 71,
+  "url": "https://app.example.com/invitations/token-value",
+  "expiresAt": "2026-07-31T13:00:00Z"
 }
 ```
 
-## PATCH /api/ledgers/{ledgerId}
+원문 token은 생성 응답과 공유 URL에서만 제공하며 DB에는 hash를 저장합니다.
 
-### Purpose
-
-- 장부 이름 또는 반복 거래 집계 마감일을 변경합니다.
-
-### Auth
-
-- authenticated
-- current user must be the ledger owner.
-
-### Request
-
-```json
-{
-  "recurringSummaryClosingDay": 10
-}
-```
-
-- `name`, `recurringSummaryClosingDay` 중 하나 이상을 전송합니다.
-- 집계 마감일은 `1`~`31`입니다. `10`이면 매월 11일부터 다음 달 10일까지를 하나의 반복 거래 집계 기간으로 계산하고, `31`이면 달력 월 단위로 계산합니다.
-
-### Response
-
-- 변경된 ledger response.
-
-### Errors
-
-| status | code | when |
+| status | code | 조건 |
 | --- | --- | --- |
-| 403 | FORBIDDEN | user is not a ledger member |
-| 404 | NOT_FOUND | ledger does not exist |
+| 409 | `LEDGER_MEMBER_LIMIT_REACHED` | 활성 멤버가 이미 두 명 |
 
-## GET /api/ledgers/{ledgerId}/categories
+### `DELETE /api/ledgers/{ledgerId}/invitations/{invitationId}`
 
-### Purpose
-
-- 장부의 거래 카테고리 목록을 sort order 기준으로 조회합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Response
-
-```json
-[
-  {
-    "id": 1,
-    "ledgerId": 1,
-    "name": "식비",
-    "type": "EXPENSE",
-    "categoryGroupId": 1,
-    "categoryGroupName": "식비",
-    "sortOrder": 1,
-    "defaultCategory": true
-  }
-]
-```
-
-## POST /api/ledgers/{ledgerId}/categories
-
-### Purpose
-
-- 장부에 커스텀 카테고리를 추가합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Request
-
-```json
-{
-  "name": "여행",
-  "type": "EXPENSE",
-  "categoryGroupId": 1
-}
-```
-
-### Response
-
-```json
-{
-  "id": 6,
-  "ledgerId": 1,
-  "name": "여행",
-  "type": "EXPENSE",
-  "categoryGroupId": 1,
-  "categoryGroupName": "식비",
-  "sortOrder": 6,
-  "defaultCategory": false
-}
-```
-
-## GET/POST /api/ledgers/{ledgerId}/category-groups
-
-### Purpose
-
-- 거래 세부 카테고리를 묶어 통계와 대시보드에 표시할 대분류를 조회하거나 생성합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### POST Request
-
-```json
-{
-  "name": "주거·통신",
-  "type": "EXPENSE"
-}
-```
-
-### Response
-
-```json
-{
-  "id": 7,
-  "ledgerId": 1,
-  "name": "주거·통신",
-  "type": "EXPENSE"
-}
-```
-
-세부 카테고리를 생성할 때는 같은 `type`의 `categoryGroupId`를 지정해야 합니다.
-
-## PATCH /api/categories/{categoryId}
-
-### Purpose
-
-- 기존 카테고리의 이름과 통계 대분류를 수정합니다. 카테고리의 수입/지출 유형은 기존 거래의 일관성을 위해 수정하지 않습니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the category's ledger.
-
-### Request
-
-```json
-{
-  "name": "외식",
-  "categoryGroupId": 1
-}
-```
-
-### Response
-
-- `POST /api/ledgers/{ledgerId}/categories`와 같은 category response.
-
-## DELETE /api/categories/{categoryId}
-
-### Purpose
-
-- 미사용 카테고리를 삭제합니다.
-- 거래, 월 예산, 고정 예산 또는 반복 거래 템플릿에서 사용 중인 카테고리는 과거 내역과 예산 계획을 보존하기 위해 삭제할 수 없습니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the category's ledger.
-
-### Response
-
+- owner only, pending 링크 취소
 - `204 No Content`
 
-### Errors
+### `GET /api/invitations/links/{token}`
 
-- `400 BAD_REQUEST`: 사용 중인 카테고리를 삭제하려는 경우.
-- `404 NOT_FOUND`: 카테고리가 없는 경우.
-
-## GET/POST /api/ledgers/{ledgerId}/fixed-budgets
-
-### Purpose
-
-- 장부의 월 고정비 예산 템플릿을 조회하거나 생성합니다. 고정비는 실제 거래를 생성하지 않습니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### POST Request
+- public
 
 ```json
 {
-  "name": "월세",
-  "categoryId": 3,
-  "amount": 700000,
-  "active": true
+  "invitationId": 71,
+  "ledgerName": "우리 생활비",
+  "inviter": { "id": 1, "nickname": "민지" },
+  "status": "PENDING",
+  "expiresAt": "2026-07-31T13:00:00Z",
+  "authenticationRequired": true
 }
 ```
 
-### Response
+- 만료·교체·취소된 token은 일반화한 상태를 포함해 `410 INVITATION_EXPIRED`를 반환합니다.
+
+### `POST /api/invitations/links/{token}/accept`
+
+- authenticated, nickname confirmed
+- 수락과 멤버십 생성, 마지막 사용 장부 변경을 한 트랜잭션에서 처리합니다.
+- `200 OK`: `{ "ledger": LedgerSummary }`
+
+| status | code | 조건 |
+| --- | --- | --- |
+| 409 | `ALREADY_LEDGER_MEMBER` | 이미 활성 멤버 |
+| 409 | `LEDGER_MEMBER_LIMIT_REACHED` | 동시 수락 등으로 두 명 도달 |
+| 409 | `DIFFERENT_PARTNER_NOT_ALLOWED` | 과거 상대방과 다른 사용자 |
+| 410 | `INVITATION_EXPIRED` | 만료·교체·취소·거절됨 |
+
+### `POST /api/invitations/links/{token}/reject`
+
+- authenticated, nickname confirmed
+- pending 링크를 `REJECTED`로 바꾸고 `204 No Content`를 반환합니다.
+
+## 예산 기간
+
+### BudgetPeriodDetail
 
 ```json
 {
-  "id": 1,
-  "ledgerId": 1,
-  "name": "월세",
-  "categoryId": 3,
-  "categoryName": "주거",
-  "amount": 700000,
-  "active": true
+  "id": 81,
+  "ledgerId": 10,
+  "startDate": "2026-07-10",
+  "endDate": "2026-08-09",
+  "status": "CURRENT",
+  "totalBudget": 2000000,
+  "allocations": [
+    {
+      "id": 811,
+      "source": { "type": "PERSONAL", "ownerUserId": 1 },
+      "owner": { "id": 1, "nickname": "민지" },
+      "amount": 400000,
+      "spentAmount": 150000,
+      "currentBalance": 250000,
+      "scheduledAmount": 50000,
+      "availableAmount": 200000
+    },
+    {
+      "id": 812,
+      "source": { "type": "SHARED", "ownerUserId": null },
+      "owner": null,
+      "amount": 1200000,
+      "spentAmount": 500000,
+      "currentBalance": 700000,
+      "scheduledAmount": 100000,
+      "availableAmount": 600000
+    }
+  ],
+  "reserveAmount": 400000,
+  "prepared": true,
+  "copiedFromPeriodId": null
 }
 ```
 
-`categoryId`는 해당 장부의 `EXPENSE` 카테고리여야 하며 `amount`는 양수입니다.
+- `status`: `UPCOMING`, `CURRENT`, `PAST`
+- allocation은 상위 금액이므로 상대방 개인 allocation도 포함합니다.
+- 상대방 개인 allocation의 대분류 예산과 거래 상세는 포함하지 않습니다.
+- 첫 배분 전에는 `allocations=[]`, `reserveAmount=null`, `prepared=false`입니다.
+- 개인 장부에서는 소유자의 personal allocation이 `totalBudget`과 같고 shared allocation과 예비비를 사용하지 않습니다.
 
-## PUT/DELETE /api/fixed-budgets/{fixedBudgetId}
+### `GET /api/ledgers/{ledgerId}/budget-periods/current`
 
-- `PUT`은 생성 요청과 같은 body로 이름, 카테고리, 금액, 사용 여부를 수정합니다.
-- `DELETE`는 고정비 템플릿을 삭제하고 `204 No Content`를 반환합니다.
-- authenticated; current user must be a member of the fixed budget's ledger.
+- active member
+- query `at` optional, 기본은 서버 clock의 오늘입니다.
+- 해당 날짜를 포함하는 `BudgetPeriodDetail`을 반환합니다.
 
-## POST /api/ledgers/{ledgerId}/transactions
+### `GET /api/ledgers/{ledgerId}/budget-periods`
 
-### Purpose
+- active 또는 former read-only member
+- query: `cursor`, `limit`; 최신 시작일 순
+- former member에게는 참여 구간과 겹치는 기간만 반환합니다.
 
-- 장부에 수입 또는 지출 거래를 등록합니다.
+### `GET /api/ledgers/{ledgerId}/budget-periods/{startDate}`
 
-### Auth
+- active 또는 해당 기간 former member
+- `BudgetPeriodDetail`과 조회자에게 허용된 category budgets를 반환합니다.
 
-- authenticated
-- current user must be a ledger member.
-- `payerUserId` is optional and defaults to the current user.
+```json
+{
+  "period": {},
+  "categoryBudgets": [
+    {
+      "source": { "type": "SHARED", "ownerUserId": null },
+      "groupCode": "FOOD",
+      "groupName": "식비",
+      "amount": 400000,
+      "spentAmount": 320000
+    }
+  ]
+}
+```
 
-### Request
+개인 category budget은 본인 것만 반환합니다.
+
+### `PUT /api/ledgers/{ledgerId}/budget-periods/{startDate}`
+
+- active member
+- 현재 또는 미래 기간 설정입니다.
+
+```json
+{
+  "totalBudget": 2000000,
+  "personalAllocations": [
+    { "userId": 1, "amount": 400000 },
+    { "userId": 2, "amount": 400000 }
+  ],
+  "sharedAllocation": 1000000,
+  "categoryBudgets": [
+    {
+      "source": { "type": "SHARED", "ownerUserId": null },
+      "groupCode": "FOOD",
+      "amount": 400000
+    },
+    {
+      "source": { "type": "PERSONAL", "ownerUserId": 1 },
+      "groupCode": "LEISURE",
+      "amount": 100000
+    }
+  ],
+  "increaseTotalBudgetIfNeeded": false,
+  "applyToFutureDefaults": true
+}
+```
+
+- 상대방 개인 category budget은 요청할 수 없습니다.
+- 배분 합계가 전체 예산보다 크고 `increaseTotalBudgetIfNeeded=false`이면 `409 TOTAL_BUDGET_INCREASE_CONFIRMATION_REQUIRED`입니다.
+- category budget 합계가 allocation보다 큰 경우도 같은 방식으로 명시적 증액이 필요합니다.
+- `200 OK`: 갱신된 `BudgetPeriodDetail`
+
+### `POST /api/ledgers/{ledgerId}/budget-periods/{startDate}/copy`
+
+- active member, target은 미래 기간
+
+```json
+{
+  "sourceStartDate": "2026-07-10"
+}
+```
+
+- 전체·개인·공동·대분류 예산 설정만 복사하고 잔액·초과액은 복사하지 않습니다.
+- 이미 준비된 기간이면 `409 BUDGET_PERIOD_ALREADY_PREPARED`입니다.
+
+### `POST /api/ledgers/{ledgerId}/budget-periods/{startDate}/reserve-transfers`
+
+- active member
+
+```json
+{
+  "amount": 100000,
+  "target": { "type": "SHARED", "ownerUserId": null }
+}
+```
+
+- 본인 개인 allocation 또는 공동 allocation만 target으로 허용합니다.
+- `201 Created`: transfer와 갱신된 period
+- `409 INSUFFICIENT_RESERVE`
+
+### `GET /api/ledgers/{ledgerId}/budget-periods/{startDate}/reserve-transfers`
+
+- active 또는 해당 기간 former member
+- 생성 시각 오름차순으로 `{id, amount, target, actor, createdAt}` 목록을 반환합니다.
+- 두 활성 멤버와 해당 기간에 참여한 former member가 같은 이전 기록을 조회합니다.
+
+### `GET /api/ledgers/{ledgerId}/budget-periods/{startDate}/summary`
+
+- active 또는 해당 기간 former member
+- 공동·본인 allocation 결과, 대분류 지출, 미분류 건수와 다음 기간 예정 고정비·할부를 반환합니다.
+- 상대방 개인 allocation 세부 내역은 반환하지 않습니다.
+
+## 카테고리
+
+### `GET /api/ledgers/{ledgerId}/category-groups`
+
+- ledger read access
+
+```json
+{
+  "items": [
+    {
+      "code": "FOOD",
+      "name": "식비",
+      "transactionType": "EXPENSE",
+      "hidden": false,
+      "sortOrder": 10
+    }
+  ]
+}
+```
+
+### `PATCH /api/ledgers/{ledgerId}/category-groups/{groupCode}`
+
+- active member
+- request: `{ "hidden": true }`
+- 이름·code·type은 바꿀 수 없습니다.
+
+### `GET /api/ledgers/{ledgerId}/categories`
+
+- ledger read access
+- query: `transactionType`, `includeInactive=false`
+
+```json
+{
+  "items": [
+    {
+      "id": 31,
+      "groupCode": "FOOD",
+      "groupName": "식비",
+      "name": "장보기",
+      "active": true,
+      "defaultCategory": true
+    }
+  ]
+}
+```
+
+### `POST /api/ledgers/{ledgerId}/categories`
+
+- active member
+- request: `{ "groupCode": "FOOD", "name": "데이트 외식" }`
+- `201 Created`
+- `409 CATEGORY_NAME_DUPLICATED`
+
+### `PATCH /api/categories/{categoryId}`
+
+- active member
+
+```json
+{
+  "name": "주간 장보기",
+  "applyNameToPastTransactions": false
+}
+```
+
+- `applyNameToPastTransactions=true`이면 접근 가능한 해당 장부 거래 snapshot도 변경합니다.
+
+### `DELETE /api/categories/{categoryId}`
+
+- active member
+- category를 비활성화하고 과거 snapshot을 유지합니다.
+- `204 No Content`
+
+## 거래
+
+### `GET /api/ledgers/{ledgerId}/transactions`
+
+- active 또는 former read-only member
+- 최신 `occurredOn`, `occurredAt`, id 순
+- query:
+
+| 이름 | 형식 | 설명 |
+| --- | --- | --- |
+| `periodStart` | date | 예산 기간 시작일 |
+| `query` | string | 사용처·메모 검색 |
+| `types` | comma enum | `EXPENSE,INCOME,TRANSFER` |
+| `categoryGroupCodes` | comma string | 대분류 filter |
+| `scopes` | comma enum | `PERSONAL,SHARED` |
+| `kinds` | comma enum | `NORMAL,FIXED_EXPENSE,INSTALLMENT` |
+| `shared` | boolean | 개인 거래 공유 여부 |
+| `unclassified` | boolean | 미분류만 조회 |
+| `cursor`, `limit` | pagination | cursor paging |
+
+- 공동 장부에서 공동 거래와 본인 개인 거래를 반환합니다.
+- 상대방 개인 거래는 예산 상세의 전용 endpoint에서 공유 건만 반환합니다.
+- former member는 참여 기간의 본인 거래와 공동 거래만 반환합니다.
+- 응답에는 현재 장부의 `unclassifiedCount`를 별도 필드로 포함해 분류 배지를 갱신합니다.
+
+### `POST /api/ledgers/{ledgerId}/transactions`
+
+- active member
 
 ```json
 {
   "type": "EXPENSE",
-  "amount": 12000,
-  "transactionDate": "2026-07-09",
-  "categoryId": 1,
-  "memo": "점심",
-  "payerUserId": null,
-  "paymentMethod": "CARD",
-  "cardId": 1,
-  "installmentMonths": null
-}
-```
-
-### Response
-
-```json
-{
-  "id": 1,
-  "ledgerId": 1,
-  "type": "EXPENSE",
-  "amount": 12000,
-  "transactionDate": "2026-07-09",
-  "category": {
-    "id": 1,
-    "name": "식비",
-    "type": "EXPENSE"
+  "transferType": null,
+  "amount": 32400,
+  "merchant": "동네마트",
+  "occurredOn": "2026-07-31",
+  "occurredAt": null,
+  "memo": "주말 장보기",
+  "categoryId": 31,
+  "scope": { "type": "SHARED", "ownerUserId": null },
+  "budgetSource": { "type": "SHARED", "ownerUserId": null },
+  "payerUserId": 1,
+  "paymentMethod": {
+    "type": "CARD",
+    "displayName": "생활비 카드"
   },
-  "payer": {
-    "id": 1,
-    "nickname": "우리로그 개발자"
-  },
-  "memo": "점심",
-  "paymentMethod": "CARD",
-  "card": {
-    "id": 1,
-    "name": "생활비 카드"
-  },
+  "sharedWithPartner": null,
   "installment": null
 }
 ```
 
-### Installment
+- `merchant`, `categoryId`는 빠른 기록에서 필수입니다.
+- `EXPENSE`와 `TRANSFER/OUTBOUND`는 budget source가 필수입니다.
+- `INCOME`, `TRANSFER/OWN_ACCOUNTS`, `TRANSFER/INBOUND`는 budget source가 `null`입니다.
+- 공동 장부에서는 `scope`가 필수이고, 예산 차감 거래의 scope와 budget source는 같아야 합니다.
+- 개인 source이면 `ownerUserId`는 인증 사용자여야 합니다.
+- 개인 거래의 `sharedWithPartner` 생략 시 장부별 공유 기본값을 사용합니다.
+- 저장 성공 시 이 거래의 유효한 budget source를 사용자·장부별 마지막 차감 대상으로 기억합니다.
+- `201 Created`: `TransactionSummary`
 
-- `installmentMonths`는 선택 값입니다. 생략하거나 `null`, `1`을 보내면 일시불로 등록합니다.
-- `paymentMethod`는 `CASH` 또는 `CARD`입니다. 생략하거나 `null`이면 `CASH`입니다. `CARD`에는 현재 장부의 `cardId`가 필요하며 카드 결제는 지출 거래에만 사용할 수 있습니다.
-- `2`~`60`을 보내면 `CARD` `EXPENSE` 거래의 총 결제 금액을 해당 개월 수로 나누어 시작일과 이후 매월 같은 일자에 회차별 거래를 생성합니다. 나머지 원 단위는 앞선 회차부터 1원씩 더합니다.
-- 응답은 첫 회차 거래를 반환합니다. 할부 거래의 `installment`는 아래 형식이며, 일시불 거래에서는 `null`입니다.
-
-```json
-{
-  "planId": "a9f5c8f7-0ef4-4c05-a517-8d532c584942",
-  "sequence": 1,
-  "totalCount": 3
-}
-```
-
-### Errors
-
-| status | code | when |
-| --- | --- | --- |
-| 400 | INVALID_REQUEST | amount is not positive, transaction/category type mismatch, or installment months are invalid |
-| 403 | FORBIDDEN | user or payer is not a ledger member |
-| 404 | NOT_FOUND | ledger, category, or payer not found |
-
-## Card APIs
-
-### GET/POST /api/ledgers/{ledgerId}/cards
-
-- 장부 멤버가 등록 카드를 조회하거나 추가합니다.
-- `POST` body: `{ "name": "생활비 카드", "statementClosingDay": 25 }`
-- response: `{ "id": 1, "ledgerId": 1, "name": "생활비 카드", "statementClosingDay": 25 }`
-- `statementClosingDay`는 1~31 사이의 매월 결제금액 확정일입니다.
-
-### PUT/DELETE /api/cards/{cardId}
-
-- 장부 멤버가 카드 이름과 확정일을 수정하거나 사용하지 않은 카드를 삭제합니다.
-- 거래에 연결된 카드를 삭제하면 `400 INVALID_REQUEST`를 반환합니다.
-
-## POST /api/ledgers/{ledgerId}/quick-transactions
-
-### Purpose
-
-- 짧은 텍스트에서 금액을 파싱해 지출 거래를 빠르게 등록합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Request
+할부 request:
 
 ```json
 {
-  "text": "커피 4500",
-  "transactionDate": "2026-07-09"
-}
-```
-
-### Response
-
-- `POST /api/ledgers/{ledgerId}/transactions`와 같은 transaction response.
-
-### Notes
-
-- 현재 parser는 숫자 또는 `원` suffix를 기준으로 금액을 추출합니다.
-- 카테고리는 첫 번째 EXPENSE 기본 카테고리를 fallback으로 사용합니다.
-
-## GET /api/ledgers/{ledgerId}/months/{budgetMonth}/transactions
-
-### Purpose
-
-- 장부의 월별 거래 목록을 조회합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Response
-
-```json
-[
-  {
-    "id": 1,
-    "ledgerId": 1,
-    "type": "EXPENSE",
-    "amount": 12000,
-    "transactionDate": "2026-07-09",
-    "category": {
-      "id": 1,
-      "name": "식비",
-      "type": "EXPENSE"
-    },
-    "payer": {
-      "id": 1,
-      "nickname": "우리로그 개발자"
-    },
-    "memo": "점심"
+  "amount": 1200000,
+  "occurredOn": "2026-07-31",
+  "installment": {
+    "months": 12,
+    "monthlyInterest": 0
   }
-]
-```
-
-### Notes
-
-- `budgetMonth`는 `YYYY-MM` 형식입니다.
-- 정렬은 `transactionDate desc, id desc`입니다.
-
-## GET /api/transactions/{transactionId}
-
-### Purpose
-
-- 거래 상세를 조회합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the transaction ledger.
-
-### Response
-
-- `POST /api/ledgers/{ledgerId}/transactions`와 같은 transaction response.
-
-## PUT /api/transactions/{transactionId}
-
-### Purpose
-
-- 거래를 수정합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the transaction ledger.
-
-### Request
-
-```json
-{
-  "type": "INCOME",
-  "amount": 50000,
-  "transactionDate": "2026-07-10",
-  "categoryId": 5,
-  "memo": "보너스",
-  "payerUserId": 1,
-  "paymentMethod": "CASH",
-  "cardId": null
 }
 ```
 
-### Response
+- 할부 요청의 `amount`는 사용자가 입력한 전체 원금이고 `occurredOn`은 첫 결제일입니다. 서버가 회차별 원금을 계산하며 생성된 첫 거래의 `amount`는 첫 회차 원금과 월 이자의 합입니다.
+- `months`는 2 이상이며 상한은 서버 validation으로 명시합니다.
 
-- `POST /api/ledgers/{ledgerId}/transactions`와 같은 transaction response.
+### `GET /api/transactions/{transactionId}`
 
-### Notes
+- 거래 조회 권한
+- `TransactionSummary`와 계획·공개 상태 상세를 반환합니다.
+- 상대방 공유 개인 거래에서는 민감 결제수단 식별 필드를 생략합니다.
 
-- `payerUserId`를 생략하거나 `null`로 보내면 기존 결제자를 유지합니다. 새 거래 생성에서만 생략 시 현재 사용자를 결제자로 사용합니다.
+### `PUT /api/transactions/{transactionId}`
 
-## DELETE /api/transactions/{transactionId}
+- 개인 거래는 소유자, 공동 거래는 active member
+- create body와 같은 최종 상태를 받습니다. 자동 생성 거래의 plan 수정은 이 endpoint가 아니라 예약 거래 API를 사용합니다.
+- `200 OK`: 갱신된 `TransactionSummary`
 
-### Purpose
+### `PATCH /api/transactions/{transactionId}/visibility`
 
-- 거래를 삭제합니다.
+- 개인 거래 소유자 only
+- request: `{ "sharedWithPartner": true }`
+- `200 OK`: 갱신된 거래
 
-### Auth
+### `PUT /api/ledgers/{ledgerId}/transaction-sharing-default`
 
-- authenticated
-- current user must be a member of the transaction ledger and the transaction payer.
-
-### Response
-
-```text
-204 No Content
-```
-
-### Errors
-
-| status | code | when |
-| --- | --- | --- |
-| 403 | FORBIDDEN | current user is not the transaction payer |
-| 404 | NOT_FOUND | transaction does not exist |
-| 409 | MONTH_CLOSED | transaction month is closed |
-
-### Notes
-
-- 정기 거래가 생성한 개별 거래도 삭제할 수 있습니다. 해당 발생 이력은 남겨 같은 회차가 다시 생성되지 않도록 합니다.
-
-## POST /api/transactions/bulk-delete
-
-### Purpose
-
-- 가계부에서 선택한 여러 거래를 한 요청으로 삭제합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of every transaction ledger and the payer of every transaction.
-
-### Request
+- active member
 
 ```json
 {
-  "transactionIds": [1, 2]
+  "shareNewPersonalTransactions": true,
+  "shareExistingPersonalTransactions": true
 }
 ```
 
-- `transactionIds`는 중복 없는 거래 ID를 1개 이상 100개 이하로 받습니다.
+- 켤 때 `shareExistingPersonalTransactions=true`가 필요합니다.
+- 끌 때 기존 거래는 바꾸지 않으므로 `shareExistingPersonalTransactions`는 `false`여야 합니다.
 
-### Response
+### `GET /api/ledgers/{ledgerId}/transaction-entry-defaults`
 
-```text
-204 No Content
-```
-
-### Errors
-
-| status | code | when |
-| --- | --- | --- |
-| 400 | INVALID_REQUEST | ID 목록이 비었거나 100개를 초과하거나 중복 ID가 있음 |
-| 403 | FORBIDDEN | current user is not a ledger member or transaction payer for any target |
-| 404 | NOT_FOUND | any transaction does not exist |
-| 409 | MONTH_CLOSED | any transaction month is closed |
-
-### Notes
-
-- 서로 다른 장부나 거래 일자의 ID를 함께 보낼 수 있으며, 각 거래에 단건 삭제와 같은 권한·월 마감 규칙을 적용합니다.
-- 서버는 모든 대상을 먼저 검증하고 하나의 transaction에서 삭제합니다. 하나라도 실패하면 어떤 거래도 삭제하지 않습니다.
-- 정기 거래가 생성한 개별 거래는 발생 이력과의 연결만 해제한 뒤 삭제하여 같은 회차가 다시 생성되지 않게 합니다.
-
-## GET /api/ledgers/{ledgerId}/months/{budgetMonth}
-
-### Purpose
-
-- 장부의 월 예산 설정과 멤버별 할당을 조회합니다. 개인 장부에서는 카테고리별 예산도 함께 조회합니다.
-- 저장된 월 설정이 없어도 장부 카테고리와 멤버를 기준으로 반환합니다. 개인 장부의 활성 고정비는 해당 카테고리 예산의 합계 금액으로 미리 채웁니다.
-- 공동 장부는 `categoryBudgets: []`, `fixedBudgetTotalAmount: 0`을 반환하며 월 총 예산과 멤버별 할당만 관리합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the ledger.
-
-### Response
+- active member
 
 ```json
 {
-  "ledgerId": 1,
-  "budgetMonth": "2026-07",
-  "totalBudgetAmount": 1000000,
-  "fixedBudgetTotalAmount": 700000,
-  "closed": false,
-  "categoryBudgets": [
+  "budgetSource": { "type": "PERSONAL", "ownerUserId": 1 },
+  "shareNewPersonalTransactions": false
+}
+```
+
+- 저장된 source가 현재 기간에 유효하지 않으면 본인 personal source를 반환합니다.
+
+### `GET /api/ledgers/{ledgerId}/merchant-suggestions`
+
+- active member
+- query: `query` 1자 이상, `limit` 기본 10·최대 20
+- 인증 사용자와 현재 장부의 확정 거래만 사용합니다.
+
+```json
+{
+  "items": [
     {
-      "categoryId": 1,
-      "name": "식비",
-      "type": "EXPENSE",
-      "categoryGroupId": 1,
-      "categoryGroupName": "식비",
-      "amount": 400000
-    }
-  ],
-  "memberAllocations": [
-    {
-      "userId": 1,
-      "nickname": "우리로그 개발자",
-      "amount": 600000
+      "merchant": "동네마트",
+      "suggestedCategoryId": 31
     }
   ]
 }
 ```
 
-## PUT /api/ledgers/{ledgerId}/months/{budgetMonth}
+- 상대방 거래와 다른 장부 거래, 삭제된 category는 추천 근거에서 제외합니다.
 
-### Purpose
+### `DELETE /api/transactions/{transactionId}`
 
-- 장부의 월 총 예산과 멤버별 할당을 저장합니다. 개인 장부에서는 카테고리별 예산도 저장합니다.
-- 공동 장부에서 전송한 `categoryBudgets`는 저장하지 않으며, 기존 카테고리 예산도 제거합니다.
+- 수정과 같은 권한
+- 거래와 예산 반영을 제거하고 `204 No Content`를 반환합니다.
 
-### Auth
+### `POST /api/ledgers/{ledgerId}/transactions/bulk-classify`
 
-- authenticated
-- current user must be a member of the ledger.
-
-### Request
+- 모든 거래의 수정 권한 필요
 
 ```json
 {
-  "totalBudgetAmount": 1000000,
-  "categoryBudgets": [
+  "transactionIds": [501, 502],
+  "categoryId": 31
+}
+```
+
+- 최대 100건, 전체 성공 또는 전체 실패
+- `200 OK`: 갱신된 거래 id 목록
+
+## 예산 상세·대시보드·분석
+
+### `GET /api/dashboard/current`
+
+- authenticated
+- query: `ledgerId` optional(없으면 현재 장부), `periodStart` optional(없으면 현재 기간)
+- 공동 장부 응답은 공동 allocation, 본인 allocation, 기간 수입 합계, 공동·본인 최근 거래, 최신 주간 가이드와 empty-state code를 반환합니다.
+
+```json
+{
+  "ledger": {},
+  "period": {},
+  "sharedBudget": {},
+  "myBudget": {},
+  "incomeAmount": 3000000,
+  "recentTransactions": [],
+  "weeklyGuide": null,
+  "emptyState": "READY"
+}
+```
+
+- `emptyState`: `INVITE_PARTNER`, `ALLOCATE_BUDGET`, `ADD_FIRST_TRANSACTION`, `READY`
+- 상대방 allocation과 거래는 홈 응답에 포함하지 않습니다.
+
+### `GET /api/ledgers/{ledgerId}/budget-periods/{startDate}/allocations/{allocationId}`
+
+- allocation 상세
+- 본인·공동 allocation은 전체 거래를, 상대방 개인 allocation은 공유 거래만 반환합니다.
+- 금액 요약, 대분류 사용액, 일별 흐름, 남은 예약 지출과 거래 cursor page를 반환합니다.
+
+### `GET /api/ledgers/{ledgerId}/analytics`
+
+- active 또는 former read-only member
+- query: `periodStart`, `scope=ALL|SHARED|MINE`
+- 총지출, 미분류 포함 대분류 분포, 일별·누적 흐름, 이전 기간 증감과 6·12개 기간 추세를 반환합니다.
+- `ALL`은 공동 거래와 본인 개인 거래만 포함합니다. 상대방 개인 거래는 공유 여부와 관계없이 제외합니다.
+- `INCOME`, `TRANSFER/OWN_ACCOUNTS`, `TRANSFER/INBOUND`는 총지출에서 제외합니다.
+
+## 이미지 가져오기
+
+세부 품질·중복 기준은 [Transaction Import](./transaction-import.md)를 따릅니다.
+
+### `POST /api/ledgers/{ledgerId}/transaction-imports/previews`
+
+- active member
+- `multipart/form-data`
+- fields: `sourceType=RECEIPT|CARD_APP_SCREENSHOT`, `images[]`
+
+`200 OK`:
+
+```json
+{
+  "sessionId": "imp_opaque_id",
+  "expiresAt": "2026-07-31T14:00:00Z",
+  "omittedCount": 2,
+  "omittedReasons": {
+    "LOW_CONFIDENCE": 1,
+    "MISSING_REQUIRED_FIELD": 1
+  },
+  "candidates": [
     {
-      "categoryId": 1,
-      "amount": 400000
-    }
-  ],
-  "memberAllocations": [
-    {
-      "userId": 1,
-      "amount": 600000
+      "candidateId": "cand_1",
+      "amount": 32400,
+      "occurredOn": "2026-07-31",
+      "merchant": "동네마트",
+      "suggestedCategoryId": 31,
+      "defaultBudgetSource": { "type": "PERSONAL", "ownerUserId": 1 },
+      "duplicateSuspected": false,
+      "duplicateReason": null,
+      "selectedByDefault": true
     }
   ]
 }
 ```
 
-### Response
-
-- `GET /api/ledgers/{ledgerId}/months/{budgetMonth}`와 같은 budget month settings response.
-
-### Errors
-
-| status | code | when |
+| status | code | 조건 |
 | --- | --- | --- |
-| 400 | INVALID_REQUEST | budgetMonth format is invalid, any amount is negative, the month is closed, category is not in ledger, or user is not a ledger member |
-| 403 | FORBIDDEN | current user is not a ledger member |
-| 404 | NOT_FOUND | ledger, category, or user does not exist |
+| 400 | `UNSUPPORTED_MEDIA` | 지원하지 않는 파일 |
+| 413 | `UPLOAD_LIMIT_EXCEEDED` | 장수 또는 크기 제한 초과 |
 
-## POST /api/ledgers/{ledgerId}/months/{budgetMonth}/close
+### `POST /api/ledgers/{ledgerId}/transaction-imports`
 
-### Purpose
-
-- 월 예산을 마감 상태로 전환합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the ledger.
-
-### Response
-
-- `GET /api/ledgers/{ledgerId}/months/{budgetMonth}`와 같은 budget month settings response with `closed: true`.
-
-## POST /api/ledgers/{ledgerId}/months/{budgetMonth}/reopen
-
-### Purpose
-
-- 마감된 월 예산을 다시 수정 가능한 상태로 전환합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the ledger.
-
-### Response
-
-- `GET /api/ledgers/{ledgerId}/months/{budgetMonth}`와 같은 budget month settings response with `closed: false`.
-
-## GET /api/dashboard/current
-
-### Purpose
-
-- 현재 사용 장부의 선택 월 예산, 지출 합계, 남은 예산, 최근 거래, 카테고리별/멤버별 지출을 조회합니다.
-
-### Auth
-
-- authenticated
-
-### Query
-
-| name | required | example | notes |
-| --- | --- | --- | --- |
-| budgetMonth | no | `2026-07` | 생략하면 서버 clock의 현재 월 |
-
-### Response
+- active member
 
 ```json
 {
-  "currentLedger": {
-    "id": 1,
-    "name": "우리로그 개발자의 개인 장부",
-    "type": "PERSONAL",
-    "ownerId": 1,
-    "recurringSummaryClosingDay": 31
-  },
-  "budgetMonth": "2026-07",
-  "totalBudgetAmount": 1000000,
-  "totalExpenseAmount": 45000,
-  "scheduledRecurringExpenseAmount": 13900,
-  "remainingBudgetAmount": 941100,
-  "recentTransactions": [
+  "sessionId": "imp_opaque_id",
+  "candidates": [
     {
-      "id": 3,
-      "ledgerId": 1,
-      "type": "INCOME",
-      "amount": 200000,
-      "transactionDate": "2026-07-12",
-      "category": {
-        "id": 5,
-        "name": "급여",
-        "type": "INCOME"
-      },
-      "payer": {
-        "id": 1,
-        "nickname": "우리로그 개발자"
-      },
-      "memo": "보너스"
-    }
-  ],
-  "categorySpending": [
-    {
-      "categoryGroupId": 1,
-      "name": "식비",
-      "totalSpent": 30000
-    }
-  ],
-  "memberSpending": [
-    {
-      "userId": 1,
-      "nickname": "우리로그 개발자",
-      "totalSpent": 45000
-    }
-  ],
-  "cardPaymentSummaries": [
-    {
-      "cardId": 1,
-      "cardName": "생활비 카드",
-      "statementClosingDate": "2026-07-25",
-      "expectedPaymentMonth": "2026-08",
-      "totalAmount": 120000
+      "candidateId": "cand_1",
+      "amount": 32400,
+      "occurredOn": "2026-07-31",
+      "merchant": "동네마트",
+      "categoryId": 31,
+      "budgetSource": { "type": "SHARED", "ownerUserId": null },
+      "paymentMethod": null,
+      "sharedWithPartner": null
     }
   ]
 }
 ```
 
-### Notes
+- 선택한 후보 전체를 한 트랜잭션에서 저장합니다.
+- `201 Created`: `{ "created": [{ "candidateId": "cand_1", "transaction": TransactionSummary }] }`
+- 같은 session 재전송은 기존 성공 결과를 반환하고 중복 생성하지 않습니다.
 
-- `budgetMonth`가 없으면 집계 기준 월은 서버 clock의 현재 `YearMonth`입니다.
-- `totalExpenseAmount`, `categorySpending`, `memberSpending`은 실제 `EXPENSE` 거래만 합산합니다. `categorySpending`은 세부 카테고리가 아닌 통계 대분류 기준입니다.
-- `scheduledRecurringExpenseAmount`는 선택 월에 발생하는 활성 지출 정기 거래 중 아직 실제 거래로 생성되지 않은 금액 합계입니다. 일시정지, 종료된 템플릿과 수입 정기 거래는 제외합니다.
-- `remainingBudgetAmount`는 `totalBudgetAmount - totalExpenseAmount - scheduledRecurringExpenseAmount`입니다. 이미 생성된 정기 거래는 실제 지출에만 포함되어 중복 차감하지 않습니다.
-- `recentTransactions`는 현재 월 거래를 `transactionDate desc, id desc` 순서로 최대 5개 반환합니다.
-- `cardPaymentSummaries`는 카드별로 직전 확정일 다음 날부터 다음 확정일까지의 카드 지출을 합산합니다. `expectedPaymentMonth`는 다음 확정일의 다음 달입니다.
-
-## GET /api/ledgers/{ledgerId}/statistics/monthly
-
-### Purpose
-
-- 지정한 월 범위의 월별 예산, 지출 합계, 수입 합계를 조회합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the ledger.
-
-### Query
-
-| name | required | example |
+| status | code | 조건 |
 | --- | --- | --- |
-| from | yes | `2026-06` |
-| to | yes | `2026-07` |
+| 400 | `INVALID_IMPORT_CANDIDATE` | 최종 후보 validation 실패 |
+| 410 | `IMPORT_SESSION_EXPIRED` | 만료 또는 사용할 수 없는 session |
 
-### Response
+## 반복 거래·고정비·할부
 
-```json
-[
-  {
-    "month": "2026-06",
-    "totalBudgetAmount": 500000,
-    "totalExpenseAmount": 80000,
-    "totalIncomeAmount": 40000,
-    "categorySpending": [
-      { "categoryGroupId": 1, "name": "식비", "totalSpent": 50000 }
-    ]
-  },
-  {
-    "month": "2026-07",
-    "totalBudgetAmount": 1200000,
-    "totalExpenseAmount": 250000,
-    "totalIncomeAmount": 500000
-  }
-]
-```
+세부 생성 규칙은 [Scheduled Transactions](./scheduled-transactions.md)를 따릅니다.
 
-### Errors
+### `GET /api/ledgers/{ledgerId}/scheduled-plans`
 
-| status | code | when |
-| --- | --- | --- |
-| 400 | INVALID_REQUEST | from/to month format is invalid or from is after to |
-| 403 | FORBIDDEN | current user is not a ledger member |
-| 404 | NOT_FOUND | ledger does not exist |
+- active member
+- query: `status=ACTIVE|PAUSED`, `kind=RECURRING_EXPENSE|INSTALLMENT`, `fixedExpense`
+- 결제수단 식별 정보는 계획 소유자에게만 반환합니다.
 
-## GET /api/ledgers/{ledgerId}/invitable-user
+### `POST /api/ledgers/{ledgerId}/scheduled-plans/recurring-expenses`
 
-### Purpose
-
-- 공동 장부에 직접 초대할 수 있는 기존 사용자를 이메일로 확인합니다.
-
-### Auth
-
-- authenticated
-- current user must be `OWNER` of the ledger.
-- ledger must be `GROUP`.
-
-### Query
-
-| name | required | example |
-| --- | --- | --- |
-| email | yes | `friend@woorilog.local` |
-
-### Response
+- active member
 
 ```json
 {
-  "user": {
-    "id": 2,
-    "email": "friend@woorilog.local",
-    "nickname": "친구",
-    "lastUsedLedgerId": 2
-  },
-  "invitable": true,
-  "reason": null
+  "name": "월세",
+  "amount": 800000,
+  "merchant": "임대인",
+  "categoryId": 41,
+  "budgetSource": { "type": "SHARED", "ownerUserId": null },
+  "frequency": "MONTHLY",
+  "startDate": "2026-08-01",
+  "endDate": null,
+  "isFixedExpense": true,
+  "paymentMethod": null
 }
 ```
 
-### Notes
+- `frequency`: `WEEKLY`, `MONTHLY`, `YEARLY`
+- `201 Created`: plan과 즉시 생성한 첫 거래가 있으면 그 거래
 
-- `reason` values: `SELF_INVITATION`, `ALREADY_MEMBER`, `PENDING_INVITATION`.
+### `PUT /api/scheduled-plans/{planId}`
 
-## POST /api/ledgers/{ledgerId}/invitations/users
-
-### Purpose
-
-- 공동 장부에 기존 사용자를 직접 초대합니다.
-
-### Auth
-
-- authenticated
-- current user must be `OWNER` of the ledger.
-- ledger must be `GROUP`.
-
-### Request
+- 계획의 차감 대상 수정 권한
 
 ```json
 {
-  "userId": 2
+  "scope": "FUTURE",
+  "name": "월세",
+  "amount": 820000,
+  "categoryId": 41,
+  "budgetSource": { "type": "SHARED", "ownerUserId": null },
+  "frequency": "MONTHLY",
+  "nextDueDate": "2026-09-01",
+  "endDate": null,
+  "isFixedExpense": true
 }
 ```
 
-### Response
+- `scope`는 V1에서 `FUTURE`만 허용합니다. 이미 생성된 한 거래는 거래 API에서 수정합니다.
 
-```json
-{
-  "id": 1,
-  "ledgerId": 10,
-  "ledgerName": "가족 장부",
-  "ledgerType": "GROUP",
-  "inviter": {
-    "id": 1,
-    "email": "owner@woorilog.local",
-    "nickname": "장부주인",
-    "lastUsedLedgerId": 10
-  },
-  "invitee": {
-    "id": 2,
-    "email": "friend@woorilog.local",
-    "nickname": "친구",
-    "lastUsedLedgerId": 2
-  },
-  "type": "DIRECT",
-  "status": "PENDING",
-  "token": null,
-  "expiresAt": null,
-  "respondedAt": null,
-  "createdAt": "2026-07-09T15:00:00Z"
-}
-```
+### `POST /api/scheduled-plans/{planId}/pause`
 
-## POST /api/ledgers/{ledgerId}/invitations/links
+- request: `{ "reason": "USER_REQUEST" }`
+- `200 OK`: paused plan
 
-### Purpose
+### `POST /api/scheduled-plans/{planId}/resume`
 
-- 공동 장부에 참여할 수 있는 단일 사용 초대 링크를 생성합니다.
+- request: `{ "nextDueDate": "2026-09-01" }`
+- 지난 발생분을 자동 소급 생성하지 않습니다.
 
-### Auth
+### `DELETE /api/scheduled-plans/{planId}`
 
-- authenticated
-- current user must be `OWNER` of the ledger.
-- ledger must be `GROUP`.
-
-### Request
-
-```json
-{
-  "expiresInDays": 7
-}
-```
-
-### Response
-
-- `POST /api/ledgers/{ledgerId}/invitations/users`와 같은 invitation response.
-- `type`은 `LINK`, `invitee`는 `null`, `token`은 링크 토큰입니다.
-
-### Notes
-
-- `expiresInDays`를 생략하면 7일입니다.
-- 현재 구현은 1-30일 범위로 보정합니다.
-- 링크 초대는 수락되면 `ACCEPTED`가 되어 재사용할 수 없습니다.
-
-## GET /api/ledgers/{ledgerId}/invitations
-
-### Purpose
-
-- 장부의 직접/링크 초대 목록을 최신순으로 조회합니다.
-
-### Auth
-
-- authenticated
-- current user must be `OWNER` of the ledger.
-
-### Response
-
-- invitation response array.
-
-## DELETE /api/ledgers/{ledgerId}/invitations/{invitationId}
-
-### Purpose
-
-- 대기 중인 초대를 취소합니다.
-
-### Auth
-
-- authenticated
-- current user must be `OWNER` of the ledger.
-
-### Response
-
-```text
-204 No Content
-```
-
-## GET /api/invitations/pending
-
-### Purpose
-
-- 현재 사용자에게 온 만료되지 않은 직접 초대 목록을 조회합니다.
-
-### Auth
-
-- authenticated
-
-### Response
-
-- invitation response array.
-
-## POST /api/invitations/{invitationId}/accept
-
-### Purpose
-
-- 직접 초대를 수락하고 장부 멤버로 참여합니다.
-
-### Auth
-
-- authenticated
-- current user must be the direct invitation invitee.
-
-### Response
-
-- invitation response with `status: "ACCEPTED"`.
-
-## POST /api/invitations/{invitationId}/reject
-
-### Purpose
-
-- 직접 초대를 거절합니다.
-
-### Auth
-
-- authenticated
-- current user must be the direct invitation invitee.
-
-### Response
-
-- invitation response with `status: "REJECTED"`.
-
-## GET /api/invitations/links/{token}
-
-### Purpose
-
-- 초대 링크의 장부와 초대자 정보를 조회합니다.
-
-### Auth
-
-- authenticated
-
-### Response
-
-```json
-{
-  "ledgerId": 10,
-  "ledgerName": "가족 장부",
-  "ledgerType": "GROUP",
-  "inviterNickname": "장부주인",
-  "status": "PENDING",
-  "expired": false
-}
-```
-
-## POST /api/invitations/links/{token}/accept
-
-### Purpose
-
-- 초대 링크를 수락하고 장부 멤버로 참여합니다.
-
-### Auth
-
-- authenticated
-
-### Response
-
-- invitation response with `status: "ACCEPTED"`.
-
-### Common Invitation Errors
-
-| status | code | when |
-| --- | --- | --- |
-| 400 | BAD_REQUEST | ledger is not GROUP, target is self/already member, duplicate pending invitation exists, invitation is not pending, invitation is expired, or link was already accepted |
-| 403 | FORBIDDEN | current user is not owner or direct invitation invitee |
-| 404 | NOT_FOUND | ledger, user, invitation, or link token does not exist |
-
-## GET /api/ledgers/{ledgerId}/recurring-transactions
-
-### Purpose
-
-- 장부의 반복 거래 템플릿 목록을 최신순으로 조회합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Response
-
-```json
-[
-  {
-    "id": 1,
-    "ledgerId": 1,
-    "type": "EXPENSE",
-    "amount": 10000,
-    "category": {
-      "id": 1,
-      "name": "식비",
-      "type": "EXPENSE"
-    },
-    "payer": {
-      "id": 1,
-      "nickname": "우리로그 개발자"
-    },
-    "memo": "주간 식비",
-    "frequency": "WEEKLY",
-    "startDate": "2026-07-01",
-    "nextDueDate": "2026-07-08",
-    "endDate": null,
-    "paused": false
-  }
-]
-```
-
-## POST /api/ledgers/{ledgerId}/recurring-transactions
-
-### Purpose
-
-- 반복 거래 템플릿을 생성합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Request
-
-```json
-{
-  "type": "EXPENSE",
-  "amount": 10000,
-  "categoryId": 1,
-  "memo": "주간 식비",
-  "payerUserId": null,
-  "frequency": "WEEKLY",
-  "startDate": "2026-07-01",
-  "endDate": null
-}
-```
-
-### Response
-
-- recurring transaction template response.
-
-### Notes
-
-- 시작일이 오늘 또는 과거면 해당 발생분을 실제 거래로 바로 등록하고, 미래 시작일이면 발생일까지 예정으로 유지합니다.
-- 이후 발생분은 서버가 자동으로 생성합니다. 같은 템플릿과 발생일 조합은 한 번만 기록됩니다.
-- 실제 거래를 생성하는 시작일이 마감된 월에 속하면 `409 MONTH_CLOSED`를 반환합니다.
-
-## PUT /api/recurring-transactions/{templateId}
-
-### Purpose
-
-- 반복 거래 템플릿을 수정합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the template ledger.
-
-### Request
-
-- `POST /api/ledgers/{ledgerId}/recurring-transactions`와 같은 request body.
-
-### Response
-
-- recurring transaction template response.
-
-### Notes
-
-- `startDate` 또는 `frequency`가 바뀌면 `nextDueDate`는 새 `startDate`로 재설정됩니다.
-
-## DELETE /api/recurring-transactions/{templateId}
-
-### Purpose
-
-- 더 이상 필요 없는 반복 거래 템플릿을 삭제합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the template ledger.
-
-### Response
-
+- 미래 occurrence를 취소하고 과거 생성 거래는 유지합니다.
 - `204 No Content`
 
-### Notes
+### `GET /api/ledgers/{ledgerId}/fixed-expenses`
 
-- 이미 가계부에 등록된 과거 거래는 삭제하지 않습니다.
-- 이후 자동 생성될 거래와 중복 생성 방지 이력만 제거합니다.
+- active member
+- `isFixedExpense=true`인 반복 지출과 현재 기간 예정 합계를 반환합니다.
 
-## POST /api/recurring-transactions/{templateId}/pause
+## 알림
 
-### Purpose
-
-- 반복 거래 템플릿을 일시정지합니다.
-
-### Auth
+### `GET /api/notifications`
 
 - authenticated
-- current user must be a member of the template ledger.
-
-### Response
-
-- recurring transaction template response with `paused: true`.
-
-## POST /api/recurring-transactions/{templateId}/resume
-
-### Purpose
-
-- 일시정지된 반복 거래 템플릿을 재개합니다.
-
-### Auth
-
-- authenticated
-- current user must be a member of the template ledger.
-
-### Response
-
-- recurring transaction template response with `paused: false`.
-
-## GET /api/ledgers/{ledgerId}/recurring-transactions/due
-
-### Purpose
-
-- 지정일 기준 생성 예정인 반복 거래 발생분을 조회합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Query
-
-| name | required | example |
-| --- | --- | --- |
-| asOf | no | `2026-07-10` |
-
-### Response
-
-```json
-[
-  {
-    "template": {
-      "id": 1,
-      "ledgerId": 1,
-      "type": "EXPENSE",
-      "amount": 10000,
-      "category": null,
-      "payer": {
-        "id": 1,
-        "nickname": "우리로그 개발자"
-      },
-      "memo": "주간 식비",
-      "frequency": "WEEKLY",
-      "startDate": "2026-07-01",
-      "nextDueDate": "2026-07-01",
-      "endDate": null,
-      "paused": false
-    },
-    "dueDate": "2026-07-01"
-  }
-]
-```
-
-## POST /api/ledgers/{ledgerId}/recurring-transactions/generate
-
-### Purpose
-
-- 지정일 기준 생성 예정인 반복 거래를 실제 거래로 생성합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Query
-
-| name | required | example |
-| --- | --- | --- |
-| asOf | no | `2026-07-10` |
-
-### Response
-
-- generated transaction response array.
-
-### Notes
-
-- overdue 발생분이 여러 개면 `asOf`까지 각각 생성합니다.
-- 생성 이력은 `(template_id, generated_date)` 기준으로 중복 생성을 방지합니다.
-- 생성 후 템플릿의 `nextDueDate`는 다음 발생 예정일로 전진합니다.
-
-### Common Recurring Transaction Errors
-
-| status | code | when |
-| --- | --- | --- |
-| 400 | INVALID_REQUEST | amount is not positive, startDate is after endDate, or transaction/category type mismatch |
-| 403 | FORBIDDEN | current user or payer is not a ledger member |
-| 404 | NOT_FOUND | ledger, category, payer, or template does not exist |
-
-### Ledger
-
-- `GET /api/ledgers`
-- `GET /api/ledgers/{ledgerId}/members`
-- `POST /api/ledgers/personal`
-- `POST /api/ledgers/group`
-- `POST /api/ledgers/{ledgerId}/use`
-- `PATCH /api/ledgers/{ledgerId}`
-- `POST /api/ledgers/{ledgerId}/archive`
-- `DELETE /api/ledgers/{ledgerId}/members/{userId}`
-- `DELETE /api/ledgers/{ledgerId}/members/me`
-- `PUT /api/ledgers/{ledgerId}/months/{budgetMonth}`
-- `POST /api/ledgers/{ledgerId}/months/{budgetMonth}/close`
-- `POST /api/ledgers/{ledgerId}/months/{budgetMonth}/reopen`
-
-### Transaction
-
-- `POST /api/ledgers/{ledgerId}/transactions`
-- `POST /api/ledgers/{ledgerId}/quick-transactions`
-- `GET /api/ledgers/{ledgerId}/months/{budgetMonth}/transactions`
-- `GET /api/transactions/{transactionId}`
-- `PUT /api/transactions/{transactionId}`
-- `DELETE /api/transactions/{transactionId}`
-
-### Card
-
-- `GET /api/ledgers/{ledgerId}/cards`
-- `POST /api/ledgers/{ledgerId}/cards`
-- `PUT /api/cards/{cardId}`
-- `DELETE /api/cards/{cardId}`
-
-### Transaction Import
-
-- `POST /api/ledgers/{ledgerId}/transaction-imports/ocr-preview`
-- `POST /api/ledgers/{ledgerId}/transaction-imports/preview`
-- `POST /api/ledgers/{ledgerId}/transaction-imports`
-
-이미지는 서버의 Native Tesseract로 인식하고, 직접 입력한 텍스트는 별도 preview endpoint에서 파싱합니다. 두 endpoint 모두 후보 생성만 수행하며 실제 거래를 저장하지 않습니다.
-
-## POST /api/ledgers/{ledgerId}/transaction-imports/ocr-preview
-
-### Purpose
-
-- 한 장 이상의 거래 내역 이미지를 전처리하고 OCR 결과를 하나의 거래 후보 목록으로 파싱합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Request
-
-- Content-Type: `multipart/form-data`
-- `image`: required repeated PNG/JPEG multipart field. 1~10개 파일을 같은 field name으로 전송하며 전체 multipart request는 최대 10MB입니다.
-- `transactionDate`: optional `YYYY-MM-DD` multipart field or query parameter. 이미지에서 날짜를 찾지 못했을 때 사용합니다.
-
-### Response
+- query: `ledgerId` optional, `unreadOnly=false`, `cursor`, `limit`
+- 최신 생성 순
 
 ```json
 {
-  "extractedText": "2026-07-18 네이버페이 127200원",
-  "ocrEngine": "tesseract-5-server",
-  "candidates": [
+  "items": [
     {
-      "id": "candidate-1",
-      "type": "EXPENSE",
-      "amount": 127200,
-      "transactionDate": "2026-07-18",
-      "categoryId": 1,
-      "categoryName": "식비",
-      "memo": "네이버페이",
-      "rawText": "2026-07-18 네이버페이 127200원",
-      "confidence": 0.82
+      "id": 901,
+      "type": "BUDGET_THRESHOLD_80",
+      "title": "공동 예산을 80% 사용했어요",
+      "message": "남은 사용 가능액을 확인해 보세요.",
+      "ledgerId": 10,
+      "budgetPeriodStart": "2026-07-10",
+      "targetPath": "/budgets?period=2026-07-10",
+      "read": false,
+      "createdAt": "2026-07-31T12:30:00Z"
     }
   ],
-  "rejectedLines": 0
+  "unreadCount": 3,
+  "nextCursor": null
 }
 ```
 
-### Errors
+### `POST /api/notifications/{notificationId}/read`
 
-- `400 INVALID_OCR_IMAGE`: 파일 개수, 형식, 내용, 해상도 검증 실패
-- `413 OCR_IMAGE_TOO_LARGE`: multipart 크기 10MB 초과
-- `422 OCR_PROCESSING_FAILED`: 이미지 디코딩 후 문자를 추출하지 못함
-- `503 OCR_UNAVAILABLE`: 서버에서 Tesseract 실행 불가
+- 수신 사용자 only
+- `204 No Content`, 이미 읽었어도 성공
 
-### Notes
+### `POST /api/notifications/read-all`
 
-- 서버는 원본과 대비 강화·반전 결과를 기본 인식하며, 결과가 불충분하면 이진화 결과도 인식합니다.
-- 여러 변형에서 얻은 거래 후보를 금액과 순서로 정렬해 더 깨끗한 상호명을 선택합니다.
-- `HH:mm #결제수단` 형식의 상세 행과 잔액이 함께 있는 화면은 희소 레이아웃 OCR 결과를 추가 결합하며 잔액은 거래 후보로 만들지 않습니다.
-- 여러 이미지는 첨부 순서대로 처리하고 후보를 하나의 목록으로 합칩니다. 단일 이미지의 candidate ID 형식은 기존과 같고, 여러 이미지일 때 `image-{순번}-` prefix를 붙입니다.
-- 업로드 원본과 전처리 이미지는 요청 처리 중 임시 파일로만 사용하고 종료 시 삭제합니다.
+- 인증 사용자의 모든 현재 알림을 읽음 처리합니다. 현재 page에 제한되지 않습니다.
+- `204 No Content`
 
-## POST /api/ledgers/{ledgerId}/transaction-imports/preview
-
-### Purpose
-
-- 직접 입력하거나 이미 추출된 텍스트를 거래 후보로 파싱합니다.
-- 후보 생성만 수행하며 실제 거래는 저장하지 않습니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Request
+### `GET /api/notification-preferences`
 
 ```json
 {
-  "text": "2026-07-09 식비 점심 12,000원\n급여 입금 500000원",
-  "transactionDate": "2026-07-10",
-  "ocrEngine": "manual-text",
-  "sourceName": "receipt.png"
+  "budgetWarning80Enabled": true,
+  "weeklyGuideEnabled": true
 }
 ```
 
-### Response
+### `PUT /api/notification-preferences`
 
-```json
-{
-  "candidates": [
-    {
-      "id": "candidate-1",
-      "type": "EXPENSE",
-      "amount": 12000,
-      "transactionDate": "2026-07-09",
-      "categoryId": 1,
-      "categoryName": "식비",
-      "memo": "2026-07-09 식비 점심 12,000원",
-      "rawText": "2026-07-09 식비 점심 12,000원",
-      "confidence": 0.82
-    }
-  ],
-  "rejectedLines": 0
-}
-```
+- 두 boolean을 모두 받습니다.
+- 100%·초과와 공동 예산 변경 알림은 필수이므로 설정 필드가 없습니다.
 
-### Notes
+## 이전 API 전환
 
-- `ocrEngine`과 `sourceName`은 선택적인 출처 metadata이며 파싱 결과에는 영향을 주지 않습니다.
-- 금액은 `원`, `₩`, 쉼표 포함 숫자를 우선 파싱합니다.
-- 날짜가 줄 안에 없으면 request의 `transactionDate`를 사용하고, 둘 다 없으면 서버 현재일을 사용합니다.
-- `급여`, `입금`, `수입`, `환급`, `이자`, `bonus`, `salary`가 포함된 줄은 `INCOME`으로 추론하고 나머지는 `EXPENSE`로 봅니다.
+현재 구현 endpoint는 새 V1 구현이 배포될 때 아래처럼 처리합니다.
 
-## POST /api/ledgers/{ledgerId}/transaction-imports
+| 현재 endpoint/기능 | V1 처리 |
+| --- | --- |
+| `POST /api/ledgers/personal` | 제거; 기본 개인 장부만 허용 |
+| `POST /api/ledgers/group` | `POST /api/ledgers/shared`로 교체 |
+| `POST /api/ledgers/{id}/archive` | 제거; 공동 장부 보관 미지원 |
+| `/api/ledgers/{id}/invitable-user` | 제거; 사용자 검색 미지원 |
+| `/api/ledgers/{id}/invitations/users` | 제거; 직접 초대 미지원 |
+| pending 직접 초대 API | 제거 |
+| `/api/ledgers/{id}/months/{YYYY-MM}` | budget-period endpoint로 교체 |
+| 월 `close`, `reopen` | 제거; 수동 마감 미지원 |
+| 월 settlement API | 쓰기 제거, migration 후 legacy 보존 |
+| card 관리 API | 화면·새 쓰기 제거; 거래 snapshot으로 전환 |
+| fixed-budget API | `scheduled-plans`의 fixed expense로 교체 |
+| 월 거래 목록·통계 | budget period 기반 거래·analytics로 교체 |
+| text import preview | 제거; 영수증·카드 앱 이미지 preview로 통합 |
+| recurring `due`, `generate` public API | 사용자 API에서 제거하고 내부 scheduler로 전환 |
+| transaction bulk delete | V1 화면에서 제거; 필요 시 별도 계약 후 재도입 |
 
-### Purpose
+- 구형 endpoint를 새 의미로 조용히 재사용하지 않습니다.
+- 호환 기간이 필요하면 응답에 `Deprecation`과 `Sunset` header를 추가하고 제거일을 배포 문서에 확정합니다.
+- 구현 완료 전까지 현재 controller의 실제 동작을 확인해야 하는 개발자는 git history의 이전 API 문서와 controller/test를 함께 봅니다. 이 문서는 목표 V1 호출자 계약만 정의합니다.
 
-- preview에서 사용자가 확인·수정하고 선택한 거래 후보를 한 번에 저장합니다.
-- 모든 후보는 일반 거래 생성 규칙(장부 멤버 권한, 카테고리 유형, 월 마감 등)을 동일하게 적용합니다.
+## 계약 완료 체크리스트
 
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-
-### Request
-
-```json
-{
-  "candidates": [
-    {
-      "type": "EXPENSE",
-      "amount": 12000,
-      "transactionDate": "2026-07-09",
-      "categoryId": 1,
-      "memo": "점심"
-    }
-  ]
-}
-```
-
-### Response
-
-Success status: `200 OK`
-
-- 생성된 거래 목록을 입력 순서대로 반환합니다. 각 항목의 형식은 `POST /api/ledgers/{ledgerId}/transactions` 응답과 같습니다.
-
-### Errors
-
-- `400 INVALID_REQUEST`: 후보 목록이 비어 있거나 후보 값이 유효하지 않음
-- `403 FORBIDDEN`: 장부 멤버가 아님
-- `404 NOT_FOUND`: 장부 또는 카테고리를 찾을 수 없음
-- `409 MONTH_CLOSED`: 후보 중 하나의 거래 월이 마감됨
-
-### Notes
-
-- 한 후보라도 저장할 수 없으면 전체 요청을 저장하지 않습니다.
-
-### Category
-
-- `GET /api/ledgers/{ledgerId}/categories`
-- `POST /api/ledgers/{ledgerId}/categories`
-
-### Dashboard
-
-- `GET /api/dashboard/current?budgetMonth=YYYY-MM`
-
-### Statistics
-
-- `GET /api/ledgers/{ledgerId}/statistics/monthly`
-
-### Invitation
-
-- `GET /api/ledgers/{ledgerId}/invitable-user`
-- `POST /api/ledgers/{ledgerId}/invitations/users`
-- `POST /api/ledgers/{ledgerId}/invitations/links`
-- `GET /api/ledgers/{ledgerId}/invitations`
-- `DELETE /api/ledgers/{ledgerId}/invitations/{invitationId}`
-- `GET /api/invitations/pending`
-- `POST /api/invitations/{invitationId}/accept`
-- `POST /api/invitations/{invitationId}/reject`
-- `GET /api/invitations/links/{token}`
-- `POST /api/invitations/links/{token}/accept`
-
-### Recurring Transaction
-
-- `GET /api/ledgers/{ledgerId}/recurring-transactions`
-- `POST /api/ledgers/{ledgerId}/recurring-transactions`
-- `PUT /api/recurring-transactions/{templateId}`
-- `DELETE /api/recurring-transactions/{templateId}`
-- `POST /api/recurring-transactions/{templateId}/pause`
-- `POST /api/recurring-transactions/{templateId}/resume`
-- `GET /api/ledgers/{ledgerId}/recurring-transactions/due`
-- `POST /api/ledgers/{ledgerId}/recurring-transactions/generate`
-
-### Settlement
-
-- `GET /api/ledgers/{ledgerId}/months/{budgetMonth}/settlements`
-- `POST /api/ledgers/{ledgerId}/months/{budgetMonth}/settlements`
-- `DELETE /api/settlements/{paymentId}`
-
-### Notification
-
-- `GET /api/notifications`
-- `POST /api/notifications/{notificationId}/read`
-- `POST /api/notifications/read-all`
-
-## Ledger Management APIs
-
-- `PATCH /api/ledgers/{ledgerId}` body: `{ "name": "새 장부 이름" }` 또는 `{ "recurringSummaryClosingDay": 10 }`; 장부 OWNER만 변경할 수 있습니다.
-- `POST /api/ledgers/{ledgerId}/archive`; 공동 장부 OWNER만 보관할 수 있고 보관된 장부는 목록에서 제외됩니다.
-- `DELETE /api/ledgers/{ledgerId}/members/{userId}`; OWNER가 일반 멤버를 내보냅니다.
-- `DELETE /api/ledgers/{ledgerId}/members/me`; 일반 멤버가 공동 장부에서 탈퇴합니다.
-- 성공한 삭제 요청은 `204 No Content`, 이름 변경과 보관은 `LedgerDto`를 반환합니다.
-
-## Transaction Mutation Guard
-
-- `DELETE /api/transactions/{transactionId}`는 현재 사용자가 결제자인 거래만 삭제할 수 있고, 성공 시 `204 No Content`를 반환합니다.
-- `POST /api/transactions/bulk-delete`는 1~100개의 고유 거래 ID를 받아 모든 대상을 단건 삭제와 같은 규칙으로 먼저 검증한 뒤 원자적으로 삭제하며, 성공 시 `204 No Content`를 반환합니다.
-- 마감된 월의 거래 생성·빠른 입력·수정·삭제와 반복 거래 생성은 `409 MONTH_CLOSED`를 반환합니다.
-
-## GET/POST /api/ledgers/{ledgerId}/months/{budgetMonth}/settlements
-
-### Purpose
-
-- 멤버별 실제 지출, 할당 비율에 따른 부담액, 잔액, 필요한 송금과 기존 송금 기록을 조회합니다.
-- `POST`는 송금을 일부 또는 전액 기록한 뒤 다시 계산된 동일 응답을 반환합니다.
-
-### Auth
-
-- authenticated
-- current user must be a ledger member.
-- 현재 V1에서는 계산된 송금 방향과 잔액이 유효하면 어느 장부 멤버든 송금을 기록할 수 있습니다.
-
-### POST Request
-
-```json
-{ "fromUserId": 2, "toUserId": 1, "amount": 35000 }
-```
-
-### Response
-
-```json
-{
-  "ledgerId": 10,
-  "budgetMonth": "2026-07",
-  "totalExpenseAmount": 100000,
-  "members": [
-    { "userId": 1, "nickname": "민지", "paidAmount": 85000, "owedAmount": 50000, "balanceAmount": 35000 },
-    { "userId": 2, "nickname": "현우", "paidAmount": 15000, "owedAmount": 50000, "balanceAmount": -35000 }
-  ],
-  "transfers": [
-    { "fromUserId": 2, "fromNickname": "현우", "toUserId": 1, "toNickname": "민지", "amount": 35000 }
-  ],
-  "payments": []
-}
-```
-
-- 송금액은 0보다 커야 하며 현재 남은 송금액을 초과할 수 없습니다.
-- `DELETE /api/settlements/{paymentId}`는 기록한 사용자 또는 장부 OWNER가 기록을 취소하고 `204 No Content`를 반환합니다.
-
-## Notification APIs
-
-`GET /api/notifications` response:
-
-```json
-{
-  "unreadCount": 1,
-  "notifications": [
-    {
-      "id": 3,
-      "type": "INVITATION",
-      "title": "새 장부 초대",
-      "message": "생활비 장부에 초대받았습니다.",
-      "targetPath": "/settings",
-      "readAt": null,
-      "createdAt": "2026-07-12T03:00:00Z"
-    }
-  ]
-}
-```
-
-- `notifications`는 최신순 최근 50개이며 `unreadCount`는 저장된 전체 미읽음 알림 수입니다.
-- `POST /api/notifications/{notificationId}/read`는 읽음 처리된 알림을 반환합니다.
-- `POST /api/notifications/read-all`은 최근 50개 제한과 무관하게 현재 사용자의 모든 미읽음 알림을 읽음 처리하고 `204 No Content`를 반환합니다.
-
-## Endpoint Template
-
-```markdown
-## METHOD /api/path
-
-### Purpose
-
--
-
-### Auth
-
--
-
-### Request
-
--
-
-### Response
-
--
-
-### Errors
-
--
-
-### Notes
-
--
-```
+- endpoint마다 인증·권한·상태 코드가 구현과 테스트에 반영됩니다.
+- optional과 nullable이 DTO/OpenAPI schema와 일치합니다.
+- 상대방 비공개 거래와 결제수단 식별 정보가 query 단계에서 제외됩니다.
+- 예산 기간 경계와 과거 기간 알림 억제가 고정 clock 테스트로 검증됩니다.
+- 초대 수락, import save, 예약 거래 생성은 동시 요청과 재시도에도 중복되지 않습니다.
+- 제거 endpoint는 프론트엔드 참조가 사라진 뒤에만 삭제합니다.

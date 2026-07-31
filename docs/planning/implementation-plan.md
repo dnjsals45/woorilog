@@ -7,8 +7,9 @@
 
 - 제품 기능과 정책은 V1 Scope에 확정되어 있습니다.
 - [User Flows](../product/user-flows.md), [Information Architecture](../design/information-architecture.md)와 [Screen Specs](../design/screen-specs.md)는 새 V1을 기준으로 교체되었습니다.
-- 현재 백엔드, 프론트엔드, API 계약과 도메인 모델은 이전 제품 범위의 구현 기준선입니다.
-- 새 V1 구현 전 기능별 계약 차이와 데이터 이전 방식을 먼저 확정해야 합니다.
+- [Domain Model](../engineering/domain-model.md), [API Contract](../engineering/api-contract.md), 권한·개인정보·migration·OCR·예약 실행 문서는 새 V1 목표 계약으로 교체되었습니다.
+- 현재 백엔드와 프론트엔드는 여전히 이전 제품 범위의 구현 기준선이며 목표 문서의 완료 상태를 의미하지 않습니다.
+- 새 V1 구현은 아래 계약과 데이터 이전 순서에 맞춰 기능별로 전환해야 합니다.
 
 ## 구현 원칙
 
@@ -19,6 +20,8 @@
 - 각 작업은 하나의 관찰 가능한 결과와 되돌릴 수 있는 PR 범위를 가집니다.
 
 ## 0. 계약과 데이터 차이 확정
+
+상태: 문서 설계 완료, 구현 migration 대기
 
 범위:
 
@@ -31,9 +34,11 @@
 
 완료 기준:
 
-- [Domain Model](../engineering/domain-model.md)과 [API Contract](../engineering/api-contract.md)가 새 V1 목표 계약을 설명합니다.
-- 기존 데이터의 보존·변환·제거 기준이 문서화되어 있습니다.
-- 프론트엔드와 백엔드 작업을 독립적인 이슈와 PR로 나눌 수 있습니다.
+- [x] [Domain Model](../engineering/domain-model.md)과 [API Contract](../engineering/api-contract.md)가 새 V1 목표 계약을 설명합니다.
+- [x] [Permissions](../engineering/permissions.md)와 [Privacy](../engineering/privacy.md)에 두 사용자 권한과 공개 범위가 정리되어 있습니다.
+- [x] [Data Migration](../engineering/data-migration.md)에 기존 데이터의 보존·변환·제거 기준이 정리되어 있습니다.
+- [x] [Transaction Import](../engineering/transaction-import.md)와 [Scheduled Transactions](../engineering/scheduled-transactions.md)에 OCR·예약 실행 경계가 정리되어 있습니다.
+- [ ] 실제 schema migration과 호환 구현이 검증되어 있습니다.
 
 ## 1. 사용자와 공동 장부 기반
 

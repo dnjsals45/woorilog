@@ -22,6 +22,9 @@
 - 인증/세션: `docs/engineering/auth-session.md`
 - 환경 변수: `docs/engineering/environment.md`
 - 도메인 모델: `docs/engineering/domain-model.md`
+- 권한/개인정보: `docs/engineering/permissions.md`, `docs/engineering/privacy.md`
+- 데이터 이전: `docs/engineering/data-migration.md`
+- 거래 가져오기/예약 실행: `docs/engineering/transaction-import.md`, `docs/engineering/scheduled-transactions.md`
 - 테스트 전략: `docs/engineering/testing-strategy.md`
 - 구현 계획: `docs/planning/implementation-plan.md`
 
