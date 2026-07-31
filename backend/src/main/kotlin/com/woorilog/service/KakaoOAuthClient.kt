@@ -2,12 +2,14 @@ package com.woorilog.service
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.woorilog.exception.WoorilogException
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientResponseException
 import org.springframework.web.util.UriComponentsBuilder
 
 @Component
@@ -17,6 +19,7 @@ class KakaoOAuthClient(
     @Value("\${app.kakao.redirect-uri:}") private val redirectUri: String,
 ) {
     private val restClient = RestClient.create()
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     fun authorizationUrl(): String {
         requireConfigured()
@@ -45,7 +48,11 @@ class KakaoOAuthClient(
                 .body(tokenRequest)
                 .retrieve()
                 .body(JsonNode::class.java)
-        } catch (_: Exception) {
+        } catch (exception: RestClientResponseException) {
+            logKakaoApiFailure("token exchange", exception)
+            throw WoorilogException("KAKAO_AUTH_FAILED", "카카오 인증에 실패했습니다.", HttpStatus.BAD_GATEWAY)
+        } catch (exception: Exception) {
+            logger.warn("Kakao token exchange failed: exceptionType={}", exception.javaClass.simpleName)
             throw WoorilogException("KAKAO_AUTH_FAILED", "카카오 인증에 실패했습니다.", HttpStatus.BAD_GATEWAY)
         }
         val accessToken = tokenResponse?.path("access_token")?.asText().orEmpty()
@@ -59,14 +66,17 @@ class KakaoOAuthClient(
                 .header("Authorization", "Bearer $accessToken")
                 .retrieve()
                 .body(JsonNode::class.java)
-        } catch (_: Exception) {
+        } catch (exception: RestClientResponseException) {
+            logKakaoApiFailure("user lookup", exception)
+            throw WoorilogException("KAKAO_AUTH_FAILED", "카카오 사용자 정보를 불러오지 못했습니다.", HttpStatus.BAD_GATEWAY)
+        } catch (exception: Exception) {
+            logger.warn("Kakao user lookup failed: exceptionType={}", exception.javaClass.simpleName)
             throw WoorilogException("KAKAO_AUTH_FAILED", "카카오 사용자 정보를 불러오지 못했습니다.", HttpStatus.BAD_GATEWAY)
         }
         val providerUserId = userResponse?.path("id")?.asText().orEmpty()
         if (providerUserId.isBlank()) {
             throw WoorilogException("KAKAO_AUTH_FAILED", "카카오 사용자 정보를 불러오지 못했습니다.", HttpStatus.BAD_GATEWAY)
         }
-
         val account = userResponse?.path("kakao_account")
             ?: throw WoorilogException("KAKAO_AUTH_FAILED", "카카오 사용자 정보를 불러오지 못했습니다.", HttpStatus.BAD_GATEWAY)
         return KakaoUser(
@@ -83,7 +93,33 @@ class KakaoOAuthClient(
             throw WoorilogException("NOT_CONFIGURED", "카카오 로그인 설정이 완료되지 않았습니다.", HttpStatus.NOT_IMPLEMENTED)
         }
     }
+
+    private fun logKakaoApiFailure(operation: String, exception: RestClientResponseException) {
+        val apiError = parseKakaoApiError(exception.responseBodyAsString)
+        logger.warn(
+            "Kakao {} failed: status={}, error={}, errorCode={}",
+            operation,
+            exception.statusCode.value(),
+            apiError.error ?: "unknown",
+            apiError.errorCode ?: "unknown",
+        )
+    }
 }
+
+internal fun parseKakaoApiError(responseBody: String): KakaoApiError = try {
+    val payload = com.fasterxml.jackson.databind.ObjectMapper().readTree(responseBody)
+    KakaoApiError(
+        error = payload.path("error").asText().takeIf { it.isNotBlank() },
+        errorCode = payload.path("error_code").asText().takeIf { it.isNotBlank() },
+    )
+} catch (_: Exception) {
+    KakaoApiError()
+}
+
+internal data class KakaoApiError(
+    val error: String? = null,
+    val errorCode: String? = null,
+)
 
 data class KakaoUser(
     val providerUserId: String,

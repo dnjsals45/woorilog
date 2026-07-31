@@ -31,7 +31,7 @@ Endpoint별 상세 계약은 [API Contract](./api-contract.md)를 따릅니다.
 - Kakao OAuth endpoint는 authorization URL을 만들고, callback code를 Kakao token/user API와 교환해 우리로그 access token을 발급합니다. 환경 변수가 없을 때만 `501 NOT_CONFIGURED`를 반환합니다.
 - developer login은 `local` profile에서만 기본 활성화됩니다. 홈 배포 등 다른 profile에서는 `DEV_LOGIN_ENABLED=true`을 명시하지 않는 한 `403 FORBIDDEN`을 반환합니다.
 - logout은 현재 refresh token을 폐기하고 cookie를 만료시킨 뒤 `204 No Content`를 반환합니다.
-- Kakao callback 교환이 실패하면 자동으로 반복 요청하지 않고, 사용자가 명시적으로 재시도하거나 로그인 화면으로 돌아갑니다.
+- Kakao callback 교환이 실패하면 자동으로 반복 요청하지 않고, 사용자는 로그인 화면으로 돌아가 새 인가 코드를 발급받습니다.
 
 ## Deployment
 

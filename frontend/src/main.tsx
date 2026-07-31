@@ -7,6 +7,12 @@ import App from './App.tsx'
 
 const queryClient = new QueryClient()
 
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && window.location.pathname === '/auth/kakao/callback') {
+    window.location.reload()
+  }
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

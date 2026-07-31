@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   clearAccessToken,
@@ -61,19 +62,18 @@ export function useDevLoginMutation() {
   })
 }
 
-export function useKakaoLoginMutation() {
+export function useKakaoLogin() {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: completeKakaoLogin,
-    onSuccess: (data) => {
+  return useCallback(async (code: string) => {
+    const data = await completeKakaoLogin(code)
       setAccessToken(data.accessToken)
       queryClient.setQueryData(authQueryKeys.me, {
         user: data.user,
         currentLedger: data.currentLedger,
       })
-    },
-  })
+    return data
+  }, [queryClient])
 }
 
 export function useLogoutMutation() {

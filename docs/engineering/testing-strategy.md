@@ -19,7 +19,7 @@
 ### Integration Tests
 
 - auth callback, refresh, logout
-- protected route login return and failed Kakao callback retry guard
+- protected route login return and failed Kakao callback no-repeat guard
 - default personal ledger creation
 - ledger CRUD and switching
 - invitation accept/reject/link flow

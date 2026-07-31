@@ -134,22 +134,31 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 2, name: '우리 공동 장부' })).toBeInTheDocument()
   })
 
-  it('does not automatically repeat a failed Kakao callback and allows an explicit retry', async () => {
+  it('does not automatically repeat a failed Kakao callback', async () => {
     const fetchSpy = installApiMock((path, method) => {
       if (path === '/api/auth/kakao/callback' && method === 'POST') {
         return response({ code: 'KAKAO_LOGIN_FAILED', message: '로그인 실패' }, 502)
       }
       return undefined
     })
-    const actor = userEvent.setup()
     renderApp('/auth/kakao/callback?code=failed-code')
 
-    expect(await screen.findByText('카카오 로그인에 실패했습니다. 다시 시도해주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('카카오 로그인에 실패했습니다. 로그인 화면에서 다시 시도해주세요.')).toBeInTheDocument()
     const callbackRequestCount = () => fetchSpy.mock.calls.filter(([input]) => requestUrl(input).includes('/api/auth/kakao/callback')).length
     expect(callbackRequestCount()).toBe(1)
+    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+  })
 
-    await actor.click(screen.getByRole('button', { name: '다시 시도' }))
-    await waitFor(() => expect(callbackRequestCount()).toBe(2))
+  it('redirects to the dashboard after a successful Kakao callback', async () => {
+    installApiMock((path, method) => {
+      if (path === '/api/auth/kakao/callback' && method === 'POST') {
+        return response({ accessToken: 'kakao-access-token', expiresInSeconds: 1800, user, currentLedger: ledger })
+      }
+      return undefined
+    })
+    renderApp('/auth/kakao/callback?code=success-code')
+
+    expect(await screen.findByText('남은 예산')).toBeInTheDocument()
   })
 
   it('clears an invalid access token and renders login', async () => {
