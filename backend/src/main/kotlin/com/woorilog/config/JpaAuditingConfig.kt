@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.time.temporal.TemporalAccessor
 import java.util.Optional
 
@@ -18,7 +19,7 @@ class JpaAuditingConfig {
 
     @Bean
     fun clock(): Clock {
-        return Clock.systemDefaultZone()
+        return Clock.system(ZoneId.of("Asia/Seoul"))
     }
 }
 

@@ -8,7 +8,7 @@ enum class InvitationType {
 }
 
 enum class InvitationStatus {
-    PENDING, ACCEPTED, REJECTED, CANCELLED, EXPIRED
+    PENDING, ACCEPTED, REJECTED, CANCELLED, EXPIRED, REPLACED
 }
 
 @Entity
@@ -37,19 +37,27 @@ class Invitation(
     @Column(nullable = true)
     var token: String? = null,
 
+    @Column(name = "token_hash", length = 64)
+    var tokenHash: String? = null,
+
     @Column(name = "expires_at", nullable = true)
     var expiresAt: Instant? = null,
 
     @Column(name = "responded_at", nullable = true)
-    var respondedAt: Instant? = null
+    var respondedAt: Instant? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "responded_by_user_id")
+    var respondedBy: User? = null,
 ) : BaseEntity() {
 
     fun isExpired(now: Instant): Boolean {
-        if (status == InvitationStatus.EXPIRED) return true
+        if (status == InvitationStatus.EXPIRED || status == InvitationStatus.REPLACED) return true
         return expiresAt != null && expiresAt!!.isBefore(now)
     }
 
     fun getEffectiveStatus(now: Instant): InvitationStatus {
+        if (status == InvitationStatus.REPLACED) return InvitationStatus.REPLACED
         if (status == InvitationStatus.PENDING && isExpired(now)) {
             return InvitationStatus.EXPIRED
         }

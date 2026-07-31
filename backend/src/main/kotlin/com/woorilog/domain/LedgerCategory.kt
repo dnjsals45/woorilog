@@ -3,7 +3,7 @@ package com.woorilog.domain
 import jakarta.persistence.*
 
 enum class CategoryType {
-    EXPENSE, INCOME
+    EXPENSE, INCOME, TRANSFER
 }
 
 @Entity
@@ -33,5 +33,8 @@ class LedgerCategory(
     var sortOrder: Int,
 
     @Column(name = "default_category", nullable = false)
-    var defaultCategory: Boolean
+    var defaultCategory: Boolean,
+
+    @Column(nullable = false)
+    var active: Boolean = true,
 ) : BaseEntity()

@@ -24,4 +24,14 @@ class Ledger(
 
     @Column(name = "recurring_summary_closing_day", nullable = false)
     var recurringSummaryClosingDay: Int = 31,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "budget_start_type", nullable = false)
+    var budgetStartType: BudgetStartType = BudgetStartType.DAY_OF_MONTH,
+
+    @Column(name = "budget_start_day")
+    var budgetStartDay: Int? = 1,
+
+    @Column(name = "default_total_budget_amount", nullable = false)
+    var defaultTotalBudgetAmount: Long = 0,
 ) : BaseEntity()

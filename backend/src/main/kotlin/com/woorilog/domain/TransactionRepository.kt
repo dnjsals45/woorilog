@@ -7,6 +7,7 @@ import java.time.LocalDate
 @Repository
 interface TransactionRepository : JpaRepository<Transaction, Long> {
     fun existsByCategoryId(categoryId: Long): Boolean
+    fun findByCategoryId(categoryId: Long): List<Transaction>
 
     fun existsByCardId(cardId: Long): Boolean
 
@@ -14,5 +15,11 @@ interface TransactionRepository : JpaRepository<Transaction, Long> {
         ledgerId: Long,
         startDate: LocalDate,
         endDate: LocalDate
+    ): List<Transaction>
+    fun findByLedgerIdOrderByTransactionDateDescIdDesc(ledgerId: Long): List<Transaction>
+    fun findByBudgetAllocationIdAndTransactionDateBetween(
+        budgetAllocationId: Long,
+        startDate: LocalDate,
+        endDate: LocalDate,
     ): List<Transaction>
 }

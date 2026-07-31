@@ -2,8 +2,12 @@ package com.woorilog.domain
 
 import jakarta.persistence.*
 import java.time.Instant
+import java.time.LocalDate
 
-enum class NotificationType { INVITATION, BUDGET, MONTH_CLOSED, SYSTEM }
+enum class NotificationType {
+    INVITATION, BUDGET, MONTH_CLOSED, SYSTEM,
+    BUDGET_THRESHOLD_80, BUDGET_THRESHOLD_100, BUDGET_PERIOD_PREPARATION, WEEKLY_GUIDE,
+}
 
 @Entity
 @Table(
@@ -27,6 +31,12 @@ class UserNotification(
 
     @Column(name = "target_path")
     val targetPath: String?,
+
+    @Column(name = "ledger_id")
+    val ledgerId: Long? = null,
+
+    @Column(name = "budget_period_start")
+    val budgetPeriodStart: LocalDate? = null,
 
     @Column(name = "unique_key", nullable = false)
     val uniqueKey: String,
