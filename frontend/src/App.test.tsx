@@ -587,6 +587,7 @@ describe('App', () => {
     const actor = userEvent.setup()
     renderApp('/calendar')
 
+    await actor.click(await screen.findByRole('button', { name: '선택 해제하고 월 전체 보기' }))
     expect(await screen.findByText('1–6 / 7건')).toBeInTheDocument()
     expect(screen.getByText('1번째 거래')).toBeInTheDocument()
     expect(screen.queryByText('7번째 거래')).not.toBeInTheDocument()
