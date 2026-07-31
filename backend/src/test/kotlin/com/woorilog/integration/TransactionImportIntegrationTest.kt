@@ -1,6 +1,7 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.JsonNode
 import com.woorilog.service.DevLoginResponse
 import com.woorilog.service.TransactionImageOcr
 import com.woorilog.service.TransactionImageOcrResult
@@ -68,7 +69,7 @@ class TransactionImportIntegrationTest {
             .andExpect(jsonPath("$.candidates[0].type").value("EXPENSE"))
             .andExpect(jsonPath("$.candidates[0].amount").value(12000))
             .andExpect(jsonPath("$.candidates[0].transactionDate").value("2026-07-09"))
-            .andExpect(jsonPath("$.candidates[0].categoryName").value("식비"))
+            .andExpect(jsonPath("$.candidates[0].categoryName").value("장보기"))
             .andExpect(jsonPath("$.candidates[1].type").value("INCOME"))
             .andExpect(jsonPath("$.candidates[1].amount").value(500000))
             .andExpect(jsonPath("$.rejectedLines").value(1))
@@ -326,14 +327,99 @@ class TransactionImportIntegrationTest {
             .andExpect(jsonPath("$.code").value("INVALID_OCR_IMAGE"))
     }
 
+    @Test
+    fun should_MergeV1ImportSessionMarkDuplicatesOmitInvalidAndSaveIdempotently() {
+        val login = devLogin("v1-import@example.com", "V1가져오기")
+        val firstPreview = v1Preview(login, byteArrayOf(1))
+        val firstCandidate = firstPreview.path("candidates")[0]
+        val firstSave = saveRequest(firstPreview, listOf(firstCandidate))
+
+        mockMvc.perform(post("/api/ledgers/${login.currentLedger.id}/transaction-imports")
+            .header("Authorization", "Bearer ${login.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(firstSave)))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.created", hasSize<Any>(1)))
+
+        val duplicatePreview = v1Preview(login, byteArrayOf(1), byteArrayOf(0))
+        .also { preview ->
+            assert(preview.path("omittedCount").asInt() >= 1)
+        }
+        val duplicateCandidate = duplicatePreview.path("candidates")[0]
+        assert(!duplicateCandidate.path("selectedByDefault").asBoolean())
+        assert(duplicateCandidate.path("duplicateSuspected").asBoolean())
+
+        val sessionPreview = v1Preview(login, byteArrayOf(1), byteArrayOf(2))
+        val candidates = sessionPreview.path("candidates").toList()
+        val valid = saveCandidate(candidates[0])
+        val invalid = saveCandidate(candidates[1]) + mapOf("categoryId" to 999_999L)
+        val request = mapOf("sessionId" to sessionPreview.path("sessionId").asLong(), "candidates" to listOf(valid, invalid))
+
+        mockMvc.perform(post("/api/ledgers/${login.currentLedger.id}/transaction-imports")
+            .header("Authorization", "Bearer ${login.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_IMPORT_CANDIDATE"))
+
+        val retry = mapOf(
+            "sessionId" to sessionPreview.path("sessionId").asLong(),
+            "candidates" to candidates.map(::saveCandidate),
+        )
+        mockMvc.perform(post("/api/ledgers/${login.currentLedger.id}/transaction-imports")
+            .header("Authorization", "Bearer ${login.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(retry)))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.created", hasSize<Any>(2)))
+
+        mockMvc.perform(post("/api/ledgers/${login.currentLedger.id}/transaction-imports")
+            .header("Authorization", "Bearer ${login.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(retry)))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.created", hasSize<Any>(2)))
+    }
+
+    private fun v1Preview(login: DevLoginResponse, vararg bytes: ByteArray): JsonNode {
+        val request = multipart("/api/ledgers/${login.currentLedger.id}/transaction-imports/previews")
+        bytes.forEachIndexed { index, content ->
+            request.file(MockMultipartFile("images", "receipt-$index.png", MediaType.IMAGE_PNG_VALUE, content))
+        }
+        request.header("Authorization", "Bearer ${login.accessToken}")
+        request.param("sourceType", "RECEIPT")
+        val result = mockMvc.perform(request)
+            .andExpect(status().isOk)
+            .andReturn()
+        return objectMapper.readTree(result.response.contentAsString)
+    }
+
+    private fun saveRequest(preview: JsonNode, candidates: List<JsonNode>) = mapOf(
+        "sessionId" to preview.path("sessionId").asLong(),
+        "candidates" to candidates.map(::saveCandidate),
+    )
+
+    private fun saveCandidate(candidate: JsonNode): Map<String, Any?> = mapOf(
+        "candidateId" to candidate.path("candidateId").asLong(),
+        "amount" to candidate.path("amount").asLong(),
+        "occurredOn" to candidate.path("occurredOn").asText(),
+        "merchant" to candidate.path("merchant").asText(),
+        "categoryId" to candidate.path("suggestedCategoryId").asLong(),
+        "budgetSource" to mapOf(
+            "type" to candidate.path("defaultBudgetSource").path("type").asText(),
+            "ownerUserId" to candidate.path("defaultBudgetSource").path("ownerUserId").asLong(),
+        ),
+        "selected" to true,
+    )
+
     @TestConfiguration
     class OcrTestConfiguration {
 
         @Bean
         @Primary
-        fun transactionImageOcr(): TransactionImageOcr = TransactionImageOcr { _, _ ->
+        fun transactionImageOcr(): TransactionImageOcr = TransactionImageOcr { input, _ ->
             TransactionImageOcrResult(
-                text = "26.07.12 바오 25,000원",
+                text = if (input.bytes.firstOrNull() == 0.toByte()) "" else "26.07.12 바오 25,000원",
                 engine = "tesseract-5-server",
             )
         }

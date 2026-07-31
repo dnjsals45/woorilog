@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Clock
+import java.time.DateTimeException
+import java.time.ZoneId
 import java.util.Base64
 
 @Service
@@ -24,6 +26,7 @@ class AuthService(
     private val ledgerCategorySeedingService: LedgerCategorySeedingService,
     private val kakaoOAuthClient: KakaoOAuthClient,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val budgetPeriodService: BudgetPeriodService,
     private val clock: Clock,
     @Value("\${app.auth.dev-login-enabled}") private val devLoginEnabled: Boolean,
     @Value("\${app.jwt.access-token-ttl-seconds}") private val accessTokenTtlSeconds: Long,
@@ -43,13 +46,15 @@ class AuthService(
                 provider = "DEV",
                 providerUserId = email,
                 email = email,
-                nickname = nickname
+                nickname = nickname,
+                nicknameConfirmedAt = clock.instant(),
             )
             user = userRepository.save(user)
         } else {
             // Update nickname or email if they changed
             user.nickname = nickname
             user.email = email
+            user.nicknameConfirmedAt = clock.instant()
             user = userRepository.save(user)
         }
 
@@ -95,7 +100,9 @@ class AuthService(
             )
         } else {
             user.email = kakaoUser.email
-            user.nickname = kakaoUser.nickname
+            if (user.nicknameConfirmedAt == null) {
+                user.nickname = kakaoUser.nickname
+            }
             user = userRepository.save(user)
         }
 
@@ -113,6 +120,27 @@ class AuthService(
         storedToken.revokedAt = now
         refreshTokenRepository.save(storedToken)
         return issueSession(storedToken.user, resolveCurrentLedger(storedToken.user))
+    }
+
+    fun updateProfile(userId: Long, nickname: String, timezone: String): UserDto {
+        val normalizedNickname = nickname.trim()
+        if (normalizedNickname.length !in 1..20) {
+            throw WoorilogException("INVALID_REQUEST", "닉네임은 공백을 제외하고 1자에서 20자 사이여야 합니다.", HttpStatus.BAD_REQUEST)
+        }
+
+        val normalizedTimezone = try {
+            ZoneId.of(timezone).id
+        } catch (_: DateTimeException) {
+            throw WoorilogException("INVALID_REQUEST", "올바른 시간대 형식이 아닙니다.", HttpStatus.BAD_REQUEST)
+        }
+
+        val user = userRepository.findById(userId).orElseThrow {
+            ForbiddenException("사용자를 찾을 수 없습니다.")
+        }
+        user.nickname = normalizedNickname
+        user.timezone = normalizedTimezone
+        user.nicknameConfirmedAt = clock.instant()
+        return UserDto.from(userRepository.save(user))
     }
 
     fun logout(rawRefreshToken: String?) {
@@ -195,11 +223,18 @@ class AuthService(
         val member = LedgerMember(
             ledger = savedLedger,
             user = user,
-            role = LedgerRole.OWNER
+            role = LedgerRole.OWNER,
+            joinedAt = clock.instant(),
         )
         ledgerMemberRepository.save(member)
 
         ledgerCategorySeedingService.seedDefaultCategories(savedLedger)
+        budgetPeriodService.createInitialPeriod(
+            ledger = savedLedger,
+            totalBudget = savedLedger.defaultTotalBudgetAmount,
+            owner = user,
+            preparePersonal = true,
+        )
 
         return savedLedger
     }
@@ -220,16 +255,16 @@ data class MeResponse(
 
 data class UserDto(
     val id: Long,
-    val email: String?,
     val nickname: String,
-    val lastUsedLedgerId: Long?
+    val nicknameConfirmed: Boolean,
+    val timezone: String,
 ) {
     companion object {
         fun from(user: User) = UserDto(
             id = user.id!!,
-            email = user.email,
             nickname = user.nickname,
-            lastUsedLedgerId = user.lastUsedLedgerId
+            nicknameConfirmed = user.nicknameConfirmedAt != null,
+            timezone = user.timezone,
         )
     }
 }

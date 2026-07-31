@@ -2,6 +2,7 @@ package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.woorilog.domain.*
+import com.woorilog.exception.WoorilogException
 import com.woorilog.service.*
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -29,6 +31,15 @@ class InvitationIntegrationTest {
 
     @Autowired
     private lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    private lateinit var invitationRepository: InvitationRepository
+
+    @Autowired
+    private lateinit var invitationService: InvitationService
+
+    @Autowired
+    private lateinit var userRepository: UserRepository
 
     private fun devLogin(email: String, nickname: String): DevLoginResponse {
         val requestBody = mapOf(
@@ -72,7 +83,8 @@ class InvitationIntegrationTest {
             .param("email", "invitee@example.com"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.invitable").value(true))
-            .andExpect(jsonPath("$.user.email").value("invitee@example.com"))
+            .andExpect(jsonPath("$.user.nickname").value("초대손님"))
+            .andExpect(jsonPath("$.user.email").doesNotExist())
             .andExpect(jsonPath("$.reason").isEmpty)
 
         // 4. Owner creates DIRECT invitation to Invitee
@@ -143,42 +155,28 @@ class InvitationIntegrationTest {
         val ledger = createGroupLedger(ownerToken, "우리공동장부2")
         val ledgerId = ledger.id
 
-        // 1. Create link invitation
+        // 1. Create a V1 link and extract its raw token from the one-time URL.
         val linkResult = mockMvc.perform(post("/api/ledgers/$ledgerId/invitations/links")
-            .header("Authorization", "Bearer $ownerToken")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(mapOf("expiresInDays" to 5))))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.ledgerId").value(ledgerId))
-            .andExpect(jsonPath("$.type").value("LINK"))
-            .andExpect(jsonPath("$.status").value("PENDING"))
-            .andExpect(jsonPath("$.token").isNotEmpty)
+            .header("Authorization", "Bearer $ownerToken"))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.url").value(startsWith("/invitations/")))
             .andReturn()
 
-        val linkInvitation = objectMapper.readValue(linkResult.response.contentAsString, InvitationResponseDto::class.java)
-        val token = linkInvitation.token!!
+        val token = objectMapper.readTree(linkResult.response.contentAsString)["url"].asText().substringAfterLast('/')
 
         // 2. Get link preview
-        mockMvc.perform(get("/api/invitations/links/$token")
-            .header("Authorization", "Bearer $inviteeToken"))
+        mockMvc.perform(get("/api/invitations/links/$token"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.ledgerId").value(ledgerId))
             .andExpect(jsonPath("$.ledgerName").value("우리공동장부2"))
-            .andExpect(jsonPath("$.inviterNickname").value("장부주인2"))
             .andExpect(jsonPath("$.status").value("PENDING"))
-            .andExpect(jsonPath("$.expired").value(false))
+            .andExpect(jsonPath("$.authenticationRequired").value(true))
 
         // 3. Accept link invitation by token
         mockMvc.perform(post("/api/invitations/links/$token/accept")
             .header("Authorization", "Bearer $inviteeToken"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.status").value("ACCEPTED"))
-
-        // 4. Verify membership
-        mockMvc.perform(get("/api/ledgers")
-            .header("Authorization", "Bearer $inviteeToken"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.currentLedgerId").value(ledgerId))
+            .andExpect(jsonPath("$.ledger.id").value(ledgerId))
+            .andExpect(jsonPath("$.ledger.accessState").value("ACTIVE"))
     }
 
     @Test
@@ -265,5 +263,66 @@ class InvitationIntegrationTest {
         mockMvc.perform(post("/api/invitations/${invitation2.id}/accept")
             .header("Authorization", "Bearer $inviteeToken"))
             .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun should_CreatePreviewReplaceAndRejectV1Link_When_Valid() {
+        val owner = devLogin("v1-link-owner@example.com", "링크장부주인")
+        val recipient = devLogin("v1-link-recipient@example.com", "링크초대손님")
+        val ledgerId = createGroupLedger(owner.accessToken, "V1 링크 장부").id
+
+        val first = mockMvc.perform(post("/api/ledgers/$ledgerId/invitations/links")
+            .header("Authorization", "Bearer ${owner.accessToken}"))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.url").value(startsWith("/invitations/")))
+            .andReturn()
+        val firstNode = objectMapper.readTree(first.response.contentAsString)
+        val firstToken = firstNode["url"].asText().substringAfterLast('/')
+
+        mockMvc.perform(get("/api/invitations/links/$firstToken"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.ledgerName").value("V1 링크 장부"))
+            .andExpect(jsonPath("$.status").value("PENDING"))
+            .andExpect(jsonPath("$.authenticationRequired").value(true))
+
+        val second = mockMvc.perform(post("/api/ledgers/$ledgerId/invitations/links")
+            .header("Authorization", "Bearer ${owner.accessToken}"))
+            .andExpect(status().isCreated)
+            .andReturn()
+        val secondToken = objectMapper.readTree(second.response.contentAsString)["url"].asText().substringAfterLast('/')
+
+        mockMvc.perform(get("/api/invitations/links/$firstToken"))
+            .andExpect(status().isGone)
+            .andExpect(jsonPath("$.code").value("INVITATION_EXPIRED"))
+
+        mockMvc.perform(post("/api/invitations/links/$secondToken/reject")
+            .header("Authorization", "Bearer ${recipient.accessToken}"))
+            .andExpect(status().isNoContent)
+        mockMvc.perform(get("/api/invitations/links/$secondToken"))
+            .andExpect(status().isGone)
+    }
+
+    @Test
+    fun should_RejectExpiredAndNicknameUnconfirmedV1Links() {
+        val owner = devLogin("v1-expire-owner@example.com", "만료장부주인")
+        val ledger = createGroupLedger(owner.accessToken, "만료 링크 장부")
+        val created = mockMvc.perform(post("/api/ledgers/${ledger.id}/invitations/links")
+            .header("Authorization", "Bearer ${owner.accessToken}"))
+            .andExpect(status().isCreated)
+            .andReturn()
+        val token = objectMapper.readTree(created.response.contentAsString)["url"].asText().substringAfterLast('/')
+        val invitation = invitationRepository.findByLedgerIdAndTypeAndStatus(ledger.id, InvitationType.LINK, InvitationStatus.PENDING).single()
+        invitation.expiresAt = Instant.now().minusSeconds(1)
+        invitationRepository.saveAndFlush(invitation)
+        mockMvc.perform(get("/api/invitations/links/$token"))
+            .andExpect(status().isGone)
+
+        val unconfirmed = userRepository.save(User("TEST", "unconfirmed-link", "unconfirmed-link@example.com", "미확정"))
+        val second = invitationService.createV1InvitationLink(owner.user.id, ledger.id)
+        val secondToken = second.url.substringAfterLast('/')
+        val error = org.junit.jupiter.api.assertThrows<WoorilogException> {
+            invitationService.acceptV1Link(unconfirmed.id!!, secondToken)
+        }
+        assertEquals("NICKNAME_CONFIRMATION_REQUIRED", error.code)
     }
 }

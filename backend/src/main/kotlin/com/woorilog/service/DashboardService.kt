@@ -22,16 +22,22 @@ class DashboardService(
     private val transactionRepository: TransactionRepository,
     private val recurringTransactionTemplateRepository: RecurringTransactionTemplateRepository,
     private val recurringTransactionGenerationRepository: RecurringTransactionGenerationRepository,
+    private val budgetPeriodRepository: BudgetPeriodRepository,
+    private val budgetAllocationRepository: BudgetAllocationRepository,
+    private val scheduledOccurrenceRepository: ScheduledOccurrenceRepository,
+    private val weeklyBudgetGuideRepository: WeeklyBudgetGuideRepository,
     private val authService: AuthService,
     private val clock: Clock
 ) {
 
-    fun getCurrentDashboardSummary(userId: Long, budgetMonth: String? = null): DashboardSummaryResponse {
+    fun getCurrentDashboardSummary(userId: Long, budgetMonth: String? = null, requestedLedgerId: Long? = null, periodStart: LocalDate? = null): DashboardSummaryResponse {
         val user = userRepository.findById(userId).orElseThrow {
             NotFoundException("사용자를 찾을 수 없습니다.")
         }
-        val currentLedger = authService.resolveCurrentLedger(user)
+        val currentLedger = requestedLedgerId?.let { ledgerRepository.findById(it).orElseThrow { NotFoundException("장부를 찾을 수 없습니다.") } }
+            ?: authService.resolveCurrentLedger(user)
         val ledgerId = currentLedger.id!!
+        if (ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId) == null) throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
 
         val currentYearMonth = budgetMonth?.let(::validateBudgetMonth) ?: YearMonth.now(clock)
         val budgetMonthStr = currentYearMonth.toString()
@@ -70,6 +76,28 @@ class DashboardService(
         }
         val cardPaymentSummaries = nextCardPaymentSummaries(ledgerId)
 
+        val targetPeriod = periodStart?.let { budgetPeriodRepository.findByLedgerIdAndStartDate(ledgerId, it) }
+            ?: budgetPeriodRepository.findFirstByLedgerIdAndStartDateLessThanEqualAndEndDateGreaterThanEqual(ledgerId, LocalDate.now(clock), LocalDate.now(clock))
+        val allocations = targetPeriod?.let { budgetAllocationRepository.findByBudgetPeriodIdOrderById(it.id!!) } ?: emptyList()
+        val targetTransactions = targetPeriod?.let { period ->
+            transactionRepository.findByLedgerIdAndTransactionDateBetweenOrderByTransactionDateDescIdDesc(ledgerId, period.startDate, period.endDate)
+        } ?: emptyList()
+        val visibleTargetTransactions = targetTransactions.filter { it.scopeType == BudgetScopeType.SHARED || it.payer.id == userId }
+        val myAllocation = allocations.firstOrNull { it.scope == BudgetAllocationScope.PERSONAL && it.owner?.id == userId }
+        val sharedAllocation = allocations.firstOrNull { it.scope == BudgetAllocationScope.SHARED }
+        val targetScheduled = targetPeriod?.let { period ->
+            scheduledOccurrenceRepository.findByLedgerAndDueDateBetweenAndStatus(
+                ledgerId, period.startDate, period.endDate, ScheduledOccurrenceStatus.SCHEDULED,
+            )
+        } ?: emptyList()
+        val targetIncome = visibleTargetTransactions.filter { it.type == CategoryType.INCOME || (it.type == CategoryType.TRANSFER && it.transferType == TransferType.INBOUND) }.sumOf { it.amount }
+        val activeMembers = ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledgerId)
+        val emptyState = when {
+            currentLedger.type == LedgerType.GROUP && activeMembers.size < 2 -> "INVITE_PARTNER"
+            targetPeriod == null || targetPeriod.preparedAt == null -> "ALLOCATE_BUDGET"
+            visibleTargetTransactions.isEmpty() -> "ADD_FIRST_TRANSACTION"
+            else -> "READY"
+        }
         return DashboardSummaryResponse(
             currentLedger = LedgerDto.from(currentLedger),
             budgetMonth = budgetMonthStr,
@@ -77,10 +105,23 @@ class DashboardService(
             totalExpenseAmount = totalExpenseAmount,
             scheduledRecurringExpenseAmount = scheduledRecurringExpenseAmount,
             remainingBudgetAmount = remainingBudgetAmount,
-            recentTransactions = recentTransactions,
+            recentTransactions = if (targetPeriod != null) visibleTargetTransactions.take(5).map { it.toResponse() } else recentTransactions,
             categorySpending = categorySpending,
             memberSpending = memberSpending,
             cardPaymentSummaries = cardPaymentSummaries,
+            ledger = LedgerSummaryResponse(
+                id = ledgerId, name = currentLedger.name, type = if (currentLedger.type == LedgerType.GROUP) "SHARED" else "PERSONAL",
+                role = activeMembers.firstOrNull { it.user.id == userId }?.role?.name ?: "MEMBER", accessState = if (activeMembers.any { it.user.id == userId }) "ACTIVE" else "FORMER",
+                partner = activeMembers.firstOrNull { it.user.id != userId }?.user?.let { UserSummaryResponse(it.id!!, it.nickname) },
+                budgetCycle = BudgetCycleResponse(currentLedger.budgetStartType.name, currentLedger.budgetStartDay),
+            ),
+            period = targetPeriod?.let { DashboardPeriodResponse(it.id!!, it.startDate, it.endDate, it.totalBudgetAmount) },
+            sharedBudget = sharedAllocation?.toDashboardBudget(targetTransactions, targetScheduled),
+            myBudget = myAllocation?.toDashboardBudget(targetTransactions, targetScheduled),
+            incomeAmount = targetIncome,
+            weeklyGuide = weeklyBudgetGuideRepository.findFirstByUserIdAndLedgerIdOrderByWeekStartDateDesc(userId, ledgerId)
+                ?.let { WeeklyGuideResponse(it.weekStartDate, it.recommendedAmount, it.remainingOverageAmount) },
+            emptyState = emptyState,
         )
     }
 
@@ -241,7 +282,26 @@ data class DashboardSummaryResponse(
     val categorySpending: List<CategorySpendingDto>,
     val memberSpending: List<MemberSpendingDto>,
     val cardPaymentSummaries: List<CardPaymentSummary>,
+    val ledger: LedgerSummaryResponse? = null,
+    val period: DashboardPeriodResponse? = null,
+    val sharedBudget: DashboardBudgetResponse? = null,
+    val myBudget: DashboardBudgetResponse? = null,
+    val incomeAmount: Long? = null,
+    val weeklyGuide: WeeklyGuideResponse? = null,
+    val emptyState: String? = null,
 )
+
+data class DashboardPeriodResponse(val id: Long, val startDate: LocalDate, val endDate: LocalDate, val totalBudget: Long)
+data class DashboardBudgetResponse(val allocationId: Long, val amount: Long, val spentAmount: Long, val currentBalance: Long, val availableAmount: Long)
+data class WeeklyGuideResponse(val weekStartDate: LocalDate, val recommendedAmount: Long, val remainingOverageAmount: Long)
+
+private fun BudgetAllocation.toDashboardBudget(transactions: List<Transaction>, occurrences: List<ScheduledOccurrence>): DashboardBudgetResponse {
+    val spent = transactions.filter { it.budgetAllocation?.id == id && isDashboardExpense(it) }.sumOf { it.amount }
+    val scheduled = occurrences.filter { it.plan.scopeType?.name == scope.name && it.plan.scopeOwnerUserId == owner?.id }.sumOf { it.amount }
+    return DashboardBudgetResponse(id!!, amount, spent, amount - spent, amount - spent - scheduled)
+}
+private fun isDashboardExpense(transaction: Transaction): Boolean = transaction.type == CategoryType.EXPENSE ||
+    (transaction.type == CategoryType.TRANSFER && transaction.transferType == TransferType.OUTBOUND)
 
 data class CardPaymentSummary(
     val cardId: Long,

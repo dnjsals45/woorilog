@@ -64,7 +64,7 @@ class BudgetAndDashboardIntegrationTest {
         val budgetMonth = "2026-07"
 
         val categories = getCategories(ledgerId, token)
-        val foodCat = categories.first { it.name == "식비" }
+        val foodCat = categories.first { it.name == "장보기" }
 
         val fixedBudgetRequest = mapOf(
             "name" to "월세",
@@ -182,7 +182,7 @@ class BudgetAndDashboardIntegrationTest {
             LedgerDto::class.java,
         )
         val categories = getCategories(groupLedger.id, token)
-        val foodCategory = categories.first { it.name == "식비" }
+        val foodCategory = categories.first { it.name == "장보기" }
         val request = mapOf(
             "totalBudgetAmount" to 500_000,
             "categoryBudgets" to listOf(mapOf("categoryId" to foodCategory.id, "amount" to 300_000)),
@@ -214,7 +214,7 @@ class BudgetAndDashboardIntegrationTest {
         val userId = loginResponse.user.id
 
         val categories = getCategories(ledgerId, token)
-        val foodCat = categories.first { it.name == "식비" }
+        val foodCat = categories.first { it.name == "장보기" }
 
         // Test 1: Negative total budget
         val negativeTotalRequest = mapOf(
@@ -268,8 +268,8 @@ class BudgetAndDashboardIntegrationTest {
         val userId = loginResponse.user.id
 
         val categories = getCategories(ledgerId, token)
-        val foodCat = categories.first { it.name == "식비" }
-        val cafeCat = categories.first { it.name == "카페" }
+        val foodCat = categories.first { it.name == "장보기" }
+        val cafeCat = categories.first { it.name == "카페·간식" }
         val salaryCat = categories.first { it.name == "급여" }
 
         val currentMonth = YearMonth.now()
@@ -329,6 +329,11 @@ class BudgetAndDashboardIntegrationTest {
             .header("Authorization", "Bearer $token"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.currentLedger.id").value(ledgerId))
+            .andExpect(jsonPath("$.ledger.id").value(ledgerId))
+            .andExpect(jsonPath("$.period.startDate").isNotEmpty)
+            .andExpect(jsonPath("$.myBudget").exists())
+            .andExpect(jsonPath("$.incomeAmount").value(200000))
+            .andExpect(jsonPath("$.emptyState").value("READY"))
             .andExpect(jsonPath("$.budgetMonth").value(budgetMonthStr))
             .andExpect(jsonPath("$.totalBudgetAmount").value(1000000))
             // totalExpenseAmount should only count EXPENSE = 30000 + 15000 = 45000
@@ -409,7 +414,7 @@ class BudgetAndDashboardIntegrationTest {
         val ledgerId = loginResponse.currentLedger.id
 
         val categories = getCategories(ledgerId, token)
-        val foodCat = categories.first { it.name == "식비" }
+        val foodCat = categories.first { it.name == "장보기" }
         val salaryCat = categories.first { it.name == "급여" }
 
         // Set budget for 2026-06 and 2026-07

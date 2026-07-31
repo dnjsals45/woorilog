@@ -69,7 +69,7 @@ class RecurringTransactionIntegrationTest {
             catResult.response.contentAsString,
             objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java)
         )
-        val foodCat = categories.first { it.name == "식비" }
+        val foodCat = categories.first { it.name == "장보기" }
         val salaryCat = categories.first { it.name == "급여" }
 
         // 1. Create recurring template
@@ -94,7 +94,7 @@ class RecurringTransactionIntegrationTest {
             .andExpect(jsonPath("$.type").value("EXPENSE"))
             .andExpect(jsonPath("$.amount").value(10000))
             .andExpect(jsonPath("$.category.id").value(foodCat.id))
-            .andExpect(jsonPath("$.category.name").value("식비"))
+            .andExpect(jsonPath("$.category.name").value("장보기"))
             .andExpect(jsonPath("$.payer.id").value(loginResponse.user.id))
             .andExpect(jsonPath("$.payer.nickname").value("유저A"))
             .andExpect(jsonPath("$.memo").value("주간 식비"))
@@ -423,7 +423,7 @@ class RecurringTransactionIntegrationTest {
             catResult.response.contentAsString,
             objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java)
         )
-        val foodCat = categories.first { it.name == "식비" } // EXPENSE
+        val foodCat = categories.first { it.name == "장보기" } // EXPENSE
 
         // Setup User B
         val loginB = devLogin("user-b@example.com", "유저B")

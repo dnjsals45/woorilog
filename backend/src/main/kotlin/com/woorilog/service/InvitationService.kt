@@ -4,11 +4,16 @@ import com.woorilog.domain.*
 import com.woorilog.exception.BadRequestException
 import com.woorilog.exception.ForbiddenException
 import com.woorilog.exception.NotFoundException
+import com.woorilog.exception.WoorilogException
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
 import java.time.Clock
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.Base64
 import java.util.UUID
 
 @Service
@@ -21,6 +26,92 @@ class InvitationService(
     private val notificationService: NotificationService,
     private val clock: Clock,
 ) {
+    private val secureRandom = SecureRandom()
+
+    fun createV1InvitationLink(currentUserId: Long, ledgerId: Long): V1InvitationLinkCreatedResponse {
+        val ledger = ledgerRepository.findByIdForUpdate(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val owner = requireActiveOwner(currentUserId, ledger)
+        if (ledger.type != LedgerType.GROUP) throw BadRequestException("공동 장부만 초대할 수 있습니다.")
+        if (ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledgerId).size >= 2) {
+            throw WoorilogException("LEDGER_MEMBER_LIMIT_REACHED", "공동 장부는 두 명까지 참여할 수 있습니다.", HttpStatus.CONFLICT)
+        }
+        invitationRepository.findByLedgerIdAndTypeAndStatus(ledgerId, InvitationType.LINK, InvitationStatus.PENDING)
+            .forEach { it.status = InvitationStatus.REPLACED }
+        val rawToken = generateLinkToken()
+        val invitation = invitationRepository.save(
+            Invitation(
+                ledger = ledger,
+                inviter = owner.user,
+                type = InvitationType.LINK,
+                status = InvitationStatus.PENDING,
+                tokenHash = hashToken(rawToken),
+                expiresAt = clock.instant().plus(Duration.ofMinutes(30)),
+            )
+        )
+        return V1InvitationLinkCreatedResponse(invitation.id!!, "/invitations/$rawToken", invitation.expiresAt!!)
+    }
+
+    @Transactional(readOnly = true)
+    fun getV1LinkPreview(rawToken: String, authenticated: Boolean): V1LinkInvitationPreviewResponse {
+        val invitation = invitationRepository.findByTokenHash(hashToken(rawToken)) ?: throw linkExpired()
+        requireUsableLink(invitation)
+        return V1LinkInvitationPreviewResponse(
+            invitationId = invitation.id!!,
+            ledgerName = invitation.ledger.name,
+            inviter = UserSummaryResponse(invitation.inviter.id!!, invitation.inviter.nickname),
+            status = invitation.status.name,
+            expiresAt = invitation.expiresAt!!,
+            authenticationRequired = !authenticated,
+        )
+    }
+
+    fun acceptV1Link(currentUserId: Long, rawToken: String): V1InvitationAcceptedResponse {
+        val user = requireConfirmedUser(currentUserId)
+        val invitation = invitationRepository.findLockedByTokenHash(hashToken(rawToken)) ?: throw linkExpired()
+        requireUsableLink(invitation)
+        val ledger = ledgerRepository.findByIdForUpdate(invitation.ledger.id!!) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        if (ledgerMemberRepository.existsByLedgerIdAndUserId(ledger.id!!, currentUserId)) {
+            throw WoorilogException("ALREADY_LEDGER_MEMBER", "이미 참여 중인 장부입니다.", HttpStatus.CONFLICT)
+        }
+        if (ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledger.id!!).size >= 2) {
+            throw WoorilogException("LEDGER_MEMBER_LIMIT_REACHED", "공동 장부는 두 명까지 참여할 수 있습니다.", HttpStatus.CONFLICT)
+        }
+        val previousPartnerIds = ledgerMemberRepository.findByLedgerId(ledger.id!!)
+            .mapNotNull { it.user.id }
+            .filter { it != ledger.ownerId }
+            .toSet()
+        if (previousPartnerIds.isNotEmpty() && currentUserId !in previousPartnerIds) {
+            throw WoorilogException("DIFFERENT_PARTNER_NOT_ALLOWED", "기존 상대방만 다시 참여할 수 있습니다.", HttpStatus.CONFLICT)
+        }
+        ledgerMemberRepository.save(LedgerMember(ledger, user, LedgerRole.MEMBER, joinedAt = clock.instant()))
+        user.lastUsedLedgerId = ledger.id
+        userRepository.save(user)
+        invitation.status = InvitationStatus.ACCEPTED
+        invitation.respondedAt = clock.instant()
+        invitation.respondedBy = user
+        invitationRepository.save(invitation)
+        return V1InvitationAcceptedResponse(
+            LedgerSummaryResponse(
+                id = ledger.id!!,
+                name = ledger.name,
+                type = "SHARED",
+                role = "MEMBER",
+                accessState = "ACTIVE",
+                partner = UserSummaryResponse(invitation.inviter.id!!, invitation.inviter.nickname),
+                budgetCycle = BudgetCycleResponse(ledger.budgetStartType.name, ledger.budgetStartDay),
+            )
+        )
+    }
+
+    fun rejectV1Link(currentUserId: Long, rawToken: String) {
+        val user = requireConfirmedUser(currentUserId)
+        val invitation = invitationRepository.findLockedByTokenHash(hashToken(rawToken)) ?: throw linkExpired()
+        requireUsableLink(invitation)
+        invitation.status = InvitationStatus.REJECTED
+        invitation.respondedAt = clock.instant()
+        invitation.respondedBy = user
+        invitationRepository.save(invitation)
+    }
 
     @Transactional(readOnly = true)
     fun getInvitableUser(currentUserId: Long, ledgerId: Long, email: String): InvitableUserResponse {
@@ -246,7 +337,8 @@ class InvitationService(
             val member = LedgerMember(
                 ledger = invitation.ledger,
                 user = user,
-                role = LedgerRole.MEMBER
+                role = LedgerRole.MEMBER,
+                joinedAt = clock.instant(),
             )
             ledgerMemberRepository.save(member)
         }
@@ -317,7 +409,8 @@ class InvitationService(
         val member = LedgerMember(
             ledger = invitation.ledger,
             user = user,
-            role = LedgerRole.MEMBER
+            role = LedgerRole.MEMBER,
+            joinedAt = clock.instant(),
         )
         ledgerMemberRepository.save(member)
 
@@ -329,7 +422,55 @@ class InvitationService(
         val saved = invitationRepository.save(invitation)
         return InvitationResponseDto.from(saved, clock.instant())
     }
+
+    private fun requireActiveOwner(userId: Long, ledger: Ledger): LedgerMember {
+        val member = ledgerMemberRepository.findByLedgerIdAndUserId(ledger.id!!, userId)
+            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+        if (member.role != LedgerRole.OWNER) throw ForbiddenException("장부 소유자만 초대할 수 있습니다.")
+        return member
+    }
+
+    private fun requireConfirmedUser(userId: Long): User {
+        val user = userRepository.findById(userId).orElseThrow { ForbiddenException("사용자를 찾을 수 없습니다.") }
+        if (user.nicknameConfirmedAt == null) {
+            throw WoorilogException("NICKNAME_CONFIRMATION_REQUIRED", "서비스 닉네임을 먼저 확정해주세요.", HttpStatus.CONFLICT)
+        }
+        return user
+    }
+
+    private fun requireUsableLink(invitation: Invitation) {
+        if (invitation.type != InvitationType.LINK || invitation.status != InvitationStatus.PENDING || invitation.isExpired(clock.instant())) {
+            throw linkExpired()
+        }
+    }
+
+    private fun generateLinkToken(): String {
+        val bytes = ByteArray(32)
+        secureRandom.nextBytes(bytes)
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+    }
+
+    private fun hashToken(token: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(token.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
+
+    private fun linkExpired() = WoorilogException(
+        "INVITATION_EXPIRED",
+        "사용할 수 없는 초대 링크입니다.",
+        HttpStatus.GONE,
+    )
 }
+
+data class V1InvitationLinkCreatedResponse(val invitationId: Long, val url: String, val expiresAt: Instant)
+data class V1LinkInvitationPreviewResponse(
+    val invitationId: Long,
+    val ledgerName: String,
+    val inviter: UserSummaryResponse,
+    val status: String,
+    val expiresAt: Instant,
+    val authenticationRequired: Boolean,
+)
+data class V1InvitationAcceptedResponse(val ledger: LedgerSummaryResponse)
 
 data class InvitableUserResponse(
     val user: UserDto,

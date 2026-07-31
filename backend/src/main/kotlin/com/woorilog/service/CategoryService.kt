@@ -29,7 +29,7 @@ class CategoryService(
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
             ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
 
-        val categories = ledgerCategoryRepository.findByLedgerIdOrderBySortOrderAsc(ledgerId)
+        val categories = ledgerCategoryRepository.findByLedgerIdOrderBySortOrderAsc(ledgerId).filter { it.active }
         return categories.map { it.toResponse() }
     }
 
@@ -46,7 +46,14 @@ class CategoryService(
         return ledgerCategoryGroupRepository.save(LedgerCategoryGroup(ledger, name, type)).toResponse()
     }
 
-    fun createCategory(userId: Long, ledgerId: Long, name: String, type: CategoryType, categoryGroupId: Long): CategoryResponse {
+    fun createCategory(
+        userId: Long,
+        ledgerId: Long,
+        name: String,
+        type: CategoryType?,
+        categoryGroupId: Long?,
+        groupCode: String? = null,
+    ): CategoryResponse {
         val ledger = ledgerRepository.findById(ledgerId).orElseThrow {
             NotFoundException("장부를 찾을 수 없습니다.")
         }
@@ -54,18 +61,21 @@ class CategoryService(
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
             ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
 
-        // Verify name uniqueness
-        val existing = ledgerCategoryRepository.findByLedgerIdAndName(ledgerId, name)
-        if (existing != null) {
-            throw BadRequestException("이미 존재하는 카테고리 이름입니다.")
-        }
-
-        val group = ledgerCategoryGroupRepository.findById(categoryGroupId).orElseThrow {
-            NotFoundException("대분류를 찾을 수 없습니다.")
-        }
-        if (group.ledger.id != ledgerId || group.type != type) {
+        val group = when {
+            groupCode != null -> ledgerCategoryGroupRepository.findByLedgerIdAndCode(ledgerId, groupCode)
+            categoryGroupId != null -> ledgerCategoryGroupRepository.findById(categoryGroupId).orElse(null)
+            else -> null
+        } ?: throw NotFoundException("대분류를 찾을 수 없습니다.")
+        if (group.ledger.id != ledgerId || (type != null && group.type != type)) {
             throw BadRequestException("카테고리 유형과 대분류가 일치하지 않습니다.")
         }
+        val normalizedName = name.trim()
+        if (ledgerCategoryRepository.findByLedgerIdAndCategoryGroupIdAndNameAndActiveTrue(
+                ledgerId,
+                group.id!!,
+                normalizedName,
+            ) != null
+        ) throw BadRequestException("이미 존재하는 카테고리 이름입니다.")
 
         val maxSortOrder = ledgerCategoryRepository.findByLedgerId(ledgerId)
             .maxOfOrNull { it.sortOrder } ?: 0
@@ -73,8 +83,8 @@ class CategoryService(
         val category = LedgerCategory(
             ledger = ledger,
             categoryGroup = group,
-            name = name,
-            type = type,
+            name = normalizedName,
+            type = group.type,
             sortOrder = maxSortOrder + 1,
             defaultCategory = false
         )
@@ -82,27 +92,42 @@ class CategoryService(
         return saved.toResponse()
     }
 
-    fun updateCategory(userId: Long, categoryId: Long, name: String, categoryGroupId: Long): CategoryResponse {
+    fun updateCategory(
+        userId: Long,
+        categoryId: Long,
+        name: String,
+        categoryGroupId: Long? = null,
+        applyNameToPastTransactions: Boolean = false,
+    ): CategoryResponse {
         val category = ledgerCategoryRepository.findById(categoryId).orElseThrow {
             NotFoundException("카테고리를 찾을 수 없습니다.")
         }
         val ledgerId = category.ledger.id!!
         requireLedgerMember(userId, ledgerId)
 
-        val existing = ledgerCategoryRepository.findByLedgerIdAndName(ledgerId, name)
+        val normalizedName = name.trim()
+        val targetGroupId = categoryGroupId ?: category.categoryGroup.id!!
+        val existing = ledgerCategoryRepository.findByLedgerIdAndCategoryGroupIdAndNameAndActiveTrue(
+            ledgerId,
+            targetGroupId,
+            normalizedName,
+        )
         if (existing != null && existing.id != categoryId) {
             throw BadRequestException("이미 존재하는 카테고리 이름입니다.")
         }
 
-        val group = ledgerCategoryGroupRepository.findById(categoryGroupId).orElseThrow {
+        val group = ledgerCategoryGroupRepository.findById(targetGroupId).orElseThrow {
             NotFoundException("대분류를 찾을 수 없습니다.")
         }
         if (group.ledger.id != ledgerId || group.type != category.type) {
             throw BadRequestException("카테고리 유형과 대분류가 일치하지 않습니다.")
         }
 
-        category.name = name
+        category.name = normalizedName
         category.categoryGroup = group
+        if (applyNameToPastTransactions) {
+            transactionRepository.findByCategoryId(categoryId).forEach { it.categoryName = normalizedName }
+        }
         return category.toResponse()
     }
 
@@ -112,16 +137,16 @@ class CategoryService(
         }
         requireLedgerMember(userId, category.ledger.id!!)
 
-        if (
-            transactionRepository.existsByCategoryId(categoryId) ||
-            categoryBudgetRepository.existsByCategoryId(categoryId) ||
-            fixedBudgetTemplateRepository.existsByCategoryId(categoryId) ||
-            recurringTransactionTemplateRepository.existsByCategoryId(categoryId)
-        ) {
-            throw BadRequestException("거래, 예산 또는 반복 거래에 사용 중인 카테고리는 삭제할 수 없습니다.")
-        }
+        category.active = false
+        ledgerCategoryRepository.save(category)
+    }
 
-        ledgerCategoryRepository.delete(category)
+    fun updateCategoryGroupVisibility(userId: Long, ledgerId: Long, groupCode: String, hidden: Boolean): CategoryGroupResponse {
+        requireLedgerMember(userId, ledgerId)
+        val group = ledgerCategoryGroupRepository.findByLedgerIdAndCode(ledgerId, groupCode)
+            ?: throw NotFoundException("대분류를 찾을 수 없습니다.")
+        group.hidden = hidden
+        return ledgerCategoryGroupRepository.save(group).toResponse()
     }
 
     private fun requireLedgerMember(userId: Long, ledgerId: Long): Ledger {
@@ -139,6 +164,9 @@ data class CategoryGroupResponse(
     val ledgerId: Long,
     val name: String,
     val type: CategoryType,
+    val code: String,
+    val hidden: Boolean,
+    val sortOrder: Int,
 )
 
 data class CategoryResponse(
@@ -149,7 +177,10 @@ data class CategoryResponse(
     val categoryGroupId: Long,
     val categoryGroupName: String,
     val sortOrder: Int,
-    val defaultCategory: Boolean
+    val defaultCategory: Boolean,
+    val groupCode: String,
+    val groupName: String,
+    val active: Boolean,
 )
 
 fun LedgerCategory.toResponse() = CategoryResponse(
@@ -160,7 +191,10 @@ fun LedgerCategory.toResponse() = CategoryResponse(
     categoryGroupId = this.categoryGroup.id!!,
     categoryGroupName = this.categoryGroup.name,
     sortOrder = this.sortOrder,
-    defaultCategory = this.defaultCategory
+    defaultCategory = this.defaultCategory,
+    groupCode = this.categoryGroup.code,
+    groupName = this.categoryGroup.name,
+    active = this.active,
 )
 
 fun LedgerCategoryGroup.toResponse() = CategoryGroupResponse(
@@ -168,4 +202,7 @@ fun LedgerCategoryGroup.toResponse() = CategoryGroupResponse(
     ledgerId = this.ledger.id!!,
     name = this.name,
     type = this.type,
+    code = this.code,
+    hidden = this.hidden,
+    sortOrder = this.sortOrder,
 )

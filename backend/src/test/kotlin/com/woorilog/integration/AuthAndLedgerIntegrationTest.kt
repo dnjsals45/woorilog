@@ -64,8 +64,12 @@ class AuthAndLedgerIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.accessToken").isNotEmpty)
             .andExpect(jsonPath("$.expiresInSeconds").value(1800))
-            .andExpect(jsonPath("$.user.email").value("dev-user@example.com"))
+            .andExpect(jsonPath("$.user.id").isNumber)
             .andExpect(jsonPath("$.user.nickname").value("개발자"))
+            .andExpect(jsonPath("$.user.nicknameConfirmed").value(true))
+            .andExpect(jsonPath("$.user.timezone").value("Asia/Seoul"))
+            .andExpect(jsonPath("$.user.email").doesNotExist())
+            .andExpect(jsonPath("$.user.lastUsedLedgerId").doesNotExist())
             .andExpect(jsonPath("$.currentLedger.name").value("개발자의 개인 장부"))
             .andExpect(jsonPath("$.currentLedger.type").value("PERSONAL"))
             .andReturn()
@@ -138,6 +142,55 @@ class AuthAndLedgerIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.user.id").value(devLoginResponse.user.id))
             .andExpect(jsonPath("$.currentLedger.id").value(devLoginResponse.currentLedger.id))
+    }
+
+    @Test
+    fun should_ConfirmNicknameAndUpdateTimezone_When_ProfileIsUpdated() {
+        val loginResult = mockMvc.perform(post("/api/auth/dev-login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("email" to "profile@example.com", "nickname" to "초기닉네임"))))
+            .andReturn()
+        val loginResponse = objectMapper.readValue(loginResult.response.contentAsString, DevLoginResponse::class.java)
+
+        mockMvc.perform(patch("/api/me/profile")
+            .header("Authorization", "Bearer ${loginResponse.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("nickname" to "  새 닉네임  ", "timezone" to "America/New_York"))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(loginResponse.user.id))
+            .andExpect(jsonPath("$.nickname").value("새 닉네임"))
+            .andExpect(jsonPath("$.nicknameConfirmed").value(true))
+            .andExpect(jsonPath("$.timezone").value("America/New_York"))
+            .andExpect(jsonPath("$.email").doesNotExist())
+            .andExpect(jsonPath("$.lastUsedLedgerId").doesNotExist())
+
+        val user = userRepository.findByProviderAndProviderUserId("DEV", "profile@example.com")!!
+        assertEquals("새 닉네임", user.nickname)
+        assertEquals("America/New_York", user.timezone)
+        assertNotNull(user.nicknameConfirmedAt)
+    }
+
+    @Test
+    fun should_RejectInvalidProfileNicknameOrTimezone() {
+        val loginResult = mockMvc.perform(post("/api/auth/dev-login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("email" to "invalid-profile@example.com", "nickname" to "테스터"))))
+            .andReturn()
+        val loginResponse = objectMapper.readValue(loginResult.response.contentAsString, DevLoginResponse::class.java)
+
+        mockMvc.perform(patch("/api/me/profile")
+            .header("Authorization", "Bearer ${loginResponse.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("nickname" to " ", "timezone" to "Asia/Seoul"))))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+
+        mockMvc.perform(patch("/api/me/profile")
+            .header("Authorization", "Bearer ${loginResponse.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("nickname" to "테스터", "timezone" to "Invalid/Timezone"))))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
     }
 
     @Test
@@ -219,9 +272,9 @@ class AuthAndLedgerIntegrationTest {
         mockMvc.perform(get("/api/ledgers/$defaultLedgerId/members")
             .header("Authorization", "Bearer $token"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$", hasSize<Any>(1)))
-            .andExpect(jsonPath("$[0].userId").value(userId))
-            .andExpect(jsonPath("$[0].role").value("OWNER"))
+            .andExpect(jsonPath("$.items", hasSize<Any>(1)))
+            .andExpect(jsonPath("$.items[0].user.id").value(userId))
+            .andExpect(jsonPath("$.items[0].role").value("OWNER"))
 
         // 3. Create another personal ledger
         val personalResult = mockMvc.perform(post("/api/ledgers/personal")

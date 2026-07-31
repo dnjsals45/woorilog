@@ -32,6 +32,7 @@ class SecurityConfig(
                     .requestMatchers("/health").permitAll()
                     .requestMatchers("/api/auth/dev-login").permitAll()
                     .requestMatchers("/api/auth/kakao/login-url", "/api/auth/kakao/callback", "/api/auth/refresh", "/api/auth/logout").permitAll()
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invitations/links/*").permitAll()
                     .requestMatchers("/api/**").authenticated()
                     .anyRequest().permitAll()
             }

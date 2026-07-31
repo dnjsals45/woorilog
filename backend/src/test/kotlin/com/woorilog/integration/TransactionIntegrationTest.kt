@@ -74,7 +74,7 @@ class TransactionIntegrationTest {
         val result = mockMvc.perform(get("/api/ledgers/$ledgerId/categories")
             .header("Authorization", "Bearer $token"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$", hasSize<Any>(5)))
+            .andExpect(jsonPath("$", hasSize<Any>(43)))
             .andReturn()
 
         val categories: List<CategoryResponse> = objectMapper.readValue(
@@ -82,11 +82,14 @@ class TransactionIntegrationTest {
             objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java)
         )
 
-        // Seeded: 식비 (EXPENSE), 카페 (EXPENSE), 교통 (EXPENSE), 생활 (EXPENSE), 급여 (INCOME)
         val categoryNames = categories.map { it.name }
-        assertEquals(listOf("식비", "카페", "교통", "생활", "급여"), categoryNames)
+        assertEquals("장보기", categoryNames.first())
+        assertTrue("카페·간식" in categoryNames)
+        assertTrue("대중교통" in categoryNames)
+        assertTrue("생활용품" in categoryNames)
+        assertTrue("급여" in categoryNames)
 
-        val foodCat = categories.first { it.name == "식비" }
+        val foodCat = categories.first { it.name == "장보기" }
         assertEquals(CategoryType.EXPENSE, foodCat.type)
         assertEquals(true, foodCat.defaultCategory)
         assertEquals("식비", foodCat.categoryGroupName)
@@ -102,17 +105,16 @@ class TransactionIntegrationTest {
         val token = loginResponse.accessToken
         val ledgerId = loginResponse.currentLedger.id
 
-        val groupResult = mockMvc.perform(post("/api/ledgers/$ledgerId/category-groups")
+        val groupResult = mockMvc.perform(get("/api/ledgers/$ledgerId/category-groups")
             .header("Authorization", "Bearer $token")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(mapOf("name" to "여가", "type" to "EXPENSE"))))
+            .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.name").value("여가"))
             .andReturn()
-        val groupId = objectMapper.readTree(groupResult.response.contentAsString)["id"].asLong()
+        val groupId = objectMapper.readTree(groupResult.response.contentAsString)
+            .first { it["code"].asText() == "LEISURE" }["id"].asLong()
 
         val requestBody = mapOf(
-            "name" to "여행",
+            "name" to "데이트 외식",
             "type" to "EXPENSE",
             "categoryGroupId" to groupId,
         )
@@ -124,7 +126,7 @@ class TransactionIntegrationTest {
             .content(objectMapper.writeValueAsString(requestBody)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").isNotEmpty)
-            .andExpect(jsonPath("$.name").value("여행"))
+            .andExpect(jsonPath("$.name").value("데이트 외식"))
             .andExpect(jsonPath("$.type").value("EXPENSE"))
             .andExpect(jsonPath("$.categoryGroupName").value("여가"))
             .andExpect(jsonPath("$.defaultCategory").value(false))
@@ -146,26 +148,26 @@ class TransactionIntegrationTest {
             objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java),
         )
 
-        mockMvc.perform(patch("/api/categories/${categories.first { it.name == "식비" }.id}")
+        mockMvc.perform(patch("/api/categories/${categories.first { it.name == "장보기" }.id}")
             .header("Authorization", "Bearer $token")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(mapOf("name" to "외식", "categoryGroupId" to groupId))))
+            .content(objectMapper.writeValueAsString(mapOf("name" to "데이트 장보기", "categoryGroupId" to groupId))))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.name").value("외식"))
+            .andExpect(jsonPath("$.name").value("데이트 장보기"))
             .andExpect(jsonPath("$.categoryGroupName").value("여가"))
 
-        mockMvc.perform(delete("/api/categories/${categories.first { it.name == "여행" }.id}")
+        mockMvc.perform(delete("/api/categories/${categories.first { it.name == "데이트 외식" }.id}")
             .header("Authorization", "Bearer $token"))
             .andExpect(status().isNoContent)
 
         mockMvc.perform(get("/api/ledgers/$ledgerId/categories")
             .header("Authorization", "Bearer $token"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.[?(@.name == '여행')]").isEmpty)
+            .andExpect(jsonPath("$.[?(@.name == '데이트 외식')]").isEmpty)
     }
 
     @Test
-    fun should_RejectCategoryDeletion_When_CategoryIsUsedByTransaction() {
+    fun should_DeactivateCategoryAndKeepTransactionSnapshot_When_CategoryIsUsedByTransaction() {
         val loginResponse = devLogin("user-a@example.com", "유저A")
         val token = loginResponse.accessToken
         val ledgerId = loginResponse.currentLedger.id
@@ -177,7 +179,7 @@ class TransactionIntegrationTest {
             categoryResult.response.contentAsString,
             objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java),
         )
-        val foodCategory = categories.first { it.name == "식비" }
+        val foodCategory = categories.first { it.name == "장보기" }
 
         mockMvc.perform(post("/api/ledgers/$ledgerId/transactions")
             .header("Authorization", "Bearer $token")
@@ -194,8 +196,12 @@ class TransactionIntegrationTest {
 
         mockMvc.perform(delete("/api/categories/${foodCategory.id}")
             .header("Authorization", "Bearer $token"))
-            .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+            .andExpect(status().isNoContent)
+
+        mockMvc.perform(get("/api/ledgers/$ledgerId/months/2026-07/transactions")
+            .header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].category.name").value("장보기"))
     }
 
     @Test
@@ -213,7 +219,7 @@ class TransactionIntegrationTest {
             catResult.response.contentAsString,
             objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java)
         )
-        val foodCat = categories.first { it.name == "식비" }
+        val foodCat = categories.first { it.name == "장보기" }
         val salaryCat = categories.first { it.name == "급여" }
 
         // 2. Create transaction
@@ -237,7 +243,7 @@ class TransactionIntegrationTest {
             .andExpect(jsonPath("$.amount").value(12000))
             .andExpect(jsonPath("$.transactionDate").value("2026-07-09"))
             .andExpect(jsonPath("$.category.id").value(foodCat.id))
-            .andExpect(jsonPath("$.category.name").value("식비"))
+            .andExpect(jsonPath("$.category.name").value("장보기"))
             .andExpect(jsonPath("$.payer.id").value(loginResponse.user.id))
             .andExpect(jsonPath("$.payer.nickname").value("유저A"))
             .andExpect(jsonPath("$.memo").value("식당에서 점심"))
@@ -303,12 +309,12 @@ class TransactionIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(mapOf(
                 "type" to "EXPENSE", "amount" to 10_000, "transactionDate" to "2026-07-31",
-                "categoryId" to categories.first { it.name == "식비" }.id, "memo" to "가전 할부",
+                "categoryId" to categories.first { it.name == "장보기" }.id, "memo" to "가전 할부",
                 "installmentMonths" to 3, "paymentMethod" to "CARD", "cardId" to cardId,
             ))))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.amount").value(3334))
-            .andExpect(jsonPath("$.paymentMethod").value("CARD"))
+            .andExpect(jsonPath("$.paymentMethod.type").value("CARD"))
             .andExpect(jsonPath("$.card.id").value(cardId))
             .andExpect(jsonPath("$.installment.sequence").value(1))
             .andExpect(jsonPath("$.installment.totalCount").value(3))
@@ -367,11 +373,11 @@ class TransactionIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(mapOf(
                 "type" to "EXPENSE", "amount" to 12_000, "transactionDate" to today.toString(),
-                "categoryId" to categories.first { it.name == "식비" }.id,
+                "categoryId" to categories.first { it.name == "장보기" }.id,
                 "paymentMethod" to "CARD", "cardId" to cardId,
             ))))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.paymentMethod").value("CARD"))
+            .andExpect(jsonPath("$.paymentMethod.type").value("CARD"))
             .andExpect(jsonPath("$.card.name").value("생활비 카드"))
 
         mockMvc.perform(get("/api/dashboard/current").header("Authorization", "Bearer $token"))
@@ -385,7 +391,7 @@ class TransactionIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(mapOf(
                 "type" to "EXPENSE", "amount" to 12_000, "transactionDate" to today.toString(),
-                "categoryId" to categories.first { it.name == "식비" }.id,
+                "categoryId" to categories.first { it.name == "장보기" }.id,
                 "installmentMonths" to 3,
             ))))
             .andExpect(status().isBadRequest)
@@ -560,7 +566,7 @@ class TransactionIntegrationTest {
             catResult.response.contentAsString,
             objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java)
         )
-        val foodCat = categories.first { it.name == "식비" }
+        val foodCat = categories.first { it.name == "장보기" }
 
         // Test 1: negative amount
         val invalidAmountRequest = mapOf(

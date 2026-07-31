@@ -32,15 +32,13 @@ class InvitationController(
         return invitationService.inviteUser(principal.userId, ledgerId, request.userId)
     }
 
-    // 3) POST /api/ledgers/{ledgerId}/invitations/links body optional { "expiresInDays": 7 }
+    // V1: 단일 30분 링크. 만료 기간은 서버 정책으로 고정합니다.
     @PostMapping("/api/ledgers/{ledgerId}/invitations/links")
+    @ResponseStatus(HttpStatus.CREATED)
     fun createInvitationLink(
         @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable ledgerId: Long,
-        @RequestBody(required = false) request: CreateLinkInvitationRequest?
-    ): InvitationResponseDto {
-        return invitationService.createInvitationLink(principal.userId, ledgerId, request?.expiresInDays)
-    }
+    ): V1InvitationLinkCreatedResponse = invitationService.createV1InvitationLink(principal.userId, ledgerId)
 
     // 4) GET /api/ledgers/{ledgerId}/invitations
     @GetMapping("/api/ledgers/{ledgerId}/invitations")
@@ -91,19 +89,23 @@ class InvitationController(
     // 9) GET /api/invitations/links/{token}
     @GetMapping("/api/invitations/links/{token}")
     fun getLinkInvitationPreview(
-        @PathVariable token: String
-    ): LinkInvitationPreviewResponse {
-        return invitationService.getLinkInvitationPreview(token)
-    }
+        @PathVariable token: String,
+        @AuthenticationPrincipal principal: UserPrincipal?,
+    ): V1LinkInvitationPreviewResponse = invitationService.getV1LinkPreview(token, principal != null)
 
     // 10) POST /api/invitations/links/{token}/accept
     @PostMapping("/api/invitations/links/{token}/accept")
     fun acceptLinkInvitationByToken(
         @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable token: String
-    ): InvitationResponseDto {
-        return invitationService.acceptLinkInvitationByToken(principal.userId, token)
-    }
+    ): V1InvitationAcceptedResponse = invitationService.acceptV1Link(principal.userId, token)
+
+    @PostMapping("/api/invitations/links/{token}/reject")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun rejectLinkInvitationByToken(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable token: String,
+    ) = invitationService.rejectV1Link(principal.userId, token)
 }
 
 data class InviteUserRequest(

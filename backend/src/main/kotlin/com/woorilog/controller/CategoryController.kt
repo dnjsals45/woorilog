@@ -32,7 +32,14 @@ class CategoryController(
         @PathVariable ledgerId: Long,
         @Valid @RequestBody request: CreateCategoryApiRequest
     ): CategoryResponse {
-        return categoryService.createCategory(principal.userId, ledgerId, request.name, request.type, request.categoryGroupId)
+        return categoryService.createCategory(
+            principal.userId,
+            ledgerId,
+            request.name,
+            request.type,
+            request.categoryGroupId,
+            request.groupCode,
+        )
     }
 
 }
@@ -41,19 +48,20 @@ data class CreateCategoryApiRequest(
     @field:NotBlank(message = "카테고리 이름은 필수 입력값입니다.")
     val name: String,
 
-    @field:NotNull(message = "카테고리 타입은 필수 입력값입니다.")
-    val type: CategoryType,
+    val type: CategoryType?,
 
-    @field:NotNull(message = "통계 대분류는 필수 입력값입니다.")
-    val categoryGroupId: Long,
+    val categoryGroupId: Long?,
+
+    val groupCode: String? = null,
 )
 
 data class UpdateCategoryApiRequest(
     @field:NotBlank(message = "카테고리 이름은 필수 입력값입니다.")
     val name: String,
 
-    @field:NotNull(message = "통계 대분류는 필수 입력값입니다.")
-    val categoryGroupId: Long,
+    val categoryGroupId: Long? = null,
+
+    val applyNameToPastTransactions: Boolean = false,
 )
 
 @RestController
@@ -66,7 +74,13 @@ class CategoryManagementController(
         @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable categoryId: Long,
         @Valid @RequestBody request: UpdateCategoryApiRequest,
-    ): CategoryResponse = categoryService.updateCategory(principal.userId, categoryId, request.name, request.categoryGroupId)
+    ): CategoryResponse = categoryService.updateCategory(
+        principal.userId,
+        categoryId,
+        request.name,
+        request.categoryGroupId,
+        request.applyNameToPastTransactions,
+    )
 
     @DeleteMapping("/{categoryId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -95,7 +109,22 @@ class CategoryGroupController(
         @PathVariable ledgerId: Long,
         @Valid @RequestBody request: CreateCategoryGroupApiRequest,
     ): CategoryGroupResponse = categoryService.createCategoryGroup(principal.userId, ledgerId, request.name, request.type)
+
+    @PatchMapping("/{groupCode}")
+    fun updateVisibility(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable ledgerId: Long,
+        @PathVariable groupCode: String,
+        @RequestBody request: UpdateCategoryGroupVisibilityRequest,
+    ): CategoryGroupResponse = categoryService.updateCategoryGroupVisibility(
+        principal.userId,
+        ledgerId,
+        groupCode,
+        request.hidden,
+    )
 }
+
+data class UpdateCategoryGroupVisibilityRequest(val hidden: Boolean)
 
 data class CreateCategoryGroupApiRequest(
     @field:NotBlank(message = "대분류 이름은 필수 입력값입니다.")

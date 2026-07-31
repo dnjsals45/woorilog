@@ -36,6 +36,12 @@ class AuthController(
         return authService.getMe(principal.userId)
     }
 
+    @PatchMapping("/me/profile")
+    fun updateProfile(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @Valid @RequestBody request: UpdateProfileRequest,
+    ) = authService.updateProfile(principal.userId, request.nickname, request.timezone)
+
     @PostMapping("/auth/logout")
     fun logout(
         @CookieValue(name = "\${app.auth.refresh-cookie-name:woorilog.refreshToken}", required = false) refreshToken: String?,
@@ -104,4 +110,12 @@ data class DevLoginRequest(
 
     @field:NotBlank(message = "닉네임은 필수 입력값입니다.")
     val nickname: String
+)
+
+data class UpdateProfileRequest(
+    @field:NotBlank(message = "닉네임은 필수 입력값입니다.")
+    val nickname: String,
+
+    @field:NotBlank(message = "시간대는 필수 입력값입니다.")
+    val timezone: String,
 )

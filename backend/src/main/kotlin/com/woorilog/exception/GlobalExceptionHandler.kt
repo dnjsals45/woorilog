@@ -24,11 +24,10 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidationException(e: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
-        val errorMessage = e.bindingResult.fieldErrors
-            .joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
+        val fieldErrors = e.bindingResult.fieldErrors.associate { it.field to (it.defaultMessage ?: "올바르지 않은 값입니다.") }
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
-            .body(ErrorResponse(code = "INVALID_REQUEST", message = errorMessage))
+            .body(ErrorResponse(code = "INVALID_REQUEST", message = "요청 값이 올바르지 않습니다.", fieldErrors = fieldErrors))
     }
 
     @ExceptionHandler(HttpMessageNotReadableException::class)
@@ -57,6 +56,11 @@ class GlobalExceptionHandler {
             .body(ErrorResponse(code = "INVALID_OCR_IMAGE", message = message))
     }
 
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgumentException(): ResponseEntity<ErrorResponse> = ResponseEntity
+        .status(HttpStatus.BAD_REQUEST)
+        .body(ErrorResponse(code = "INVALID_REQUEST", message = "요청 값이 올바르지 않습니다."))
+
     @ExceptionHandler(Exception::class)
     fun handleGenericException(e: Exception): ResponseEntity<ErrorResponse> {
         logger.error("Unhandled exception", e)
@@ -68,5 +72,6 @@ class GlobalExceptionHandler {
 
 data class ErrorResponse(
     val code: String,
-    val message: String
+    val message: String,
+    val fieldErrors: Map<String, String>? = null,
 )
