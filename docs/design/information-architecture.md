@@ -1,70 +1,103 @@
 # Information Architecture
 
-## Navigation
+이 문서는 [V1 Scope](../product/v1-scope.md)와 [User Flows](../product/user-flows.md)를 화면과 이동 구조로 연결합니다.
+현재 프론트엔드 경로가 이 문서와 다르면 V1 구현 과정에서 점진적으로 교체합니다.
 
-V1은 모바일 중심 하단 내비게이션을 기준으로 합니다.
+## 화면 구조
 
 ```text
-Landing
-Login
-OAuth Callback
-Protected App
-  Dashboard
-  Calendar / Ledger
-  Budget Month Settings
-  Statistics
-  Recurring Transactions
-  Card Management
-  Settings
-  Category Management
-  Transaction Edit
-  Invitation Link
-  Notifications
-  Help
+공개 영역
+  랜딩 / 카카오 로그인
+  OAuth 콜백
+  초대 링크 확인
+
+보호 영역
+  최초 닉네임 확정
+  장부 선택
+  공동 장부 생성
+  홈 대시보드
+  거래
+    날짜순 거래 목록
+    거래 상세 / 수정
+    이미지 가져오기 검토
+    미분류 거래
+  예산
+    현재 기간 예산
+    다음 기간 사전 설정
+    대분류 예산
+    지난 기간 요약
+  분석
+  반복 거래 / 고정비 / 할부
+  카테고리 관리
+  알림함
+  설정
+    프로필
+    공동 장부 초대와 멤버
+    개인 거래 공유
+    알림 설정
 ```
 
-## Routes
+## 주요 경로
 
-| Route | Purpose |
+| 경로 | 목적 |
 | --- | --- |
-| `/` | 서비스 소개와 로그인 진입 |
-| `/login` | Kakao login, local/test developer login |
-| `/auth/kakao/callback` | OAuth callback 처리 |
-| `/dashboard` | 현재 장부의 예산/지출/최근 거래/다음 카드값 요약 |
-| `/calendar` | 날짜별 거래 탐색과 거래 입력 |
-| `/stats` | 월별/카테고리별 통계 |
-| `/recurring` | 정기 거래 설정과 집계 기간별 합계 확인 |
-| `/cards` | 장부별 카드 등록과 결제금액 확정일 관리 |
-| `/settings` | 장부, 별칭, 초대 관리 |
-| `/categories` | 거래 카테고리와 통계 대분류 관리 |
-| `/transactions/:transactionId` | 거래 상세/수정 |
-| `/ledgers/:ledgerId/months/:budgetMonth` | 월 예산과 개인 카테고리/공동 멤버 할당 설정 |
-| `/invitations/links/:token` | 초대 링크 조회/수락 |
-| `/notifications` | 장부 알림 확인과 읽음 처리 |
-| `/help` | 주요 기능 도움말 |
+| `/` | 제품 소개와 카카오 로그인 진입 |
+| `/auth/kakao/callback` | OAuth 콜백과 원래 화면 복귀 |
+| `/onboarding` | 최초 서비스 닉네임 확정 |
+| `/dashboard` | 현재 예산 기간의 공동·본인 예산과 최근 거래 확인 |
+| `/transactions` | 날짜순 거래 검색·필터와 상세 진입 |
+| `/transactions/import` | 영수증·카드사 앱 캡처 후보 검토와 일괄 저장 |
+| `/transactions/uncategorized` | 미분류 거래 일괄 분류 |
+| `/transactions/:transactionId` | 거래 상세, 수정, 공유와 삭제 |
+| `/budget` | 현재·다음 예산 기간과 대분류 예산 설정 |
+| `/budget/periods/:periodId` | 지난 기간 예산과 종료 요약 |
+| `/analysis` | 대분류 지출, 소비 흐름과 기간 비교 |
+| `/recurring` | 반복 지출, 고정비와 할부 관리 |
+| `/categories` | 고정 대분류 표시 여부와 소분류 관리 |
+| `/ledgers/new` | 공동 장부 생성 |
+| `/ledgers/:ledgerId/settings` | 장부 이름, 링크 초대, 멤버와 공유 설정 |
+| `/invitations/:token` | 초대 확인, 로그인 복귀와 수락·거절 |
+| `/notifications` | 앱 내부 알림 확인과 읽음 처리 |
+| `/settings` | 프로필과 사용자별 알림 설정 |
 
-## Screen Priority Rule
+경로 이름은 구현 과정에서 현재 라우터 구조에 맞춰 조정할 수 있지만 화면의 책임과 진입 관계는 유지합니다.
 
-각 화면은 구현 전에 다음을 정리합니다.
+## 주 이동 구조
 
-- Screen Goal
-- Primary Action
-- Key Information
-- CTA
-- Loading/Empty/Error State
+모바일의 주요 영역은 다음 네 가지입니다.
 
-## Mobile Navigation
+- `홈`: 공동 예산, 본인 예산, 주간 가이드와 최근 거래
+- `거래`: 날짜순 거래 탐색, 검색과 필터
+- `예산`: 현재·다음 기간과 대분류 예산 설정
+- `분석`: 대분류 소비와 기간별 추세
 
-- `홈`: 현재 장부의 요약과 빠른 검토
-- `거래`: 날짜별 거래 탐색과 상세 확인
-- `기록`: 중앙 action으로 거래 입력 sheet 열기
-- `예산`: 월 예산과 개인 카테고리/공동 멤버 할당 설정
-- `분석`: 소비 흐름과 카테고리 통계
-- Recurring Transactions: 정기 거래 설정, 자동 등록 상태, 집계 기간별 합계 확인
-- Card Management: 카드 등록과 다음 카드값 확인의 기준이 되는 확정일 관리
-- Settings: 장부/별칭/초대 관리
-- Category Management: 카테고리 생성·수정과 통계 대분류 연결
+거래 기록은 별도 탭으로 고정하지 않고 전역 `+` 행동에서 시작합니다.
+`+`를 누르면 빠른 기록, 영수증 사진과 카드사 앱 캡처를 선택합니다.
+반복 거래, 카테고리, 알림과 설정은 보조 메뉴에서 진입합니다.
 
-모바일 하단 navigation은 `홈 / 거래 / 기록 / 예산 / 분석` 5개 항목으로 고정합니다. 설정과 관리 기능은 보조 메뉴에서 진입하며, 거래 입력을 위한 별도 확장형 FAB는 함께 표시하지 않습니다.
+## 장부 선택
 
-장부 선택기에는 현재 장부 전환과 `새 개인 장부`, `새 공동 장부` 생성 진입점을 함께 둡니다.
+- 기본 개인 장부는 항상 장부 선택기에 표시합니다.
+- 공동 장부는 사용자가 생성하거나 참여한 장부만 표시합니다.
+- 장부 선택기에서 새 공동 장부 생성으로 진입할 수 있습니다.
+- 현재 장부를 바꾸면 홈, 거래, 예산, 분석과 설정의 맥락이 함께 바뀝니다.
+- 탈퇴하거나 내보내진 공동 장부의 참여 기간은 읽기 전용 기록으로 구분해 제공합니다.
+
+## 정보 공개 원칙
+
+- 홈에는 공동 예산과 로그인한 사용자의 예산만 표시합니다.
+- 상대방 개인 거래는 홈과 분석에서 제외합니다.
+- 상대방의 전체 할당·사용·잔액은 상세 화면에서 확인할 수 있습니다.
+- 상대방 개인 거래는 상대방이 공유한 경우에만 상세 화면에 표시합니다.
+- 공동 예산 거래는 두 사용자 모두 조회하고 수정할 수 있습니다.
+
+## 화면 정의 기준
+
+각 화면을 구현하기 전에 다음을 확인합니다.
+
+- 화면 목적
+- 가장 중요한 행동
+- 필수 정보와 공개 범위
+- 로딩·빈 상태·오류 상태
+- 키보드와 터치 접근성
+- 좁은 화면과 긴 텍스트

@@ -1,6 +1,7 @@
 # Domain Model
 
-이 문서는 V1 도메인 규칙을 정리합니다. 구현 과정에서 실제 entity와 API 계약에 맞춰 갱신합니다.
+이 문서는 현재 구현된 도메인 모델의 기준선입니다.
+새 제품 목표는 [V1 Scope](../product/v1-scope.md)를 원본으로 사용하며, [Implementation Plan](../planning/implementation-plan.md)의 계약·데이터 차이 확정 단계에서 이 문서를 새 모델로 교체합니다.
 
 ## Core Concepts
 

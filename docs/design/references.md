@@ -7,7 +7,7 @@
 
 - 예산, 지출, 잔액은 한눈에 스캔되게 보여줍니다.
 - 개인 장부와 공동 장부는 같은 앱 안에서 자연스럽게 전환되어야 합니다.
-- 공동 장부에서는 누가 결제했는지, 누가 참여하는지, 현재 장부의 월 예산이 어떻게 쓰이고 있는지가 함께 보여야 합니다.
+- 공동 장부에서는 결제수단보다 공동·본인 예산의 사용 가능액과 현재 예산 기간이 먼저 보여야 합니다.
 - 모바일 화면은 한 번에 하나의 주요 행동을 명확히 드러냅니다.
 - 금융 정보는 과하게 무겁게 보이지 않되, 계산 근거와 상태는 숨기지 않습니다.
 
@@ -15,8 +15,8 @@
 
 | Reference | Use For | Notes |
 | --- | --- | --- |
-| [Splitwise](https://www.splitwise.com/) | 공동 비용, 멤버별 지출, 빠른 비용 추가 | 정산 중심 흐름은 참고하되, 우리로그는 월 예산 운영을 더 앞에 둡니다. |
-| [YNAB](https://www.ynab.com/) | 월 예산, 카테고리 예산, 지출 우선순위 | 예산 카테고리 구조와 월 단위 사고방식을 참고합니다. |
+| [Splitwise](https://www.splitwise.com/) | 공동 비용, 멤버별 지출, 빠른 비용 추가 | 정산 중심 흐름은 참고하되, 우리로그는 공동 예산 운영을 더 앞에 둡니다. |
+| [YNAB](https://www.ynab.com/) | 예산 배분, 카테고리 예산, 지출 우선순위 | 예산 카테고리 구조를 참고하되 우리로그의 사용자 지정 예산 기간을 적용합니다. |
 | [Copilot Money](https://www.copilot.money/) | 대시보드, 지출 요약, 카테고리 시각화 | 은행 연동 중심 전제는 제외하고, 정보 밀도와 카드 구성을 참고합니다. |
 | [뱅크샐러드](https://app.banksalad.com/) | 한국어 금융 정보 표현, 자산/소비 요약 | 자산 관리 범위까지 넓히지는 않고, 한국어 금액/카테고리 표현을 참고합니다. |
 
@@ -34,7 +34,7 @@
 | Reference | Use For | Notes |
 | --- | --- | --- |
 | [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines) | iOS 모바일 상호작용, safe area, touch target | 모바일 우선 화면의 기본 UX 기준으로 확인합니다. |
-| [Material Design 3 Navigation Bar](https://m3.material.io/components/navigation-bar/overview) | 하단 내비게이션 구조 | 홈, 거래, 중앙 기록 action, 예산, 분석의 5개 항목을 검토할 때 참고합니다. |
+| [Material Design 3 Navigation Bar](https://m3.material.io/components/navigation-bar/overview) | 하단 내비게이션 구조 | 홈, 거래, 예산, 분석과 전역 기록 행동을 검토할 때 참고합니다. |
 | [Material Design 3 Top App Bar](https://m3.material.io/components/app-bars/overview) | 상단 장부 선택기와 화면 액션 | 현재 장부 맥락과 1-2개 주요 액션만 드러내는 기준으로 참고합니다. |
 
 ## Implementation References

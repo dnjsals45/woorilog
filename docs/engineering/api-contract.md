@@ -1,6 +1,7 @@
 # API Contract
 
-이 문서는 V1 API 계약의 목차와 공통 규칙입니다. 구현이 진행되면서 endpoint별 request/response 예시를 채웁니다.
+이 문서는 현재 구현된 API 계약의 기준선입니다.
+새 제품 목표는 [V1 Scope](../product/v1-scope.md)를 원본으로 사용하며, [Implementation Plan](../planning/implementation-plan.md)의 기능 단계마다 계약과 구현을 함께 갱신합니다.
 
 ## Common Rules
 

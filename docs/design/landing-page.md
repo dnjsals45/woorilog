@@ -5,7 +5,7 @@
 
 ## Source Reference
 
-- Screen specification: [Landing / Login / Onboarding](./screen-specs.md#landing--login--onboarding)
+- Screen specification: [최초 가입](./screen-specs.md#최초-가입)
 - Page implementation: [`frontend/src/pages/LandingPage.tsx`](../../frontend/src/pages/LandingPage.tsx)
 - Runtime background: [`frontend/src/assets/landing/landing-desk-bg.jpg`](../../frontend/src/assets/landing/landing-desk-bg.jpg)
 

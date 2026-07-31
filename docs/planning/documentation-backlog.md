@@ -1,36 +1,43 @@
 # Documentation Backlog
 
-이 문서는 현재 구현에 비해 아직 부족한 후속 문서를 정리합니다. 2026-07-22 기준 인증, API 계약, 도메인 모델, 환경 변수, 테스트 전략, OCR ADR은 기존 문서에 반영되어 있습니다.
+새 [V1 Scope](../product/v1-scope.md)는 제품 목표를 설명하고, 현재 엔지니어링 문서는 이전 구현 기준선을 설명합니다.
+기능 구현 단계마다 아래 문서를 코드와 함께 갱신합니다.
 
-## Engineering Structure
+## 구현 전 우선 갱신
 
-- `docs/engineering/architecture.md`: backend package 구조, frontend 폴더 구조, API client/query/component 책임 분리 기준
-- `docs/engineering/permissions.md`: 장부 멤버 role, 초대·예산·정산 변경 권한, 접근 불가 fallback
-- `docs/engineering/transaction-import.md`: Native Tesseract 입력/출력, 이미지 전처리, parser와 preview 저장 규칙, 실패 처리
-- `docs/engineering/privacy.md`: 영수증/거래 이미지, 거래 메모, 사용자 식별 정보 보관 기준
+- `docs/engineering/domain-model.md`: 예산 기간, 예산 배분, 카테고리 스냅샷, 거래 공유와 탈퇴 후 접근 모델
+- `docs/engineering/api-contract.md`: 링크 전용 초대, 새 예산·거래·분석·알림 계약과 제거 대상 API
+- `docs/engineering/testing-strategy.md`: 두 사용자 권한, 예산 기간 경계, 개인정보와 자동 거래 테스트
+- `docs/design/frontend-implementation.md`: 새 화면·라우트가 실제 코드에 반영될 때 현재 구현 기준선 갱신
 
-## Data Model
+## 추가할 엔지니어링 문서
 
-- `docs/engineering/data-model.md`: 실제 entity 기준 ERD, 주요 index, unique 제약, cascade 정책
+- `docs/engineering/permissions.md`: `OWNER`·`MEMBER`, 개인·공동 거래와 탈퇴 후 읽기 권한
+- `docs/engineering/privacy.md`: 거래 이미지, 개인 거래, 공유 상태와 보존 기준
+- `docs/engineering/data-migration.md`: 기존 월 예산·카테고리 연결·보관 장부를 새 V1 모델로 옮기는 기준
+- `docs/engineering/transaction-import.md`: OCR 후보 신뢰도, 중복 판단, 추천과 일괄 저장
+- `docs/engineering/scheduled-transactions.md`: 할부·반복 거래·고정비 생성과 중복 방지
 
-## Add Before Real Use
+## 실제 사용 전
 
-- `docs/engineering/deployment.md`: 배포 환경, DB migration, secret 주입, rollback 기준
-- `docs/engineering/backup-restore.md`: 개인 금융 데이터 백업, 복구, export 기준
-- README screenshots: 실제 화면이 생긴 뒤 핵심 사용 흐름만 캡처
+- `docs/engineering/deployment.md`: 배포 환경, 스키마 변경, secret 주입과 rollback
+- `docs/engineering/backup-restore.md`: 금융 데이터 백업과 복구
+- README 화면 이미지: 새 V1 화면 구현 후 핵심 흐름만 추가
 
-## Design QA
+## 검수 기록
 
-- README screenshots: 실제 서비스 데이터가 준비되면 핵심 흐름만 캡처
-- 접근성 검수 기록: keyboard, focus, screen reader label, reduced motion
-- edge state 검수 기록: 긴 거래명, 큰 금액, 빈 월, 많은 거래와 많은 카테고리
-- 초대 흐름 상세 명세: pending, 로그인 복귀, 만료와 이미 수락된 상태를 구현 변경 시 추가
+- 접근성: keyboard, focus, screen reader label, reduced motion
+- 반응형: 긴 장부명, 큰 금액, 많은 거래와 카테고리
+- 개인정보: 상대방 비공개 거래가 홈·분석·API에 노출되지 않는지 확인
+- 경계 조건: 예산 기간 시작일, 월말 반복 거래, 기간 전환과 재알림
+- OCR: 저신뢰 후보 숨김, 중복 후보 기본 제외와 일괄 수정
 
-## Decision Log Candidates
+## 결정 기록 후보
 
-큰 선택이 생기면 `docs/engineering/decisions/` 아래 ADR로 남깁니다.
+큰 기술 선택은 `docs/engineering/adr/` 아래 ADR로 남깁니다.
 
-- JWT cookie/header 전달 방식 세부 결정
-- Flyway 도입 시점 결정
-- 차트 라이브러리 도입 여부
-- 로컬 홈 배포 운영 방식 결정
+- 기존 데이터 마이그레이션과 호환 기간
+- 카테고리 스냅샷 저장 구조
+- 예산 기간 계산과 스케줄러 실행 기준
+- OCR 신뢰도와 중복 판정 방식
+- 알림 스케줄러와 사용자 시간대 처리

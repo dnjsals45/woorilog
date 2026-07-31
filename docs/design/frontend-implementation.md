@@ -4,8 +4,16 @@
 
 프론트엔드는 React, Vite, TypeScript, React Router, TanStack Query, Tailwind CSS, Lucide, React Hook Form, Zod로 구성되어 있으며, 이관 대상 디자인은 **Crisp Calm V1**입니다.
 
+## Document Status
+
+- 제품 목표는 [V1 Scope](../product/v1-scope.md)를 원본으로 사용합니다.
+- 화면 목표와 이동 구조는 [Screen Specs](./screen-specs.md)와 [Information Architecture](./information-architecture.md)를 따릅니다.
+- 아래 `Current Implementation`은 기존 코드의 기준선이며 새 V1의 완료 상태가 아닙니다.
+- 달력 거래 화면, 카드 관리, 월 마감처럼 새 V1 범위와 다른 동작은 구현 단계에서 교체하거나 제거합니다.
+
 ## Source Of Truth
 
+- Product behavior: [V1 Scope](../product/v1-scope.md)
 - Global tokens and components: [Design System](./design-system.md)
 - Route and navigation: [Information Architecture](./information-architecture.md)
 - Screen-specific behavior: [Screen Specs](./screen-specs.md)
@@ -14,7 +22,7 @@
 - Shared UI: [`frontend/src/shared/ui`](../../frontend/src/shared/ui/)
 - Screen implementation: [`frontend/src/pages`](../../frontend/src/pages/)
 
-디자인이 충돌하면 Design System과 Screen Specs를 우선합니다. 문서와 구현이 다르면 현재 제품 동작을 확인한 뒤 문서와 코드를 같은 변경에서 맞춥니다.
+제품 동작이 충돌하면 V1 Scope를, 시각 기준이 충돌하면 Design System과 Screen Specs를 우선합니다. 문서와 구현이 다르면 현재 제품 동작을 확인한 뒤 문서와 코드를 같은 변경에서 맞춥니다.
 
 ## Current Structure
 
@@ -74,7 +82,7 @@ frontend/src/
 | `761-1040px` | top bar, 5개 bottom navigation | 1-2 column |
 | `1041px+` | 240px sidebar | wide grid, right side sheet |
 
-모바일 navigation 순서는 `홈 / 거래 / 기록 / 예산 / 분석`입니다. `기록`은 중앙 action으로 통합하고 별도 확장형 FAB를 함께 사용하지 않습니다.
+현재 모바일 navigation은 `홈 / 거래 / 기록 / 예산 / 분석`입니다. 새 V1에서는 Information Architecture에 따라 `홈 / 거래 / 예산 / 분석`과 전역 `+` 행동으로 교체합니다.
 
 ## Styling Rules
 

@@ -1,185 +1,205 @@
-# Implementation Plan
+# V1 Implementation Plan
 
-이 문서는 V1 구현 순서를 미리 정리한 계획입니다.
-Codex analysis 단계에서 작업 분해와 handoff packet 작성에 참고할 수 있지만, 실제 작업은 요청 시점의 코드, 문서, 우선순위를 다시 확인한 뒤 나눕니다.
+이 문서는 새 [V1 Scope](../product/v1-scope.md)를 현재 코드 기준선에 적용하는 구현 순서를 정리합니다.
+기존 구현을 새로 만드는 계획이 아니라 재사용할 부분과 교체할 부분을 분리하는 마이그레이션 계획입니다.
 
-## Current Status
+## 현재 상태
 
-- 2026-07-22 기준 1~9단계의 V1 기능은 백엔드와 프론트엔드에 구현되어 있습니다.
-- 현재 구현 범위는 `docs/product/v1-scope.md`와 README의 `V1 Implementation Status`를 기준으로 확인합니다.
-- 10단계 Product Hardening 중 README, API/도메인/인증/테스트 문서와 주요 회귀 테스트는 반영되어 있습니다.
-- 배포·백업·개인정보 문서와 화면 디자인 고도화는 후속 작업이며, 남은 문서는 `docs/planning/documentation-backlog.md`에서 관리합니다.
+- 제품 기능과 정책은 V1 Scope에 확정되어 있습니다.
+- [User Flows](../product/user-flows.md), [Information Architecture](../design/information-architecture.md)와 [Screen Specs](../design/screen-specs.md)는 새 V1을 기준으로 교체되었습니다.
+- 현재 백엔드, 프론트엔드, API 계약과 도메인 모델은 이전 제품 범위의 구현 기준선입니다.
+- 새 V1 구현 전 기능별 계약 차이와 데이터 이전 방식을 먼저 확정해야 합니다.
 
-## Principles
+## 구현 원칙
 
-- 기능은 문서, API 계약, 테스트와 함께 구현합니다.
-- 각 단계는 리뷰 가능한 PR/커밋 단위로 유지합니다.
-- API 계약, 도메인 모델, 테스트가 함께 따라오지 않는 기능은 완료로 보지 않습니다.
-- `.codex`, `.agent`, 개인 workflow 파일은 git 이력에 포함하지 않습니다.
-- 처음부터 과한 추상화나 사용하지 않는 계층을 만들지 않습니다.
+- V1 Scope를 제품 동작의 원본으로 사용합니다.
+- 한 단계에서 API 계약, 도메인 모델, 백엔드, 프론트엔드와 테스트를 함께 맞춥니다.
+- 현재 기능을 재사용할 수 있으면 유지하고 정책이 다른 부분만 교체합니다.
+- 기존 데이터를 잃을 수 있는 스키마 변경은 마이그레이션과 검증 계획 없이 진행하지 않습니다.
+- 각 작업은 하나의 관찰 가능한 결과와 되돌릴 수 있는 PR 범위를 가집니다.
 
-## Target Baseline
+## 0. 계약과 데이터 차이 확정
 
-새 저장소는 다음을 먼저 갖춥니다.
+범위:
 
-- README
-- AGENTS
-- product/design/engineering/planning docs
-- `.gitignore`
-- backend scaffold
-- frontend scaffold
-- Docker Compose
-- CI
+- 현재 엔티티·API·화면과 V1 Scope의 차이 목록 작성
+- 사용자 지정 예산 기간과 기존 월 예산 데이터 이전 방식
+- 거래 카테고리 직접 연결에서 스냅샷으로 전환하는 방식
+- 공동·개인 예산 및 거래 공개 범위의 권한 표
+- 기존 장부 보관, 직접 초대, 월 마감, 정산과 카드 관리 기능의 유지·제거 방식
+- 데이터베이스 스키마 변경 및 배포 순서
 
-## Implementation Order
+완료 기준:
 
-### 1. Repository Baseline
+- [Domain Model](../engineering/domain-model.md)과 [API Contract](../engineering/api-contract.md)가 새 V1 목표 계약을 설명합니다.
+- 기존 데이터의 보존·변환·제거 기준이 문서화되어 있습니다.
+- 프론트엔드와 백엔드 작업을 독립적인 이슈와 PR로 나눌 수 있습니다.
 
-- Gradle backend scaffold
-- Vite frontend scaffold
-- Docker Compose MySQL
-- `.env.example`
-- CI skeleton
-- health check
+## 1. 사용자와 공동 장부 기반
 
-Completion:
+범위:
 
-- `GET /health` works.
-- backend test runs.
-- frontend lint/test/build runs.
-- CI runs on PR.
+- 최초 닉네임 확정과 기본 개인 장부
+- 최대 두 명의 공동 장부
+- 장부 이름·전체 예산·예산 기간을 포함한 생성
+- 30분 단일 활성 링크 초대와 로그인 복귀
+- `OWNER`·`MEMBER` 권한, 소유권 이전, 탈퇴와 내보내기
+- 참여 기간 읽기 전용 조회와 재참여
 
-### 2. Auth Foundation
+완료 기준:
 
-- Kakao OAuth login URL/callback
-- access/refresh token
-- session 조회
-- logout/refresh
-- local/test-only developer login
-- frontend login/callback/protected route
+- 신규 사용자가 개인 장부로 시작할 수 있습니다.
+- 사용자가 공동 장부를 만들고 링크로 한 명을 초대할 수 있습니다.
+- 탈퇴·내보내기 후 데이터 공개 범위와 자동 거래 일시정지가 정책대로 동작합니다.
 
-Completion:
+## 2. 예산 기간과 배분
 
-- 사용자는 로그인 후 원래 요청한 보호 경로 또는 기본 `/dashboard`에 진입할 수 있습니다.
-- 로컬 개발과 Playwright 테스트에서는 개발자 로그인으로 보호 화면에 진입할 수 있습니다.
-- 실제 사용자 로그인 흐름은 Kakao OAuth 기준으로 검증합니다.
+범위:
 
-### 3. Ledger Foundation
+- 1~28일 또는 말일 기준의 사용자 지정 예산 기간
+- 전체·멤버별·공동·예비비 배분
+- 공동·본인 대분류 예산과 공개 범위
+- 다음 기간 사전 설정, 3일 전 안내와 자동 복사
+- 이전 기간 잔액·초과액 비이월
+- 지난 기간 수정과 종료 요약
 
-- User
-- Ledger
-- LedgerMember
-- default personal ledger
-- additional personal ledger
-- group ledger
-- ledger switching and fallback
+완료 기준:
 
-Completion:
+- 현재 날짜에 맞는 예산 기간과 사용 가능액을 일관되게 계산합니다.
+- 다음 기간을 미리 설정하거나 이전 설정을 자동 복사할 수 있습니다.
+- 과거 기간을 수정해도 현재 기간 알림에 영향을 주지 않습니다.
 
-- 신규 사용자는 기본 개인 장부를 자동으로 가집니다.
-- 사용자는 개인/공동 장부를 전환할 수 있습니다.
+## 3. 거래와 카테고리 스냅샷
 
-### 4. Transaction And Category
+범위:
 
-- LedgerCategory
-- default categories
-- transaction create/update/detail/month list
-- quick transaction parser/command
-- frontend calendar/ledger and transaction edit
+- 지출·수입·계좌이체 세 가지 거래 유형
+- 본인·공동 예산 차감과 마지막 선택값 기억
+- 빠른 기록 필수값과 저장 후 계속 입력
+- 개인 거래 공유와 공동 거래 수정 권한
+- 고정 대분류, 장부별 소분류와 거래 카테고리 스냅샷
+- 날짜순 목록, 검색·필터, 미분류 일괄 처리
 
-Completion:
+완료 기준:
 
-- 사용자는 현재 장부에 거래를 등록하고 월별로 조회할 수 있습니다.
+- 사용자가 권한 범위 안에서 거래를 생성·수정·삭제할 수 있습니다.
+- 소분류를 변경하거나 삭제해도 과거 거래와 대분류 분석이 유지됩니다.
+- 상대방 비공개 거래가 홈·분석·상세 API에서 노출되지 않습니다.
 
-### 5. Budget Month
+## 4. 이미지 일괄 가져오기
 
-- LedgerMonth
-- member allocation
-- category budget
-- update month settings
-- frontend budget month settings
+범위:
 
-Completion:
+- 여러 영수증 사진과 카드사 앱 캡처 업로드
+- 신뢰할 수 있는 후보만 노출
+- 장부·사용자·사용처별 카테고리 추천
+- 중복 후보 탐지와 기본 선택 제외
+- 차감 예산·카테고리 일괄 변경
+- 검토 후 선택 저장
 
-- 사용자는 월 예산과 카테고리/멤버별 설정을 저장할 수 있습니다.
+완료 기준:
 
-### 6. Dashboard And Statistics
+- 여러 이미지에서 얻은 거래를 한 번의 검토 흐름으로 저장할 수 있습니다.
+- 저신뢰 결과와 중복 후보가 자동 저장되지 않습니다.
+- 상대방 예산을 가져오기 대상으로 선택할 수 없습니다.
 
-- dashboard summary
-- recent transactions
-- category spending
-- member usage
-- monthly statistics
-- frontend dashboard/statistics
+## 5. 할부·반복 거래·고정비
 
-Completion:
+범위:
 
-- 사용자는 현재 장부의 월 예산 대비 지출 흐름을 확인할 수 있습니다.
+- 할부 원금, 개월 수, 월 이자와 회차별 자동 등록
+- 매주·매월·매년 반복 지출
+- 존재하지 않는 월 일자의 말일 보정
+- 선택형 고정비 관리
+- 수정·일시정지·재개·삭제와 과거 거래 유지
+- 멤버 탈퇴·내보내기 시 자동 일시정지
 
-### 7. Invitation
+완료 기준:
 
-- group ledger participation model
-- direct invitation
-- link invitation
-- pending invitation
-- accept/reject/cancel
-- frontend invitation modal/link page
+- 예정 거래가 현재 예산 기간의 사용 가능액에 한 번만 반영됩니다.
+- 발생일에 실제 거래로 전환돼도 예정액과 중복 차감되지 않습니다.
+- 자동 거래의 변경 범위와 과거 기록이 정책대로 유지됩니다.
 
-Completion:
+## 6. 대시보드·상세 조회·분석
 
-- 사용자는 공동 장부에 다른 사용자를 초대하고 초대를 수락할 수 있습니다.
+범위:
 
-### 8. Recurring Transaction
+- 공동 예산과 본인 예산 중심의 대시보드
+- 현재 잔액과 예정 지출을 반영한 사용 가능액
+- 주간 가이드, 수입 합계와 최근 거래
+- 예산 상세와 지난 기간 조회
+- 대분류 원형 그래프, 일별·누적 흐름과 이전 기간 비교
+- 6·12개 기간 추세
 
-- recurring template
-- due query
-- generate
-- pause/resume
-- frontend recurring settings
+완료 기준:
 
-Completion:
+- 상대방 개인 정보 없이 공동·본인 예산 상태를 이해할 수 있습니다.
+- 홈, 상세와 분석의 합계가 같은 예산 기간·권한 규칙을 사용합니다.
+- 초과 금액과 미분류 거래가 숨겨지지 않습니다.
 
-- 사용자는 반복 거래를 관리하고 생성할 수 있습니다.
+## 7. 알림과 주간 가이드
 
-### 9. Transaction Import
+범위:
 
-- backend Native Tesseract OCR와 이미지 전처리 integration
-- parser
-- preview endpoint
-- frontend image import preview
+- 80%와 100%·초과 예산 알림
+- 기준 아래로 내려간 뒤 재진입할 때 재알림
+- 자동 거래와 뒤늦은 현재 기간 거래의 알림
+- 사용자별 선택 알림과 필수 알림
+- 다음 기간 3일 전 설정 안내
+- 일요일 오후 9시 주간 권장액
+- 기간 전환 시 이전 장부 알림 제거
 
-Completion:
+완료 기준:
 
-- 사용자는 이미지/텍스트 기반 거래 후보를 확인·수정하고 선택해 저장할 수 있습니다.
+- 공동·본인·대분류 예산의 수신자가 공개 범위와 일치합니다.
+- 같은 임계 상태에서 알림이 반복되지 않습니다.
+- 주간 권장액과 다음 기간 안내가 사용자 현지 시간에 생성됩니다.
 
-### 10. Product Hardening
+## 8. 이전 범위 제거와 화면 전환
 
-- README update
-- screenshots
-- API examples complete
-- deployment doc
-- CI badge
-- known limitations
-- seed data
+범위:
 
-Completion:
+- 직접 사용자 검색 초대 제거
+- 공동 장부 보관과 영구 삭제 진입점 제거
+- 수동 월 마감·재오픈 화면 제거
+- 달력 전용 거래 탐색을 날짜순 목록으로 전환
+- 카드 관리와 정산 등 V1에 없는 화면·경로의 처리
+- 모바일 주 이동을 홈·거래·예산·분석과 전역 `+` 행동으로 전환
 
-- README와 docs만 보고 프로젝트 목적, 구조, 실행 방법, 핵심 구현을 다시 파악할 수 있습니다.
+완료 기준:
 
-## Do Not Commit
+- 사용자가 새 V1 범위 밖 기능으로 진입하지 않습니다.
+- 제거 대상 API와 데이터는 0단계에서 정한 호환·마이그레이션 정책을 따릅니다.
+- 모든 보호 경로와 빈 상태가 새 사용자 흐름으로 연결됩니다.
 
-- `.codex/skills`
-- `.agent`
-- local prompt files
-- generated build output
-- local env files
-- IDE/cache files
+## 9. 검증과 출시 준비
 
-## Review Checklist
+범위:
 
-- 관련 문서가 갱신되었는가?
-- API 계약이 구현과 맞는가?
-- backend test가 있는가?
-- frontend test 또는 명확한 검증 방법이 있는가?
-- secret이 포함되지 않았는가?
-- 작업 범위 밖 변경이 섞이지 않았는가?
+- 백엔드 단위·통합 테스트
+- 프론트엔드 컴포넌트·사용자 흐름 테스트
+- 초대, 예산 기간 경계, 개인정보와 OCR E2E
+- 기존 데이터 마이그레이션 검증
+- 접근성·반응형·오류 상태 검수
+- README, API, 도메인, 테스트와 운영 문서 최종 정합성 확인
+
+완료 기준:
+
+- `cd backend && ./gradlew test`가 통과합니다.
+- `cd frontend && npm run lint && npm run test && npm run build`가 통과합니다.
+- V1 Scope의 각 기능에 구현 또는 명시적인 테스트·검증 근거가 있습니다.
+- README의 구현 상태가 실제 코드와 일치합니다.
+
+## V1 제외 범위
+
+- 추가 개인 장부 생성
+- 사용자 검색과 직접 초대
+- 환불
+- 반복 수입
+- 멤버 간 정산
+- 거래 파일 내보내기
+- 공동 장부 보관과 영구 삭제
+- 수동 예산 기간 마감
+- 소분류 단위 분석
+- 푸시·문자·이메일 알림
+- 마이데이터와 카드사 계정 자동 수집

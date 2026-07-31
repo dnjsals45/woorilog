@@ -1,6 +1,6 @@
 # woorilog
 
-우리로그는 개인 장부에서 시작해 공동 장부까지 확장할 수 있는 예산 운영 가계부 서비스입니다.
+우리로그는 커플과 부부가 공동 생활비와 각자의 예산을 함께 운영하는 가계부 서비스입니다.
 
 이 저장소는 실제로 사용할 예산 운영 가계부 서비스를 만들기 위한 프로젝트입니다.
 제품 판단, 화면 설계, API 계약, 테스트, 구현 기준을 잊지 않기 위해 문서와 코드를 함께 관리합니다.
@@ -8,10 +8,11 @@
 ## V1 Goal
 
 - 사용자는 로그인 후 기본 개인 장부에서 거래를 기록할 수 있습니다.
-- 사용자는 추가 개인 장부와 공동 장부를 만들고 전환할 수 있습니다.
-- 사용자는 월 예산, 카테고리 예산, 거래 내역, 통계를 확인할 수 있습니다.
-- 사용자는 공동 장부에 다른 사용자를 초대할 수 있습니다.
-- 사용자는 빠른 입력, 반복 거래, 이미지 기반 거래 가져오기로 기록 비용을 줄일 수 있습니다.
+- 사용자는 두 사람이 쓰는 공동 장부를 만들고 30분 링크로 상대방을 초대할 수 있습니다.
+- 사용자는 예산 기간별 전체·멤버별·공동·대분류 예산을 운영할 수 있습니다.
+- 사용자는 공동 예산과 본인 예산의 사용 가능액을 우선 확인할 수 있습니다.
+- 사용자는 빠른 입력과 이미지 일괄 가져오기로 여러 거래를 적은 단계로 기록할 수 있습니다.
+- 사용자는 개인 거래 공개 범위를 유지하면서 공동 예산과 소비 흐름을 함께 관리할 수 있습니다.
 
 ## Documentation
 
@@ -126,7 +127,10 @@ npm run test
 npm run build
 ```
 
-## V1 Implementation Status
+## Current Implementation Baseline
+
+현재 코드는 이전 제품 범위를 구현한 기준선이며 새 [V1 Scope](./docs/product/v1-scope.md)의 완료 상태를 의미하지 않습니다.
+새 V1 구현에서는 현재 기능을 재사용하되 제품 정책과 충돌하는 동작을 교체합니다.
 
 - Auth/Ledger: developer login, rotating refresh-cookie session, personal/group ledger creation, switching, rename, archive, member removal/leave.
 - Transaction: category groups and categories, cash/card payment methods, installments, create/update/detail/month list, single and bulk delete, quick transaction, closed-month mutation guard.
@@ -139,10 +143,10 @@ npm run build
 ## Known Limitations
 
 - Kakao login requires a Kakao Developers REST API key, client secret, and registered redirect URI in the deployment environment.
-- Invitation links are single-use in the current V1 implementation.
+- Invitation links are single-use in the current implementation baseline.
 - OCR accuracy depends on image quality; candidates must be reviewed before saving.
 - Native Tesseract OCR requires the `kor` and `eng` traineddata files when the backend runs outside Docker.
 
 ## Development Plan
 
-V1 구현은 [Implementation Plan](./docs/planning/implementation-plan.md)을 참고하되, 실제 작업 시점의 analysis를 통해 기능 단위로 나눠 진행합니다.
+새 V1 구현 순서는 [Implementation Plan](./docs/planning/implementation-plan.md)을 기준으로 하며, 각 단계는 API 계약·도메인 문서·테스트와 함께 갱신합니다.
