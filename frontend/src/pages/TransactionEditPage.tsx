@@ -7,13 +7,11 @@ import { useMeQuery } from '../features/auth/model/authQueries'
 import {
   useTransactionQuery,
   useDeleteTransactionMutation,
-  useUpdateTransactionMutation,
+  useUpdateV1TransactionMutation,
 } from '../features/transaction/model/transactionQueries'
 import type { TransactionType } from '../features/transaction/api/transactionApi'
 import type { PaymentMethod } from '../features/transaction/api/transactionApi'
 import { ApiClientError } from '../shared/api/client'
-import { formatMonthlyClosingDay } from '../shared/lib/date'
-import { useCardsQuery } from '../features/card/model/cardQueries'
 import { DatePicker } from '../shared/ui/DatePicker'
 
 export function TransactionEditPage() {
@@ -27,19 +25,17 @@ export function TransactionEditPage() {
   const ledgerId = transactionQuery.data?.ledgerId ?? meQuery.data?.currentLedger.id
   const categoriesQuery = useCategoriesQuery(ledgerId)
   const membersQuery = useLedgerMembersQuery(ledgerId)
-  const cardsQuery = useCardsQuery(ledgerId)
-  const updateMutation = useUpdateTransactionMutation(transactionId)
+  const updateMutation = useUpdateV1TransactionMutation(transactionId)
   const deleteMutation = useDeleteTransactionMutation(transactionId)
   const [editedType, setEditedType] = useState<TransactionType | null>(null)
   const [editedCategoryId, setEditedCategoryId] = useState<string | null>(null)
   const [editedPaymentMethod, setEditedPaymentMethod] = useState<PaymentMethod | null>(null)
-  const [editedCardId, setEditedCardId] = useState<string | null>(null)
   const [editedTransactionDate, setEditedTransactionDate] = useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const type = editedType ?? transactionQuery.data?.type ?? 'EXPENSE'
   const categoryId = editedCategoryId ?? transactionQuery.data?.category?.id.toString() ?? ''
-  const paymentMethod = editedPaymentMethod ?? transactionQuery.data?.paymentMethod ?? 'CASH'
-  const cardId = editedCardId ?? transactionQuery.data?.card?.id.toString() ?? ''
+  const storedPaymentMethod = transactionQuery.data?.paymentMethod
+  const paymentMethod = editedPaymentMethod ?? (typeof storedPaymentMethod === 'string' ? storedPaymentMethod : storedPaymentMethod?.type) ?? transactionQuery.data?.legacyPaymentMethod ?? 'CASH'
   const transactionDate = editedTransactionDate ?? transactionQuery.data?.transactionDate ?? ''
   const visibleCategories = categoriesQuery.data?.filter((category) => category.type === type) ?? []
   const canDelete = transactionQuery.data?.payer.id === meQuery.data?.user.id
@@ -55,20 +51,27 @@ export function TransactionEditPage() {
     const formData = new FormData(event.currentTarget)
     const submittedCategoryId = String(formData.get('categoryId') ?? '')
     const memo = String(formData.get('memo') ?? '')
+    const merchant = String(formData.get('merchant') ?? '').trim()
+    const expenseLike = type === 'EXPENSE' || (type === 'TRANSFER' && transactionQuery.data?.transferType === 'OUTBOUND')
 
     updateMutation.mutate(
       {
         type,
         amount: Number(formData.get('amount')),
-        transactionDate,
+        occurredOn: transactionDate,
+        merchant,
         categoryId: submittedCategoryId ? Number(submittedCategoryId) : null,
         memo: memo || null,
         payerUserId: Number(formData.get('payerUserId')) || null,
-        paymentMethod,
-        cardId: paymentMethod === 'CARD' ? Number(cardId) || null : null,
+        transferType: type === 'TRANSFER' ? transactionQuery.data?.transferType ?? 'OWN_ACCOUNTS' : null,
+        scope: transactionQuery.data?.scope ?? null,
+        budgetSource: expenseLike ? transactionQuery.data?.budgetSource ?? null : null,
+        sharedWithPartner: transactionQuery.data?.sharedWithPartner ?? null,
+        paymentMethod: { type: paymentMethod, displayName: typeof storedPaymentMethod === 'object' ? storedPaymentMethod?.displayName : transactionQuery.data?.card?.name },
+        occurredAt: transactionQuery.data?.occurredAt ?? null,
       },
       {
-        onSuccess: () => navigate('/calendar'),
+        onSuccess: () => navigate('/transactions'),
       },
     )
   }
@@ -76,7 +79,7 @@ export function TransactionEditPage() {
   return (
     <main className="product-page product-page--narrow flex flex-col lg:justify-center">
       <header className="mb-5 flex items-center gap-4">
-        <Link aria-label="거래 내역으로 돌아가기" className="flex size-11 items-center justify-center rounded-xl border border-[var(--wl-color-border)] bg-white text-slate-600" to="/calendar"><ArrowLeft size={19} /></Link>
+        <Link aria-label="거래 내역으로 돌아가기" className="flex size-11 items-center justify-center rounded-xl border border-[var(--wl-color-border)] bg-white text-slate-600" to="/transactions"><ArrowLeft size={19} /></Link>
         <div><h1 className="text-2xl font-bold tracking-[-0.03em] text-slate-950">거래 상세</h1><p className="mt-1 text-sm text-slate-500">기록된 거래 정보를 확인하고 수정합니다.</p></div>
       </header>
 
@@ -106,17 +109,22 @@ export function TransactionEditPage() {
                 setEditedCategoryId('')
                 if (event.target.value === 'INCOME') {
                   setEditedPaymentMethod('CASH')
-                  setEditedCardId('')
                 }
               }}
               value={type}
             >
               <option value="EXPENSE">지출</option>
               <option value="INCOME">수입</option>
+              <option value="TRANSFER">이체</option>
             </select>
           </label>
 
           <div className="mt-4"><p className="text-sm font-medium text-slate-700">날짜</p><DatePicker ariaLabel="날짜" className="mt-2" onChange={setEditedTransactionDate} value={transactionDate} /></div>
+
+          <label className="mt-4 block text-sm font-medium text-slate-700">
+            사용처
+            <input className="mt-2 h-11 w-full rounded-md border border-slate-300 px-3" defaultValue={transactionQuery.data.merchant ?? ''} maxLength={100} name="merchant" required />
+          </label>
 
           <label className="mt-4 block text-sm font-medium text-slate-700">
             금액
@@ -162,7 +170,7 @@ export function TransactionEditPage() {
             </select>
           </label>
 
-          {type === 'EXPENSE' ? <><label className="mt-4 block text-sm font-medium text-slate-700">결제수단<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => { const next = event.target.value as PaymentMethod; setEditedPaymentMethod(next); if (next === 'CASH') setEditedCardId('') }} value={paymentMethod}><option value="CASH">현금</option><option value="CARD">카드</option></select></label>{paymentMethod === 'CARD' ? <label className="mt-4 block text-sm font-medium text-slate-700">사용 카드<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => setEditedCardId(event.target.value)} required value={cardId}><option value="">카드를 선택하세요</option>{cardsQuery.data?.map((card) => <option key={card.id} value={card.id}>{card.name} · {formatMonthlyClosingDay(card.statementClosingDay)} 확정</option>)}</select></label> : null}</> : null}
+          {type === 'EXPENSE' ? <label className="mt-4 block text-sm font-medium text-slate-700">결제수단<select className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" onChange={(event) => setEditedPaymentMethod(event.target.value as PaymentMethod)} value={paymentMethod}><option value="CASH">현금</option><option value="CARD">카드</option><option value="OTHER">기타</option></select></label> : null}
 
           <label className="mt-4 block text-sm font-medium text-slate-700">
             메모
@@ -183,7 +191,7 @@ export function TransactionEditPage() {
           </button>
           {updateMutation.isError ? <p className="mt-3 text-center text-sm font-medium text-red-600" role="alert">거래를 수정하지 못했습니다. 마감 여부와 입력값을 확인해주세요.</p> : null}
           {canDelete ? <><button className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50" onClick={() => setDeleteConfirmOpen(true)} type="button"><Trash2 size={17} />거래 삭제</button>
-          {deleteConfirmOpen ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-4"><p className="text-sm font-bold text-red-800">이 거래를 삭제할까요?</p><p className="mt-1 text-xs text-red-600">삭제한 거래는 복구할 수 없습니다.</p><div className="mt-3 grid grid-cols-2 gap-2"><button className="min-h-10 rounded-lg border border-red-200 bg-white text-sm font-bold text-red-700" onClick={() => setDeleteConfirmOpen(false)} type="button">취소</button><button className="min-h-10 rounded-lg bg-red-600 text-sm font-bold text-white disabled:bg-slate-300" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(undefined, { onSuccess: () => navigate('/calendar', { replace: true }) })} type="button">{deleteMutation.isPending ? '삭제 중' : '삭제'}</button></div>{deleteMutation.isError ? <p className="mt-2 text-xs font-bold text-red-700" role="alert">{deleteErrorMessage}</p> : null}</div> : null}</> : null}
+          {deleteConfirmOpen ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-4"><p className="text-sm font-bold text-red-800">이 거래를 삭제할까요?</p><p className="mt-1 text-xs text-red-600">삭제한 거래는 복구할 수 없습니다.</p><div className="mt-3 grid grid-cols-2 gap-2"><button className="min-h-10 rounded-lg border border-red-200 bg-white text-sm font-bold text-red-700" onClick={() => setDeleteConfirmOpen(false)} type="button">취소</button><button className="min-h-10 rounded-lg bg-red-600 text-sm font-bold text-white disabled:bg-slate-300" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(undefined, { onSuccess: () => navigate('/transactions', { replace: true }) })} type="button">{deleteMutation.isPending ? '삭제 중' : '삭제'}</button></div>{deleteMutation.isError ? <p className="mt-2 text-xs font-bold text-red-700" role="alert">{deleteErrorMessage}</p> : null}</div> : null}</> : null}
         </form>
       ) : null}
     </main>

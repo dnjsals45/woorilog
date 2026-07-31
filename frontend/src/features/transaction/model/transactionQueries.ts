@@ -1,14 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  bulkDeleteTransactions,
-  createQuickTransaction,
   deleteTransaction,
-  createTransaction,
-  getMonthTransactions,
   getTransaction,
-  updateTransaction,
-  type QuickTransactionRequest,
-  type SaveTransactionRequest,
+  listTransactions,
+  createV1Transaction,
+  updateV1Transaction,
+  bulkClassifyTransactions,
+  type V1TransactionRequest,
 } from '../api/transactionApi'
 
 export const transactionQueryKeys = {
@@ -19,18 +17,20 @@ export const transactionQueryKeys = {
     [...transactionQueryKeys.all, transactionId, 'detail'] as const,
 }
 
-export function useMonthTransactionsQuery(
-  ledgerId: number | undefined,
-  budgetMonth: string,
-) {
-  return useQuery({
-    queryKey: ledgerId
-      ? transactionQueryKeys.month(ledgerId, budgetMonth)
-      : transactionQueryKeys.all,
-    queryFn: () => getMonthTransactions(ledgerId!, budgetMonth),
-    enabled: Boolean(ledgerId),
-    retry: false,
-  })
+export function useTransactionsQuery(ledgerId: number | undefined, params: Parameters<typeof listTransactions>[1] = {}) {
+  return useQuery({ queryKey: ledgerId ? [...transactionQueryKeys.all, ledgerId, 'list', params] : transactionQueryKeys.all, queryFn: () => listTransactions(ledgerId!, params), enabled: Boolean(ledgerId), retry: false })
+}
+export function useCreateV1TransactionMutation(ledgerId: number | undefined) {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: (request: V1TransactionRequest) => createV1Transaction(ledgerId!, request), onSuccess: () => { client.invalidateQueries({ queryKey: transactionQueryKeys.all }); client.invalidateQueries({ queryKey: ['budget-periods'] }) } })
+}
+export function useUpdateV1TransactionMutation(transactionId: number | undefined) {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: (request: V1TransactionRequest) => updateV1Transaction(transactionId!, request), onSuccess: (transaction) => { client.invalidateQueries({ queryKey: transactionQueryKeys.detail(transaction.id) }); client.invalidateQueries({ queryKey: transactionQueryKeys.all }); client.invalidateQueries({ queryKey: ['budget-periods'] }) } })
+}
+export function useBulkClassifyTransactionsMutation(ledgerId: number | undefined) {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: ({ transactionIds, categoryId }: { transactionIds: number[]; categoryId: number }) => bulkClassifyTransactions(ledgerId!, transactionIds, categoryId), onSuccess: () => client.invalidateQueries({ queryKey: transactionQueryKeys.all }) })
 }
 
 export function useTransactionQuery(transactionId: number | undefined) {
@@ -44,55 +44,6 @@ export function useTransactionQuery(transactionId: number | undefined) {
   })
 }
 
-export function useCreateTransactionMutation(ledgerId: number | undefined) {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (request: SaveTransactionRequest) =>
-      createTransaction(ledgerId!, request),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: ['budget'] })
-    },
-  })
-}
-
-export function useQuickTransactionMutation(
-  ledgerId: number | undefined,
-  budgetMonth: string,
-) {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (request: QuickTransactionRequest) =>
-      createQuickTransaction(ledgerId!, request),
-    onSuccess: () => {
-      if (ledgerId) {
-        queryClient.invalidateQueries({
-          queryKey: transactionQueryKeys.month(ledgerId, budgetMonth),
-        })
-      }
-      queryClient.invalidateQueries({ queryKey: ['budget'] })
-    },
-  })
-}
-
-export function useUpdateTransactionMutation(transactionId: number | undefined) {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (request: SaveTransactionRequest) =>
-      updateTransaction(transactionId!, request),
-    onSuccess: (transaction) => {
-      queryClient.invalidateQueries({
-        queryKey: transactionQueryKeys.detail(transaction.id),
-      })
-      queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: ['budget'] })
-    },
-  })
-}
-
 export function useDeleteTransactionMutation(transactionId?: number) {
   const queryClient = useQueryClient()
 
@@ -101,21 +52,6 @@ export function useDeleteTransactionMutation(transactionId?: number) {
     onSuccess: (_response, targetTransactionId) => {
       const deletedTransactionId = targetTransactionId ?? transactionId
       queryClient.removeQueries({ queryKey: deletedTransactionId ? transactionQueryKeys.detail(deletedTransactionId) : transactionQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: ['budget'] })
-    },
-  })
-}
-
-export function useBulkDeleteTransactionsMutation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: bulkDeleteTransactions,
-    onSuccess: (_response, transactionIds) => {
-      transactionIds.forEach((transactionId) => {
-        queryClient.removeQueries({ queryKey: transactionQueryKeys.detail(transactionId) })
-      })
       queryClient.invalidateQueries({ queryKey: transactionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: ['budget'] })
     },

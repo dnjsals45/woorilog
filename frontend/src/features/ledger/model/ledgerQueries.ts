@@ -1,18 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authQueryKeys } from '../../auth/model/authQueries'
 import {
-  createGroupLedger,
-  createPersonalLedger,
-  archiveLedger,
+  createSharedLedger,
   getLedgerMembers,
   getLedgers,
   leaveLedger,
   removeLedgerMember,
   renameLedger,
-  updateRecurringSummaryClosingDay,
   switchLedger,
-  type CreateLedgerRequest,
-  type LedgerType,
+  transferLedgerOwnership,
+  type CreateSharedLedgerRequest,
 } from '../api/ledgerApi'
 
 export const ledgerQueryKeys = {
@@ -35,20 +32,6 @@ export function useLedgerMembersQuery(ledgerId: number | undefined) {
     queryFn: () => getLedgerMembers(ledgerId!),
     enabled: Boolean(ledgerId),
     retry: false,
-  })
-}
-
-export function useCreateLedgerMutation(type: LedgerType) {
-  const queryClient = useQueryClient()
-  const mutationFn = type === 'GROUP' ? createGroupLedger : createPersonalLedger
-
-  return useMutation({
-    mutationFn: (request: CreateLedgerRequest) => mutationFn(request),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ledgerQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
-      queryClient.invalidateQueries({ queryKey: ['budget', 'dashboard'] })
-    },
   })
 }
 
@@ -76,20 +59,6 @@ export function useRenameLedgerMutation(ledgerId: number | undefined) {
   return useMutation({ mutationFn: (name: string) => renameLedger(ledgerId!, name), onSuccess: () => invalidateLedgerState(queryClient) })
 }
 
-export function useUpdateRecurringSummaryClosingDayMutation(ledgerId: number | undefined) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (recurringSummaryClosingDay: number) =>
-      updateRecurringSummaryClosingDay(ledgerId!, recurringSummaryClosingDay),
-    onSuccess: () => invalidateLedgerState(queryClient),
-  })
-}
-
-export function useArchiveLedgerMutation(ledgerId: number | undefined) {
-  const queryClient = useQueryClient()
-  return useMutation({ mutationFn: () => archiveLedger(ledgerId!), onSuccess: () => invalidateLedgerState(queryClient) })
-}
-
 export function useRemoveLedgerMemberMutation(ledgerId: number | undefined) {
   const queryClient = useQueryClient()
   return useMutation({ mutationFn: (userId: number) => removeLedgerMember(ledgerId!, userId), onSuccess: () => invalidateLedgerState(queryClient) })
@@ -98,4 +67,20 @@ export function useRemoveLedgerMemberMutation(ledgerId: number | undefined) {
 export function useLeaveLedgerMutation(ledgerId: number | undefined) {
   const queryClient = useQueryClient()
   return useMutation({ mutationFn: () => leaveLedger(ledgerId!), onSuccess: () => invalidateLedgerState(queryClient) })
+}
+
+export function useCreateSharedLedgerMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (request: CreateSharedLedgerRequest) => createSharedLedger(request),
+    onSuccess: () => invalidateLedgerState(queryClient),
+  })
+}
+
+export function useTransferLedgerOwnershipMutation(ledgerId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (newOwnerUserId: number) => transferLedgerOwnership(ledgerId!, newOwnerUserId),
+    onSuccess: () => invalidateLedgerState(queryClient),
+  })
 }

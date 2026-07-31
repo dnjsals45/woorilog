@@ -1,0 +1,4 @@
+import { apiRequest } from '../../../shared/api/client'
+export type AnalyticsScope = 'ALL' | 'SHARED' | 'MINE'
+export type AnalyticsResponse = { periodStart: string; periodEnd: string; scope: AnalyticsScope; totalExpenseAmount: number; previousPeriodExpenseAmount: number | null; changeAmount: number | null; categoryDistribution: Array<{ groupCode: string; groupName: string; amount: number }>; dailyFlow: Array<{ date: string; amount: number; cumulativeAmount: number }>; trend: Array<{ startDate: string; endDate: string; expenseAmount: number }> }
+export function getAnalytics(ledgerId: number, periodStart?: string, scope: AnalyticsScope = 'ALL') { const query = new URLSearchParams({ scope }); if (periodStart) query.set('periodStart', periodStart); return apiRequest<AnalyticsResponse>(`/api/ledgers/${ledgerId}/analytics?${query}`) }

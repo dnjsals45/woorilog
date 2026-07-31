@@ -1,6 +1,6 @@
 import { apiRequest } from '../../../shared/api/client'
 
-export type LedgerType = 'PERSONAL' | 'GROUP'
+export type LedgerType = 'PERSONAL' | 'GROUP' | 'SHARED'
 
 export type LedgerSummary = {
   id: number
@@ -19,32 +19,19 @@ export type LedgerMember = {
   userId: number
   nickname: string
   role: 'OWNER' | 'MEMBER'
-}
-
-export type CreateLedgerRequest = {
-  name: string
+  user: { id: number; nickname: string }
+  status: 'ACTIVE' | 'FORMER'
+  joinedAt: string
+  leftAt: string | null
 }
 
 export function getLedgers() {
   return apiRequest<LedgerListResponse>('/api/ledgers')
 }
 
-export function getLedgerMembers(ledgerId: number) {
-  return apiRequest<LedgerMember[]>(`/api/ledgers/${ledgerId}/members`)
-}
-
-export function createPersonalLedger(request: CreateLedgerRequest) {
-  return apiRequest<LedgerSummary>('/api/ledgers/personal', {
-    method: 'POST',
-    body: request,
-  })
-}
-
-export function createGroupLedger(request: CreateLedgerRequest) {
-  return apiRequest<LedgerSummary>('/api/ledgers/group', {
-    method: 'POST',
-    body: request,
-  })
+export async function getLedgerMembers(ledgerId: number) {
+  const response = await apiRequest<{ items: LedgerMember[] } | LedgerMember[]>(`/api/ledgers/${ledgerId}/members`)
+  return Array.isArray(response) ? response : response.items
 }
 
 export function switchLedger(ledgerId: number) {
@@ -57,17 +44,6 @@ export function renameLedger(ledgerId: number, name: string) {
   return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}`, { method: 'PATCH', body: { name } })
 }
 
-export function updateRecurringSummaryClosingDay(ledgerId: number, recurringSummaryClosingDay: number) {
-  return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}`, {
-    method: 'PATCH',
-    body: { recurringSummaryClosingDay },
-  })
-}
-
-export function archiveLedger(ledgerId: number) {
-  return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}/archive`, { method: 'POST' })
-}
-
 export function removeLedgerMember(ledgerId: number, userId: number) {
   return apiRequest<void>(`/api/ledgers/${ledgerId}/members/${userId}`, { method: 'DELETE' })
 }
@@ -75,3 +51,9 @@ export function removeLedgerMember(ledgerId: number, userId: number) {
 export function leaveLedger(ledgerId: number) {
   return apiRequest<void>(`/api/ledgers/${ledgerId}/members/me`, { method: 'DELETE' })
 }
+
+export type BudgetCycle = { startType: 'DAY_OF_MONTH' | 'LAST_DAY_OF_MONTH'; startDay: number | null }
+export type V1LedgerSummary = { id: number; name: string; type: 'PERSONAL' | 'SHARED'; role: 'OWNER' | 'MEMBER'; accessState: 'ACTIVE' | 'FORMER'; budgetCycle: BudgetCycle }
+export type CreateSharedLedgerRequest = { name: string; totalBudget: number; budgetCycle: BudgetCycle }
+export function createSharedLedger(request: CreateSharedLedgerRequest) { return apiRequest<{ ledger: V1LedgerSummary; currentBudgetPeriod: unknown }>('/api/ledgers/shared', { method: 'POST', body: request }) }
+export async function transferLedgerOwnership(ledgerId: number, newOwnerUserId: number) { const response = await apiRequest<{ items: LedgerMember[] }>(`/api/ledgers/${ledgerId}/ownership-transfer`, { method: 'POST', body: { newOwnerUserId } }); return response.items }

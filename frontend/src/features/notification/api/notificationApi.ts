@@ -6,3 +6,6 @@ export type NotificationList = { unreadCount: number; notifications: UserNotific
 export function getNotifications() { return apiRequest<NotificationList>('/api/notifications') }
 export function markNotificationRead(notificationId: number) { return apiRequest<UserNotification>(`/api/notifications/${notificationId}/read`, { method: 'POST' }) }
 export function markAllNotificationsRead() { return apiRequest<void>('/api/notifications/read-all', { method: 'POST' }) }
+export type NotificationPreferences = { budgetWarning80Enabled: boolean; weeklyGuideEnabled: boolean }
+export function getNotificationPreferences() { return apiRequest<NotificationPreferences>('/api/notification-preferences') }
+export function updateNotificationPreferences(request: NotificationPreferences) { return apiRequest<NotificationPreferences>('/api/notification-preferences', { method: 'PUT', body: request }) }

@@ -11,7 +11,9 @@ import {
   getMe,
   logout,
   refreshSession,
+  updateProfile,
   type DevLoginRequest,
+  type ProfileRequest,
 } from '../api/authApi'
 
 export const authQueryKeys = {
@@ -85,5 +87,13 @@ export function useLogoutMutation() {
       clearAccessToken()
       queryClient.clear()
     },
+  })
+}
+
+export function useUpdateProfileMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (request: ProfileRequest) => updateProfile(request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: authQueryKeys.me }),
   })
 }

@@ -32,13 +32,15 @@ export type Invitation = {
 }
 
 export type LinkInvitationPreview = {
-  ledgerId: number
+  invitationId: number
   ledgerName: string
-  ledgerType: LedgerSummary['type']
-  inviterNickname: string
+  inviter: { id: number; nickname: string }
   status: InvitationStatus
-  expired: boolean
+  expiresAt: string
+  authenticationRequired: boolean
 }
+
+export type InvitationLinkCreated = { invitationId: number; url: string; expiresAt: string }
 
 export function getInvitableUser(ledgerId: number, email: string) {
   const params = new URLSearchParams({ email })
@@ -55,13 +57,9 @@ export function inviteUser(ledgerId: number, userId: number) {
   })
 }
 
-export function createInvitationLink(
-  ledgerId: number,
-  request: { expiresInDays?: number },
-) {
-  return apiRequest<Invitation>(`/api/ledgers/${ledgerId}/invitations/links`, {
+export function createInvitationLink(ledgerId: number) {
+  return apiRequest<InvitationLinkCreated>(`/api/ledgers/${ledgerId}/invitations/links`, {
     method: 'POST',
-    body: request,
   })
 }
 
@@ -97,7 +95,11 @@ export function getLinkInvitationPreview(token: string) {
 }
 
 export function acceptLinkInvitation(token: string) {
-  return apiRequest<Invitation>(`/api/invitations/links/${token}/accept`, {
+  return apiRequest<{ ledger: LedgerSummary }>(`/api/invitations/links/${token}/accept`, {
     method: 'POST',
   })
+}
+
+export function rejectLinkInvitation(token: string) {
+  return apiRequest<void>(`/api/invitations/links/${token}/reject`, { method: 'POST' })
 }

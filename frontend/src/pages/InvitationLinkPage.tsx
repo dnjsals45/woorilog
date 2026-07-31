@@ -1,10 +1,12 @@
-import { Check } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError } from '../shared/api/client'
+import { storeAuthReturnPath } from '../features/auth/model/authReturnPath'
 import { useMeQuery } from '../features/auth/model/authQueries'
 import {
   useAcceptLinkInvitationMutation,
   useLinkInvitationPreviewQuery,
+  useRejectLinkInvitationMutation,
 } from '../features/invitation/model/invitationQueries'
 import { PageHeader, SurfaceCard } from '../shared/ui/DesignPrimitives'
 
@@ -15,9 +17,11 @@ export function InvitationLinkPage() {
   const meQuery = useMeQuery()
   const previewQuery = useLinkInvitationPreviewQuery(token)
   const acceptMutation = useAcceptLinkInvitationMutation(token)
+  const rejectMutation = useRejectLinkInvitationMutation(token)
 
-  if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
-    return <Navigate to="/login" replace />
+  if (meQuery.data && !meQuery.data.user.nicknameConfirmed) {
+    storeAuthReturnPath(`/invitations/${token}`)
+    return <Navigate replace to="/onboarding" />
   }
 
   function handleAccept() {
@@ -45,33 +49,14 @@ export function InvitationLinkPage() {
 
         {previewQuery.data ? (
           <>
-            <p className="text-sm font-medium text-emerald-700">
-              {previewQuery.data.ledgerType === 'GROUP' ? '공동 장부' : '개인 장부'}
-            </p>
+            <p className="text-sm font-medium text-emerald-700">공동 장부 초대</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-950">
               {previewQuery.data.ledgerName}
             </h2>
             <p className="mt-2 text-sm text-slate-500">
-              {previewQuery.data.inviterNickname}님의 초대입니다.
+              {previewQuery.data.inviter.nickname}님의 초대입니다. 링크는 {new Date(previewQuery.data.expiresAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}까지 유효합니다.
             </p>
-            <button
-              className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={
-                acceptMutation.isPending ||
-                previewQuery.data.expired ||
-                previewQuery.data.status !== 'PENDING'
-              }
-              onClick={handleAccept}
-              type="button"
-            >
-              <Check size={18} aria-hidden="true" />
-              참여하기
-            </button>
-            {previewQuery.data.expired || previewQuery.data.status !== 'PENDING' ? (
-              <p className="mt-3 text-sm text-slate-500">
-                이미 처리되었거나 만료된 초대입니다.
-              </p>
-            ) : null}
+            {previewQuery.data.authenticationRequired || (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) ? <Link className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white" onClick={() => storeAuthReturnPath(`/invitations/${token}`)} to="/login">로그인하고 확인하기</Link> : <div className="mt-6 grid grid-cols-2 gap-2"><button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--wl-color-border)] text-sm font-semibold" disabled={rejectMutation.isPending} onClick={() => rejectMutation.mutate()} type="button"><X size={18} aria-hidden="true" />거절</button><button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 text-sm font-semibold text-white disabled:bg-slate-300" disabled={acceptMutation.isPending} onClick={handleAccept} type="button"><Check size={18} aria-hidden="true" />참여하기</button></div>}
           </>
         ) : null}
       </SurfaceCard>

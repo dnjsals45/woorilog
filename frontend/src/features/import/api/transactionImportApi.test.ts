@@ -1,68 +1,33 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { previewTransactionImageImport, saveTransactionImport } from './transactionImportApi'
+import { previewImportSession, saveImportSession } from './transactionImportApi'
 
-describe('previewTransactionImageImport', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
+afterEach(() => vi.unstubAllGlobals())
 
-  it('should send multiple images as repeated multipart form data', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      extractedText: '바오 25,000원',
-      ocrEngine: 'tesseract-5-server',
-      candidates: [],
-      rejectedLines: 0,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }))
+describe('V1 transaction import API', () => {
+  it('sends multiple images and their source as multipart form data', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ sessionId: 1, candidates: [], omittedCount: 0 }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
     const firstImage = new File(['image-1'], 'receipt-1.png', { type: 'image/png' })
     const secondImage = new File(['image-2'], 'receipt-2.png', { type: 'image/png' })
 
-    await previewTransactionImageImport(1, [firstImage, secondImage], '2026-07-21')
+    await previewImportSession(1, 'RECEIPT', [firstImage, secondImage])
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('http://localhost:8080/api/ledgers/1/transaction-imports/ocr-preview')
-    expect(options.method).toBe('POST')
+    expect(url).toBe('http://localhost:8080/api/ledgers/1/transaction-imports/previews')
     expect(options.headers).not.toHaveProperty('Content-Type')
-    expect(options.body).toBeInstanceOf(FormData)
-    expect((options.body as FormData).getAll('image')).toEqual([firstImage, secondImage])
-    expect((options.body as FormData).get('transactionDate')).toBe('2026-07-21')
-  })
-})
-
-describe('saveTransactionImport', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
+    expect((options.body as FormData).get('sourceType')).toBe('RECEIPT')
+    expect((options.body as FormData).getAll('images')).toEqual([firstImage, secondImage])
   })
 
-  it('should send selected candidates in one request', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([]), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }))
+  it('saves selected candidates with the preview session id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ transactionIds: [9] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
+    const candidates = [{ candidateId: 3, amount: 12_000, occurredOn: '2026-07-21', merchant: '점심', categoryId: 1, budgetSource: { type: 'PERSONAL' as const, ownerUserId: 1 }, selected: true }]
 
-    await saveTransactionImport(1, [{
-      type: 'EXPENSE',
-      amount: 12_000,
-      transactionDate: '2026-07-21',
-      categoryId: 1,
-      memo: '점심',
-    }])
+    await saveImportSession(1, 7, candidates)
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('http://localhost:8080/api/ledgers/1/transaction-imports')
-    expect(options.method).toBe('POST')
-    expect(options.body).toBe(JSON.stringify({
-      candidates: [{
-        type: 'EXPENSE',
-        amount: 12_000,
-        transactionDate: '2026-07-21',
-        categoryId: 1,
-        memo: '점심',
-      }],
-    }))
+    expect(options.body).toBe(JSON.stringify({ sessionId: 7, candidates }))
   })
 })

@@ -3,8 +3,10 @@ import type { LedgerSummary } from '../../ledger/api/ledgerApi'
 
 export type CurrentUser = {
   id: number
-  email: string | null
+  email?: string | null
   nickname: string
+  nicknameConfirmed: boolean
+  timezone: string
 }
 
 export type SessionResponse = {
@@ -48,6 +50,11 @@ export function completeKakaoLogin(code: string) {
 
 export function getMe() {
   return apiRequest<SessionResponse>('/api/me')
+}
+
+export type ProfileRequest = { nickname: string; timezone: string }
+export function updateProfile(request: ProfileRequest) {
+  return apiRequest<CurrentUser>('/api/me/profile', { method: 'PATCH', body: request })
 }
 
 export function refreshSession() {

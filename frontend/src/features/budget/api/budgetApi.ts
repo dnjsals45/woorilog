@@ -64,7 +64,16 @@ export type DashboardSummary = {
     expectedPaymentMonth: string
     totalAmount: number
   }>
+  ledger: { id: number; name: string; type: 'PERSONAL' | 'SHARED'; role: 'OWNER' | 'MEMBER'; accessState: 'ACTIVE' | 'FORMER'; partner: { id: number; nickname: string } | null } | null
+  period: { id: number; startDate: string; endDate: string; totalBudget: number } | null
+  sharedBudget: DashboardBudget | null
+  myBudget: DashboardBudget | null
+  incomeAmount: number | null
+  weeklyGuide: { weekStartDate: string; recommendedAmount: number; remainingOverageAmount: number } | null
+  emptyState: 'INVITE_PARTNER' | 'ALLOCATE_BUDGET' | 'ADD_FIRST_TRANSACTION' | 'READY' | null
 }
+
+export type DashboardBudget = { allocationId: number; amount: number; spentAmount: number; currentBalance: number; availableAmount: number }
 
 export type MonthlyStatistic = {
   budgetMonth: string

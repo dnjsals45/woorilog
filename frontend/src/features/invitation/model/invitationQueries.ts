@@ -12,6 +12,7 @@ import {
   getPendingInvitations,
   inviteUser,
   rejectInvitation,
+  rejectLinkInvitation,
 } from '../api/invitationApi'
 
 export const invitationQueryKeys = {
@@ -79,8 +80,7 @@ export function useCreateInvitationLinkMutation(ledgerId: number | undefined) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (expiresInDays: number) =>
-      createInvitationLink(ledgerId!, { expiresInDays }),
+    mutationFn: () => createInvitationLink(ledgerId!),
     onSuccess: () => {
       if (ledgerId) {
         queryClient.invalidateQueries({
@@ -145,5 +145,13 @@ export function useAcceptLinkInvitationMutation(token: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ledgerQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
     },
+  })
+}
+
+export function useRejectLinkInvitationMutation(token: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => rejectLinkInvitation(token!),
+    onSuccess: () => token && queryClient.invalidateQueries({ queryKey: invitationQueryKeys.linkPreview(token) }),
   })
 }
