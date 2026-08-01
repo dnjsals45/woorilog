@@ -2,8 +2,8 @@ package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.domain.NotificationType
-import com.woorilog.service.NotificationService
+import com.woorilog.domain.notification.entity.NotificationType
+import com.woorilog.application.notification.service.NotificationService
 import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

@@ -1,14 +1,14 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.domain.CategoryType
-import com.woorilog.domain.RecurringFrequency
-import com.woorilog.domain.RecurringTransactionGenerationRepository
-import com.woorilog.service.DevLoginResponse
-import com.woorilog.service.CategoryResponse
-import com.woorilog.service.TransactionResponse
-import com.woorilog.service.RecurringTransactionTemplateResponse
-import com.woorilog.service.RecurringTransactionDueResponse
+import com.woorilog.domain.category.entity.CategoryType
+import com.woorilog.domain.scheduled.entity.RecurringFrequency
+import com.woorilog.domain.scheduled.repository.RecurringTransactionGenerationRepository
+import com.woorilog.controller.auth.response.DevLoginResponse
+import com.woorilog.controller.category.response.CategoryResponse
+import com.woorilog.controller.transaction.response.TransactionResponse
+import com.woorilog.controller.scheduled.response.RecurringTransactionTemplateResponse
+import com.woorilog.controller.scheduled.response.RecurringTransactionDueResponse
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull

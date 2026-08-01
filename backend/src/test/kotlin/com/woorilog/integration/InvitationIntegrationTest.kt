@@ -1,9 +1,17 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.domain.*
-import com.woorilog.exception.WoorilogException
-import com.woorilog.service.*
+import com.woorilog.domain.auth.entity.User
+import com.woorilog.domain.auth.repository.UserRepository
+import com.woorilog.domain.invitation.entity.InvitationStatus
+import com.woorilog.domain.invitation.entity.InvitationType
+import com.woorilog.domain.invitation.repository.InvitationRepository
+import com.woorilog.common.exception.WoorilogException
+import com.woorilog.application.invitation.service.*
+import com.woorilog.application.auth.service.*
+import com.woorilog.application.auth.result.LedgerDto
+import com.woorilog.controller.auth.response.DevLoginResponse
+import com.woorilog.controller.invitation.response.InvitationResponse
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -99,7 +107,7 @@ class InvitationIntegrationTest {
             .andExpect(jsonPath("$.invitee.id").value(inviteeResponse.user.id))
             .andReturn()
 
-        val invitation = objectMapper.readValue(inviteResult.response.contentAsString, InvitationResponseDto::class.java)
+        val invitation = objectMapper.readValue(inviteResult.response.contentAsString, InvitationResponse::class.java)
 
         // 5. Try to invite again -> duplicate check should fail
         mockMvc.perform(post("/api/ledgers/$ledgerId/invitations/users")
@@ -231,7 +239,7 @@ class InvitationIntegrationTest {
             .andExpect(status().isOk)
             .andReturn()
 
-        val invitation1 = objectMapper.readValue(inviteResult1.response.contentAsString, InvitationResponseDto::class.java)
+        val invitation1 = objectMapper.readValue(inviteResult1.response.contentAsString, InvitationResponse::class.java)
 
         // 2. Owner cancels the first invitation
         mockMvc.perform(delete("/api/ledgers/$ledgerId/invitations/${invitation1.id}")
@@ -251,7 +259,7 @@ class InvitationIntegrationTest {
             .andExpect(status().isOk)
             .andReturn()
 
-        val invitation2 = objectMapper.readValue(inviteResult2.response.contentAsString, InvitationResponseDto::class.java)
+        val invitation2 = objectMapper.readValue(inviteResult2.response.contentAsString, InvitationResponse::class.java)
 
         // 5. Invitee rejects second invitation
         mockMvc.perform(post("/api/invitations/${invitation2.id}/reject")

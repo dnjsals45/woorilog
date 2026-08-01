@@ -1,10 +1,19 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.domain.*
-import com.woorilog.service.BudgetAutomationService
-import com.woorilog.service.DevLoginResponse
-import com.woorilog.service.V1InsightsService
+import com.woorilog.domain.budget.repository.BudgetAllocationRepository
+import com.woorilog.domain.budget.repository.BudgetPeriodRepository
+import com.woorilog.domain.category.entity.CategoryType
+import com.woorilog.domain.category.repository.LedgerCategoryRepository
+import com.woorilog.domain.notification.entity.NotificationType
+import com.woorilog.domain.notification.repository.UserNotificationRepository
+import com.woorilog.domain.transaction.entity.Transaction
+import com.woorilog.domain.transaction.policy.BudgetScopeType
+import com.woorilog.domain.transaction.policy.TransferType
+import com.woorilog.domain.transaction.repository.TransactionRepository
+import com.woorilog.application.budget.service.BudgetAutomationService
+import com.woorilog.controller.auth.response.DevLoginResponse
+import com.woorilog.application.analytics.service.V1InsightsService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -49,7 +58,7 @@ class V1InsightsAutomationIntegrationTest {
         save(CategoryType.TRANSFER, 40, TransferType.OWN_ACCOUNTS)
         save(CategoryType.TRANSFER, 50, TransferType.INBOUND)
 
-        val analytics = insights.analytics(user.id!!, period.ledger.id!!, period.startDate, com.woorilog.service.AnalyticsScope.ALL)
+        val analytics = insights.analytics(user.id!!, period.ledger.id!!, period.startDate, com.woorilog.domain.transaction.policy.AnalyticsScope.ALL)
         assertEquals(90, analytics.totalExpenseAmount)
 
         automation.evaluatePeriod(period.id!!)

@@ -1,13 +1,13 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.domain.ScheduledOccurrenceStatus
-import com.woorilog.domain.ScheduledPauseReason
-import com.woorilog.domain.ScheduledPlanStatus
-import com.woorilog.domain.ScheduledOccurrenceRepository
-import com.woorilog.domain.ScheduledPlanRepository
-import com.woorilog.service.DevLoginResponse
-import com.woorilog.service.ScheduledPlanService
+import com.woorilog.domain.scheduled.entity.ScheduledOccurrenceStatus
+import com.woorilog.domain.scheduled.entity.ScheduledPauseReason
+import com.woorilog.domain.scheduled.entity.ScheduledPlanStatus
+import com.woorilog.domain.scheduled.repository.ScheduledOccurrenceRepository
+import com.woorilog.domain.scheduled.repository.ScheduledPlanRepository
+import com.woorilog.controller.auth.response.DevLoginResponse
+import com.woorilog.application.scheduled.service.ScheduledPlanService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

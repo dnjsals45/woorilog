@@ -1,10 +1,19 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.domain.*
-import com.woorilog.service.DevLoginResponse
-import com.woorilog.service.CategoryResponse
-import com.woorilog.service.TransactionResponse
+import com.woorilog.domain.auth.entity.User
+import com.woorilog.domain.auth.repository.UserRepository
+import com.woorilog.domain.category.entity.CategoryType
+import com.woorilog.domain.category.repository.LedgerCategoryRepository
+import com.woorilog.domain.ledger.entity.LedgerMember
+import com.woorilog.domain.ledger.entity.LedgerRole
+import com.woorilog.domain.ledger.repository.LedgerMemberRepository
+import com.woorilog.domain.ledger.repository.LedgerRepository
+import com.woorilog.domain.transaction.entity.Transaction
+import com.woorilog.domain.transaction.repository.TransactionRepository
+import com.woorilog.controller.auth.response.DevLoginResponse
+import com.woorilog.controller.category.response.CategoryResponse
+import com.woorilog.controller.transaction.response.TransactionResponse
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -405,8 +414,8 @@ class TransactionIntegrationTest {
     fun should_PreserveExistingPayer_When_UpdatingTransactionWithoutPayer() {
         val ownerLogin = devLogin("owner@example.com", "소유자")
         val memberLogin = devLogin("member@example.com", "멤버")
-        val ledger = ledgerRepository.findById(ownerLogin.currentLedger.id).orElseThrow()
-        val member = userRepository.findById(memberLogin.user.id).orElseThrow()
+        val ledger = ledgerRepository.findByIdOrNull(ownerLogin.currentLedger.id)!!
+        val member = userRepository.findByIdOrNull(memberLogin.user.id)!!
         ledgerMemberRepository.save(LedgerMember(ledger, member, LedgerRole.MEMBER))
 
         val createResult = mockMvc.perform(post("/api/ledgers/${ledger.id}/transactions")
@@ -436,8 +445,8 @@ class TransactionIntegrationTest {
     fun should_AllowOnlyPayerToDeleteTransaction() {
         val ownerLogin = devLogin("delete-owner@example.com", "소유자")
         val memberLogin = devLogin("delete-member@example.com", "멤버")
-        val ledger = ledgerRepository.findById(ownerLogin.currentLedger.id).orElseThrow()
-        val member = userRepository.findById(memberLogin.user.id).orElseThrow()
+        val ledger = ledgerRepository.findByIdOrNull(ownerLogin.currentLedger.id)!!
+        val member = userRepository.findByIdOrNull(memberLogin.user.id)!!
         ledgerMemberRepository.save(LedgerMember(ledger, member, LedgerRole.MEMBER))
 
         val transaction = objectMapper.readValue(
@@ -465,8 +474,8 @@ class TransactionIntegrationTest {
     @Test
     fun should_BulkDeleteTransactions_When_AllTargetsAreValid() {
         val login = devLogin("bulk-delete@example.com", "일괄 삭제")
-        val ledger = ledgerRepository.findById(login.currentLedger.id).orElseThrow()
-        val payer = userRepository.findById(login.user.id).orElseThrow()
+        val ledger = ledgerRepository.findByIdOrNull(login.currentLedger.id)!!
+        val payer = userRepository.findByIdOrNull(login.user.id)!!
         val transactions = transactionRepository.saveAll(listOf(
             Transaction(ledger, null, payer, CategoryType.EXPENSE, 12_000, LocalDate.parse("2026-07-09"), "점심"),
             Transaction(ledger, null, payer, CategoryType.INCOME, 30_000, LocalDate.parse("2026-07-10"), "환급"),
@@ -485,9 +494,9 @@ class TransactionIntegrationTest {
     fun should_RollBackBulkDelete_When_TargetIncludesAnotherPayerTransaction() {
         val ownerLogin = devLogin("bulk-owner@example.com", "일괄 소유자")
         val memberLogin = devLogin("bulk-member@example.com", "일괄 멤버")
-        val ledger = ledgerRepository.findById(ownerLogin.currentLedger.id).orElseThrow()
-        val owner = userRepository.findById(ownerLogin.user.id).orElseThrow()
-        val member = userRepository.findById(memberLogin.user.id).orElseThrow()
+        val ledger = ledgerRepository.findByIdOrNull(ownerLogin.currentLedger.id)!!
+        val owner = userRepository.findByIdOrNull(ownerLogin.user.id)!!
+        val member = userRepository.findByIdOrNull(memberLogin.user.id)!!
         ledgerMemberRepository.save(LedgerMember(ledger, member, LedgerRole.MEMBER))
         val transactions = transactionRepository.saveAll(listOf(
             Transaction(ledger, null, owner, CategoryType.EXPENSE, 12_000, LocalDate.parse("2026-07-09"), "내 거래"),
@@ -506,8 +515,8 @@ class TransactionIntegrationTest {
     @Test
     fun should_ValidateBulkDeleteTransactionIdsWithoutDeletingValidTargets() {
         val login = devLogin("bulk-validation@example.com", "일괄 검증")
-        val ledger = ledgerRepository.findById(login.currentLedger.id).orElseThrow()
-        val payer = userRepository.findById(login.user.id).orElseThrow()
+        val ledger = ledgerRepository.findByIdOrNull(login.currentLedger.id)!!
+        val payer = userRepository.findByIdOrNull(login.user.id)!!
         val transaction = transactionRepository.save(
             Transaction(ledger, null, payer, CategoryType.EXPENSE, 12_000, LocalDate.parse("2026-07-09"), "남아야 하는 거래"),
         )
@@ -533,8 +542,8 @@ class TransactionIntegrationTest {
     @Test
     fun should_RollBackBulkDelete_When_TargetIncludesClosedMonthTransaction() {
         val login = devLogin("bulk-closed@example.com", "마감 일괄 삭제")
-        val ledger = ledgerRepository.findById(login.currentLedger.id).orElseThrow()
-        val payer = userRepository.findById(login.user.id).orElseThrow()
+        val ledger = ledgerRepository.findByIdOrNull(login.currentLedger.id)!!
+        val payer = userRepository.findByIdOrNull(login.user.id)!!
         val transactions = transactionRepository.saveAll(listOf(
             Transaction(ledger, null, payer, CategoryType.EXPENSE, 12_000, LocalDate.parse("2026-07-09"), "열린 월 거래"),
             Transaction(ledger, null, payer, CategoryType.EXPENSE, 20_000, LocalDate.parse("2026-08-10"), "마감 월 거래"),

@@ -1,16 +1,16 @@
 package com.woorilog.integration
 
-import com.woorilog.domain.CategoryType
-import com.woorilog.domain.Ledger
-import com.woorilog.domain.LedgerMember
-import com.woorilog.domain.LedgerMemberRepository
-import com.woorilog.domain.LedgerRepository
-import com.woorilog.domain.LedgerRole
-import com.woorilog.domain.LedgerType
-import com.woorilog.domain.Transaction
-import com.woorilog.domain.TransactionRepository
-import com.woorilog.domain.User
-import com.woorilog.domain.UserRepository
+import com.woorilog.domain.category.entity.CategoryType
+import com.woorilog.domain.ledger.entity.Ledger
+import com.woorilog.domain.ledger.entity.LedgerMember
+import com.woorilog.domain.ledger.repository.LedgerMemberRepository
+import com.woorilog.domain.ledger.repository.LedgerRepository
+import com.woorilog.domain.ledger.entity.LedgerRole
+import com.woorilog.domain.ledger.entity.LedgerType
+import com.woorilog.domain.transaction.entity.Transaction
+import com.woorilog.domain.transaction.repository.TransactionRepository
+import com.woorilog.domain.auth.entity.User
+import com.woorilog.domain.auth.repository.UserRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

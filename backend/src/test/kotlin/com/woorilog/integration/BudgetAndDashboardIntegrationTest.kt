@@ -1,8 +1,12 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.domain.CategoryType
-import com.woorilog.service.*
+import com.woorilog.domain.category.entity.CategoryType
+import com.woorilog.application.auth.service.*
+import com.woorilog.application.auth.result.LedgerDto
+import com.woorilog.controller.auth.response.DevLoginResponse
+import com.woorilog.application.category.service.*
+import com.woorilog.controller.category.response.CategoryResponse
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

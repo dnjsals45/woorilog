@@ -2,7 +2,7 @@ package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.service.DevLoginResponse
+import com.woorilog.controller.auth.response.DevLoginResponse
 import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

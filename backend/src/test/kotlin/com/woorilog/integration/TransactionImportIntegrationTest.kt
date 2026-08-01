@@ -2,9 +2,9 @@ package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.JsonNode
-import com.woorilog.service.DevLoginResponse
-import com.woorilog.service.TransactionImageOcr
-import com.woorilog.service.TransactionImageOcrResult
+import com.woorilog.controller.auth.response.DevLoginResponse
+import com.woorilog.infrastructure.external.TransactionImageOcr
+import com.woorilog.infrastructure.external.TransactionImageOcrResult
 import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

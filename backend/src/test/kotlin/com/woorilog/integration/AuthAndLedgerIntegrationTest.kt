@@ -1,9 +1,14 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.woorilog.domain.*
-import com.woorilog.service.DevLoginResponse
-import com.woorilog.service.LedgerDto
+import com.woorilog.domain.auth.entity.User
+import com.woorilog.domain.auth.repository.UserRepository
+import com.woorilog.domain.ledger.entity.LedgerRole
+import com.woorilog.domain.ledger.entity.LedgerType
+import com.woorilog.domain.ledger.repository.LedgerMemberRepository
+import com.woorilog.domain.ledger.repository.LedgerRepository
+import com.woorilog.controller.auth.response.DevLoginResponse
+import com.woorilog.application.auth.result.LedgerDto
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -82,9 +87,9 @@ class AuthAndLedgerIntegrationTest {
         assertEquals("개발자", user!!.nickname)
         assertNotNull(user.lastUsedLedgerId)
 
-        val ledger = ledgerRepository.findById(response.currentLedger.id).orElse(null)
+        val ledger = ledgerRepository.findByIdOrNull(response.currentLedger.id)
         assertNotNull(ledger)
-        assertEquals("개발자의 개인 장부", ledger.name)
+        assertEquals("개발자의 개인 장부", ledger!!.name)
         assertEquals(LedgerType.PERSONAL, ledger.type)
         assertEquals(user.id, ledger.ownerId)
 
