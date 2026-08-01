@@ -1,0 +1,77 @@
+/* 오버레이·하단 바 — 컴포넌트에서 인라인으로 넣을 수 없는 키프레임과 스크림을 담습니다.
+ *
+ * 원본은 --wl-layer-overlay / --wl-shadow-overlay 를 참조하는데 토큰 파일에 그 이름이 없습니다.
+ * (tokens/layers.css 는 --wl-z-modal, tokens/elevation.css 는 --wl-shadow-modal 로 정의)
+ * 원본 참조를 남기되 실제로 값이 나오도록 fallback 으로 정식 토큰을 겁니다. */
+.wl-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--wl-layer-overlay, var(--wl-z-modal));
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: rgb(24 32 29 / 32%);
+  animation: wl-scrim-in 200ms var(--ease-out-strong) both;
+}
+.wl-modal-panel {
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+  padding: 26px 28px 28px;
+  border-radius: var(--wl-radius-lg);
+  background: var(--wl-color-surface);
+  box-shadow: var(--wl-shadow-overlay, var(--wl-shadow-modal));
+  transform-origin: center;
+  animation: wl-modal-in 220ms var(--ease-out-strong) both;
+}
+/* 미저장 변경이 있을 때만 올라오는 하단 저장 바. left는 사이드바 폭만큼 비웁니다. */
+.wl-save-bar {
+  position: fixed;
+  left: var(--wl-save-bar-offset, 232px);
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 32px;
+  border-top: 1px solid var(--wl-color-border);
+  background: var(--wl-color-surface);
+  box-shadow: 0 -10px 30px -18px rgb(24 32 29 / 35%);
+  animation: wl-bar-in 220ms var(--ease-out-strong) both;
+}
+@keyframes wl-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes wl-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wl-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-modal-scrim,
+  .wl-modal-panel,
+  .wl-save-bar {
+    animation-duration: 1ms;
+  }
+}

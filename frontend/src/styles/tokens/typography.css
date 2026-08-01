@@ -1,0 +1,34 @@
+/* 타입 스케일 토큰. 실제 유틸 클래스는 patterns/typography.css. */
+:root {
+  --wl-text-page-title: 26px;
+  --wl-text-page-title-weight: 700;
+  --wl-text-page-title-tracking: -0.03em;
+
+  --wl-text-amount-primary: 32px;
+  --wl-text-amount-primary-weight: 700;
+  --wl-text-amount-primary-tracking: -0.035em;
+
+  --wl-text-amount-secondary: 20px;
+  --wl-text-amount-secondary-weight: 700;
+  --wl-text-amount-secondary-tracking: -0.025em;
+
+  --wl-text-section: 16px;
+  --wl-text-section-weight: 600;
+  --wl-text-section-tracking: -0.015em;
+
+  --wl-text-body: 14px;
+  --wl-text-body-weight: 500;
+  --wl-text-body-tracking: 0;
+
+  --wl-text-list-title: 14px;
+  --wl-text-list-title-weight: 600;
+  --wl-text-list-title-tracking: 0;
+
+  --wl-text-label: 12px;
+  --wl-text-label-weight: 600;
+  --wl-text-label-tracking: 0;
+
+  --wl-text-meta: 11px;
+  --wl-text-meta-weight: 500;
+  --wl-text-meta-tracking: 0;
+}

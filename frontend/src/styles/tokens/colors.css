@@ -1,0 +1,100 @@
+/* Crisp Calm V1 — 색 토큰.
+ * base(--wl-*) 위에 semantic alias(--wl-color-*)를 얹는 2단 구조.
+ * 다크모드가 필요해지면 [data-theme="dark"] 스코프에서 같은 이름을 덮어씁니다. */
+:root {
+  color-scheme: light;
+
+  /* 브랜드 초록 — CTA·선택 상태·진행에만. 넓은 면을 초록으로 채우지 않습니다. */
+  --wl-brand-800: #0a513b;
+  --wl-brand-700: #0e684b;
+  --wl-brand-600: #16805d;
+  --wl-brand-500: #2f9670;
+  --wl-brand-400: #57ae8c;
+  --wl-brand-300: #8cc8af;
+  --wl-brand-200: #bfe2d4;
+  --wl-brand-100: #e7f6f0;
+  --wl-brand-50: #f1faf6;
+
+  /* 표면 · 선 · 잉크 */
+  --wl-canvas: #f6f7f9;
+  --wl-surface: #ffffff;
+  --wl-surface-subtle: #f7faf9;
+  --wl-line: #dde3e0;
+  --wl-line-strong: #c8d2cd;
+  --wl-ink: #18201d;
+  --wl-text: #3b4742;
+  --wl-muted: #65706b;
+
+  /* 데이터 색 — base는 면(차트·칩·아이콘 배경) 전용, 텍스트에는 -ink를 씁니다. */
+  --wl-data-blue: #5275e8;
+  --wl-data-blue-soft: #eef2ff;
+  --wl-data-blue-ink: #4162db;
+  --wl-data-coral: #e66f70;
+  --wl-data-coral-soft: #fdeff1;
+  --wl-data-coral-ink: #c6444f;
+  --wl-data-amber: #e99a2c;
+  --wl-data-amber-soft: #fff4e3;
+  --wl-data-amber-ink: #94600a;
+  /* 채도를 낮춘 차분한 바이올렛. 브랜드 초록과 붙어 있어도 튀지 않게 조정했습니다. */
+  --wl-data-violet: #8579c0;
+  --wl-data-violet-soft: #f2f0f9;
+  --wl-data-violet-ink: #6a5ea6;
+  --wl-data-neutral: #76847e;
+  --wl-data-neutral-soft: #eef2f1;
+  --wl-data-neutral-ink: #5c6963;
+
+  /* 차트에서 선택되지 않은 조각 — 회색으로 지우지 않고 채도만 낮춥니다. */
+  --wl-data-blue-muted: color-mix(in oklab, var(--wl-data-blue) 45%, var(--wl-data-neutral));
+  --wl-data-coral-muted: color-mix(in oklab, var(--wl-data-coral) 45%, var(--wl-data-neutral));
+  --wl-data-amber-muted: color-mix(in oklab, var(--wl-data-amber) 45%, var(--wl-data-neutral));
+  --wl-data-violet-muted: color-mix(in oklab, var(--wl-data-violet) 45%, var(--wl-data-neutral));
+  --wl-data-neutral-muted: #9aa5a0;
+
+  /* 상태 색. success는 새 초록을 만들지 않고 brand-600 별칭으로 둡니다. */
+  --wl-success: var(--wl-brand-600);
+  --wl-success-soft: var(--wl-brand-50);
+
+  --wl-warning: #94600a;
+  --wl-warning-soft: #fff4e3;
+  --wl-warning-line: #f0d5a6;
+
+  --wl-info: #3457c9;
+  --wl-info-soft: #eef2ff;
+  --wl-info-line: #c9d4f7;
+
+  --wl-danger: #d95061;
+  --wl-danger-soft: #fdeff1;
+  --wl-danger-ink: #c0384a;
+  --wl-danger-line: #f3c9cf;
+
+  /* 시맨틱 별칭 — 제품 코드는 되도록 이 이름을 씁니다. */
+  --wl-color-primary: var(--wl-brand-600);
+  --wl-color-primary-dark: var(--wl-brand-700);
+  --wl-color-primary-soft: var(--wl-brand-100);
+  --wl-color-background: var(--wl-canvas);
+  --wl-color-surface: var(--wl-surface);
+  --wl-color-surface-subtle: var(--wl-surface-subtle);
+  --wl-color-border: var(--wl-line);
+  --wl-color-border-strong: var(--wl-line-strong);
+  --wl-color-text-main: var(--wl-ink);
+  --wl-color-text-body: var(--wl-text);
+  --wl-color-text-secondary: var(--wl-muted);
+  --wl-color-text-disabled: #9aa5a0;
+  --wl-color-income: var(--wl-data-blue-ink);
+  --wl-color-expense: var(--wl-data-coral-ink);
+  --wl-color-income-fill: var(--wl-data-blue);
+  --wl-color-expense-fill: var(--wl-data-coral);
+  --wl-color-danger: var(--wl-danger);
+
+  /* 상호작용 상태 */
+  --wl-state-hover: #fbfdfc;
+  --wl-state-pressed: #f2f6f4;
+  --wl-state-selected: var(--wl-brand-100);
+  --wl-state-disabled-surface: #eff2f1;
+  --wl-state-disabled-ink: #9aa5a0;
+  --wl-on-primary: #ffffff;
+
+  --wl-focus-ring: rgb(22 128 93 / 28%);
+  --wl-focus-ring-width: 3px;
+  --wl-focus-ring-offset: 2px;
+}

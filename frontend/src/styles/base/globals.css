@@ -1,0 +1,56 @@
+/* Document-level defaults: page canvas, focus ring, button/anchor behaviour. */
+
+:root {
+  color: var(--wl-color-text-main);
+  background: var(--wl-color-background);
+  font-synthesis: none;
+  text-rendering: optimizelegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--wl-font-sans);
+}
+body {
+  background: radial-gradient(circle at 86% 0%, #16805d0b, transparent 30rem), var(--wl-color-background);
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
+}
+button,
+a {
+  transition:
+    color var(--motion-fast) ease-out,
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
+    box-shadow var(--motion-fast) ease-out,
+    opacity var(--motion-fast) ease-out;
+}
+button:active:not(:disabled) {
+  opacity: 0.86;
+}
+button,
+a {
+  cursor: pointer;
+  font: inherit;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+button,
+select,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: var(--wl-focus-ring-width) solid var(--wl-focus-ring);
+  outline-offset: var(--wl-focus-ring-offset);
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}

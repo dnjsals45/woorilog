@@ -1,0 +1,27 @@
+/* 모션. 진입은 --wl-ease-product(부드러운 감속), 퇴장은 --wl-ease-exit. 바운스는 쓰지 않습니다. */
+:root {
+  --wl-motion-fast: 160ms;
+  --wl-motion-base: 220ms;
+  --wl-motion-slow: 440ms;
+  --wl-ease-product: cubic-bezier(0.16, 1, 0.3, 1);
+  --wl-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* 모달·하단 바 같은 오버레이 진입에 쓰는 강한 감속. 프로토타입 화면들이 쓰던 값입니다. */
+  --wl-ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+
+  --motion-fast: var(--wl-motion-fast);
+  --motion-base: var(--wl-motion-base);
+  --motion-slow: var(--wl-motion-slow);
+  --ease-product: var(--wl-ease-product);
+  --ease-out-strong: var(--wl-ease-out-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

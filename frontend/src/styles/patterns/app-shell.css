@@ -1,0 +1,215 @@
+/* App shell: content column, desktop sidebar, legacy tailwind-palette remaps inside .wl-app-shell. */
+
+.wl-app-shell main {
+  color: var(--wl-color-text-main);
+}
+.wl-app-content {
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+}
+.wl-desktop-sidebar {
+  overscroll-behavior: contain;
+  overflow-y: auto;
+}
+@media (width >= 640px) and (width <= 1040px) {
+  .wl-app-content {
+    max-width: 47.5rem;
+  }
+}
+@media (width >= 1041px) {
+  .wl-app-content {
+    max-width: none;
+  }
+}
+@media (width >= 1041px) and (height <= 840px) {
+  .wl-desktop-sidebar {
+    padding: 16px;
+  }
+  .wl-sidebar-navigation {
+    margin-top: 20px;
+  }
+  .wl-sidebar-navigation > button {
+    min-height: 42px;
+  }
+  .wl-sidebar-navigation > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 2px;
+  }
+  .wl-sidebar-category {
+    min-height: 40px;
+    margin-top: 8px;
+  }
+  .wl-sidebar-bottom {
+    gap: 8px;
+  }
+  .wl-sidebar-ledger {
+    border-radius: 16px;
+    padding: 12px;
+  }
+  .wl-sidebar-members {
+    margin-top: 10px;
+  }
+  .wl-sidebar-members > span {
+    width: 32px;
+    height: 32px;
+  }
+  .wl-sidebar-profile {
+    padding-top: 8px;
+  }
+  .wl-sidebar-user {
+    margin-bottom: 0;
+    padding-block: 4px;
+  }
+  .wl-sidebar-help {
+    min-height: 36px;
+  }
+}
+.wl-app-shell main > header,
+.wl-app-shell .border-slate-200,
+.wl-app-shell .border-slate-300,
+.wl-app-shell .border-slate-100 {
+  border-color: var(--wl-color-border);
+}
+@supports (color: color-mix(in lab, red, red)) {
+  .wl-app-shell .border-slate-100 {
+    border-color: color-mix(in srgb, var(--wl-color-border) 72%, white);
+  }
+}
+.wl-app-shell .text-slate-950,
+.wl-app-shell .text-slate-900,
+.wl-app-shell .text-slate-800 {
+  color: var(--wl-color-text-main);
+}
+.wl-app-shell .text-slate-700,
+.wl-app-shell .text-slate-600 {
+  color: var(--wl-color-text-body);
+}
+.wl-app-shell .text-slate-500,
+.wl-app-shell .text-slate-400 {
+  color: var(--wl-color-text-secondary);
+}
+.wl-app-shell .shadow-sm {
+  box-shadow: var(--wl-shadow-card);
+}
+.wl-app-shell .bg-slate-50 {
+  background-color: var(--wl-color-surface-subtle);
+}
+.wl-app-shell .bg-slate-100 {
+  background-color: var(--wl-data-neutral-soft);
+}
+.wl-app-shell .bg-slate-200,
+.wl-app-shell .bg-slate-300 {
+  background-color: var(--wl-color-border-strong);
+}
+.wl-app-shell .bg-emerald-50 {
+  background-color: var(--wl-color-primary-soft);
+}
+.wl-app-shell .bg-emerald-100,
+.wl-app-shell .bg-emerald-200 {
+  background-color: var(--wl-brand-100);
+}
+.wl-app-shell .text-emerald-700,
+.wl-app-shell .text-emerald-800,
+.wl-app-shell .text-emerald-600 {
+  color: var(--wl-color-primary-dark);
+}
+.wl-app-shell .border-emerald-700,
+.wl-app-shell .border-emerald-600 {
+  border-color: var(--wl-color-primary);
+}
+.wl-app-shell .border-emerald-100,
+.wl-app-shell .border-emerald-200,
+.wl-app-shell .border-emerald-300 {
+  border-color: #cae9dd;
+}
+.wl-app-shell .bg-emerald-700,
+.wl-app-shell .bg-emerald-600,
+.wl-app-shell .bg-emerald-500 {
+  background-color: var(--wl-color-primary);
+}
+.wl-app-shell .bg-emerald-800 {
+  background-color: var(--wl-brand-700);
+}
+.wl-app-shell button.bg-emerald-700:hover,
+.wl-app-shell button.bg-emerald-600:hover {
+  background-color: var(--wl-color-primary-dark);
+}
+.wl-app-shell .text-blue-600,
+.wl-app-shell .text-blue-700 {
+  color: var(--wl-data-blue-ink);
+}
+.wl-app-shell .bg-blue-50,
+.wl-app-shell .bg-blue-100 {
+  background-color: var(--wl-data-blue-soft);
+}
+.wl-app-shell .text-orange-600,
+.wl-app-shell .text-orange-700,
+.wl-app-shell .text-rose-600,
+.wl-app-shell .text-rose-700,
+.wl-app-shell .text-red-600,
+.wl-app-shell .text-red-700,
+.wl-app-shell .text-red-800 {
+  color: var(--wl-color-danger);
+}
+.wl-app-shell .bg-orange-50,
+.wl-app-shell .bg-orange-100,
+.wl-app-shell .bg-rose-50,
+.wl-app-shell .bg-rose-100,
+.wl-app-shell .bg-red-50 {
+  background-color: var(--wl-danger-soft);
+}
+.wl-app-shell .bg-orange-500,
+.wl-app-shell .bg-red-500,
+.wl-app-shell .bg-red-600 {
+  background-color: var(--wl-color-danger);
+}
+.wl-app-shell .border-orange-100,
+.wl-app-shell .border-rose-200,
+.wl-app-shell .border-red-100,
+.wl-app-shell .border-red-200 {
+  border-color: #f7d4da;
+}
+.wl-app-shell .text-amber-600,
+.wl-app-shell .text-amber-700 {
+  color: #b86f08;
+}
+.wl-app-shell .bg-amber-50,
+.wl-app-shell .bg-amber-100 {
+  background-color: var(--wl-data-amber-soft);
+}
+.wl-app-shell .bg-amber-500 {
+  background-color: var(--wl-data-amber);
+}
+.wl-app-shell .border-amber-100 {
+  border-color: #f4ddb7;
+}
+.wl-app-shell input:not([type='file']),
+.wl-app-shell select,
+.wl-app-shell textarea {
+  border-color: var(--wl-color-border-strong);
+  background-color: var(--wl-color-surface);
+  color: var(--wl-color-text-main);
+  border-radius: 0.75rem;
+  font-size: 1rem;
+}
+.wl-app-shell input:not([type='file']):focus,
+.wl-app-shell select:focus,
+.wl-app-shell textarea:focus {
+  border-color: var(--wl-color-primary);
+  box-shadow: 0 0 0 3px #16805d1f;
+}
+.wl-page-header-label {
+  color: var(--wl-color-primary-dark);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.wl-stat-bar {
+  background: var(--wl-color-primary);
+  border-radius: 999px;
+  min-width: 0.5rem;
+}
+.wl-stat-bar-income {
+  background: var(--wl-color-income-fill);
+}

@@ -1,0 +1,31 @@
+/* 간격 · 반경 · 아이콘 크기. 8px 그리드 기반이되 제품이 쓰는 값만 둡니다. */
+:root {
+  --wl-space-1: 4px;
+  --wl-space-2: 8px;
+  --wl-space-3: 12px;
+  --wl-space-4: 16px;
+  --wl-space-5: 20px;
+  --wl-space-6: 24px;
+  --wl-space-8: 32px;
+
+  /* 레거시 별칭 — 기존 화면 코드가 참조합니다. */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 56px;
+
+  --wl-radius-sm: 8px;
+  --wl-radius-md: 12px;
+  --wl-radius-lg: 18px;
+  --wl-radius-xl: 20px;
+  --wl-radius-sheet: 20px;
+  --wl-radius-pill: 999px;
+
+  --wl-icon-sm: 16px;
+  --wl-icon-md: 18px;
+  --wl-icon-lg: 20px;
+  --wl-icon-xl: 24px;
+  --wl-icon-stroke: 1.8;
+}

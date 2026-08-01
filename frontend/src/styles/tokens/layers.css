@@ -1,0 +1,9 @@
+/* z-index 사다리. 새 레이어를 만들지 말고 이 중에서 고릅니다. */
+:root {
+  --wl-z-sticky: 100;
+  --wl-z-dropdown: 200;
+  --wl-z-sheet: 300;
+  --wl-z-modal: 400;
+  --wl-z-toast: 500;
+  --wl-z-tooltip: 600;
+}

@@ -1,0 +1,58 @@
+/* Role-based type classes. Never use raw text-* sizes for product copy. */
+
+.wl-page-title {
+  font-size: var(--wl-text-page-title);
+  font-weight: var(--wl-text-page-title-weight);
+  letter-spacing: var(--wl-text-page-title-tracking);
+  color: var(--wl-color-text-main);
+}
+.wl-amount-primary {
+  font-size: var(--wl-text-amount-primary);
+  font-weight: var(--wl-text-amount-primary-weight);
+  letter-spacing: var(--wl-text-amount-primary-tracking);
+  font-variant-numeric: tabular-nums;
+}
+.wl-amount-secondary {
+  font-size: var(--wl-text-amount-secondary);
+  font-weight: var(--wl-text-amount-secondary-weight);
+  letter-spacing: var(--wl-text-amount-secondary-tracking);
+  font-variant-numeric: tabular-nums;
+}
+.wl-section-title {
+  font-size: var(--wl-text-section);
+  font-weight: var(--wl-text-section-weight);
+  letter-spacing: var(--wl-text-section-tracking);
+  color: var(--wl-color-text-main);
+}
+.wl-body {
+  font-size: var(--wl-text-body);
+  font-weight: var(--wl-text-body-weight);
+  letter-spacing: var(--wl-text-body-tracking);
+  color: var(--wl-color-text-body);
+}
+.wl-list-title {
+  font-size: var(--wl-text-list-title);
+  font-weight: var(--wl-text-list-title-weight);
+  letter-spacing: var(--wl-text-list-title-tracking);
+  color: var(--wl-color-text-main);
+}
+.wl-label {
+  font-size: var(--wl-text-label);
+  font-weight: var(--wl-text-label-weight);
+  letter-spacing: var(--wl-text-label-tracking);
+  color: var(--wl-color-text-secondary);
+}
+.wl-meta {
+  font-size: var(--wl-text-meta);
+  font-weight: var(--wl-text-meta-weight);
+  letter-spacing: var(--wl-text-meta-tracking);
+  color: var(--wl-color-text-secondary);
+}
+.wl-tabular {
+  font-variant-numeric: tabular-nums;
+}
+input,
+select,
+textarea {
+  font-size: max(16px, 1em);
+}

@@ -1,0 +1,13 @@
+/* SUIT — 본문·제목 공통 서체. 가변 폰트 한 벌(100–900)을 저장소에서 직접 싣습니다.
+ * 파일: src/assets/fonts/SUIT-Variable.woff2 (라이선스: src/assets/fonts/SUIT-LICENSE.txt) */
+@font-face {
+  font-family: "SUIT Variable";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("../../assets/fonts/SUIT-Variable.woff2") format("woff2-variations");
+}
+:root {
+  --wl-font-sans: "SUIT Variable", "SUIT", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --wl-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
