@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc" version="1.1" id="svg16" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+  <title id="title">우리로그 앱 아이콘</title>
+  <desc id="desc">두 사람이 함께 기록하는 가계부를 표현한 우리로그 아이콘</desc>
+  <defs id="defs6">
+    <linearGradient id="coralGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF6F61" id="stop1"></stop>
+      <stop offset="1" stop-color="#FF9A6C" id="stop2"></stop>
+    </linearGradient>
+    <linearGradient id="tealGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2F8F89" id="stop3"></stop>
+      <stop offset="1" stop-color="#62B8AE" id="stop4"></stop>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB33F" id="stop5"></stop>
+      <stop offset="1" stop-color="#FFD46A" id="stop6"></stop>
+    </linearGradient>
+    <filter id="softShadow" x="-0.0044843049" y="-0.0044843049" width="1.0089686" height="1.0089686">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#325B58" flood-opacity="0.12"></feDropShadow>
+    </filter>
+  </defs>
+  <rect x="66" y="66" width="892" height="892" rx="205" fill="#FFF9EE" stroke="#F1E4D2" stroke-width="8" filter="url(#softShadow)" id="rect6"></rect>
+  <g transform="translate(0,-12) scale(0.92) translate(44,44)" id="g16">
+
+    <circle cx="282" cy="178" r="58" fill="url(#coralGrad)" id="circle6"></circle>
+    <circle cx="742" cy="178" r="58" fill="url(#tealGrad)" id="circle7"></circle>
+
+    <path d="M512 402            C445 342 364 300 275 305            C184 310 132 377 132 478            L132 712            C132 798 187 850 275 850            C371 850 447 872 512 918 Z" fill="#FFFDF6" stroke="url(#coralGrad)" stroke-width="54" stroke-linejoin="round" id="path7"></path>
+    <path d="M512 402            C579 342 660 300 749 305            C840 310 892 377 892 478            L892 712            C892 798 837 850 749 850            C653 850 577 872 512 918 Z" fill="#FFFDF6" stroke="url(#tealGrad)" stroke-width="54" stroke-linejoin="round" id="path8"></path>
+
+    <path d="M512 403            C478 371 437 338 437 297            C437 260 466 236 498 244            C506 246 512 252 512 252            C512 252 518 246 526 244            C558 236 587 260 587 297            C587 338 546 371 512 403 Z" fill="#FFFDF6" stroke="#FFFDF6" stroke-width="8" id="path9"></path>
+
+    <path d="M512 438 L512 836" stroke="#DFC5A6" stroke-width="14" stroke-linecap="round" id="path10"></path>
+
+    <circle cx="246" cy="516" r="24" fill="#FF735F" id="circle10"></circle>
+    <circle cx="246" cy="615" r="24" fill="#FFBA45" id="circle11"></circle>
+    <circle cx="246" cy="714" r="24" fill="#A6C56A" id="circle12"></circle>
+    <path d="M308 516 H426 M308 615 H426 M308 714 H426" stroke="#E7C79C" stroke-width="18" stroke-linecap="round" id="path12"></path>
+
+    <path d="M684 500 L684 408 A92 92 0 0 1 769 535 Z" fill="url(#goldGrad)" stroke="#FFFDF6" stroke-width="8" id="path13"></path>
+    <path d="M684 500 L769 535 A92 92 0 0 1 614 571 Z" fill="#9DBB73" stroke="#FFFDF6" stroke-width="8" id="path14"></path>
+    <path d="M684 500 L614 571 A92 92 0 0 1 684 408 Z" fill="url(#coralGrad)" stroke="#FFFDF6" stroke-width="8" id="path15"></path>
+    <path d="M640 665 H796 M640 724 H796" stroke="#E7C79C" stroke-width="18" stroke-linecap="round" id="path16"></path>
+  </g>
+</svg>
