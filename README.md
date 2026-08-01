@@ -47,7 +47,8 @@ woorilog/
   frontend/  # React/Vite web client
   docs/
   assets/
-  AGENTS.md
+  CLAUDE.md   # 에이전트 작업 원칙 단일 기준
+  AGENTS.md   # CLAUDE.md를 가리키는 포인터
   README.md
 ```
 
