@@ -1,11 +1,35 @@
+/* 우리로그 전역 CSS 진입점.
+ *
+ * 토큰 · base · patterns 는 Claude Design 디자인 시스템(Crisp Calm V1)에서 이식한 것이며
+ * 값의 단일 원본입니다. 화면 코드에서 raw hex / radius / shadow 를 다시 쓰지 않습니다.
+ *
+ * 디자인 시스템의 styles/preflight.css 와 styles/utilities.css 는 원본 앱의 Tailwind
+ * 빌드 결과물이라 이식하지 않습니다. 이 프로젝트는 Tailwind v4 를 직접 돌리므로
+ * 아래 @import 'tailwindcss' 가 같은 역할을 합니다. */
 @import 'tailwindcss';
 @import '@daypicker/react/style.css';
-@import './styles/tokens.css';
-@import './styles/app-shell.css';
-@import './styles/dashboard.css';
-@import './styles/product-pages.css';
 
+@import './styles/tokens/colors.css';
+@import './styles/tokens/fonts.css';
+@import './styles/tokens/typography.css';
+@import './styles/tokens/spacing.css';
+@import './styles/tokens/elevation.css';
+@import './styles/tokens/motion.css';
+@import './styles/tokens/layers.css';
+
+@import './styles/base/globals.css';
+
+@import './styles/patterns/typography.css';
+@import './styles/patterns/controls.css';
+@import './styles/patterns/app-shell.css';
+@import './styles/patterns/page-layout.css';
+@import './styles/patterns/dashboard.css';
+@import './styles/patterns/overlay.css';
+
+/* Tailwind 유틸리티가 참조하는 테마 값 — 전부 wl 토큰을 가리킵니다. */
 @theme {
+  --font-sans: var(--wl-font-sans);
+  --font-mono: var(--wl-font-mono);
   --color-primary: var(--wl-color-primary);
   --color-primary-dark: var(--wl-color-primary-dark);
   --color-primary-soft: var(--wl-color-primary-soft);
@@ -45,18 +69,7 @@
   --shadow-modal: var(--wl-shadow-modal);
 }
 
-:root {
-  font-family:
-    'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont,
-    sans-serif;
-  color: var(--wl-color-text-main);
-  background: var(--wl-color-background);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
+/* @daypicker 스킨. 디자인 시스템의 DatePicker 를 이식하면 이 블록은 제거 대상입니다. */
 .woorilog-date-picker .rdp-root {
   --rdp-accent-color: var(--wl-color-primary);
   --rdp-accent-background-color: var(--wl-brand-50);
@@ -83,190 +96,4 @@
 .woorilog-date-picker .rdp-selected .rdp-day_button {
   background: var(--wl-color-primary);
   color: white;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100dvh;
-  background:
-    radial-gradient(circle at 86% 0%, rgb(22 128 93 / 4.5%), transparent 30rem),
-    var(--wl-color-background);
-}
-
-button,
-a {
-  transition:
-    color var(--motion-fast) ease-out,
-    background-color var(--motion-fast) ease-out,
-    border-color var(--motion-fast) ease-out,
-    box-shadow var(--motion-fast) ease-out,
-    opacity var(--motion-fast) ease-out;
-}
-
-button:active:not(:disabled) {
-  opacity: 0.86;
-}
-
-.dashboard-card {
-  min-height: 100%;
-  border: 1px solid var(--wl-color-border);
-  border-radius: 1.125rem;
-  background: var(--wl-color-surface);
-  padding: 1.5rem;
-  box-shadow: var(--wl-shadow-card);
-  transition:
-    background-color var(--motion-base) var(--ease-product),
-    border-color var(--motion-base) ease,
-    box-shadow var(--motion-base) var(--ease-product);
-}
-
-.dashboard-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.dashboard-card-title {
-  margin-top: 2px;
-  color: var(--wl-color-text-main);
-  font-size: 1.1875rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-.dashboard-eyebrow {
-  color: var(--wl-color-primary-dark);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
-.dashboard-empty {
-  margin-top: 1.25rem;
-  border: 1px dashed var(--wl-color-border);
-  border-radius: 1rem;
-  padding: 2rem 1rem;
-  text-align: center;
-  color: var(--wl-color-text-secondary);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.dashboard-text-button {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  padding: 0 12px;
-  color: var(--wl-color-text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.dashboard-month-button {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  color: var(--wl-color-text-secondary);
-}
-
-.card-warm {
-  border: 1px solid var(--wl-color-border);
-  border-radius: 18px;
-  background: var(--wl-color-surface);
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-}
-
-.input-soft {
-  width: 100%;
-  border: 1px solid var(--wl-color-border);
-  border-radius: 12px;
-  background: var(--wl-color-surface);
-  padding: 12px 16px;
-  color: var(--wl-color-text-main);
-}
-
-@media (max-width: 767px) {
-  .dashboard-card { padding: 1rem; }
-  .dashboard-card-title { font-size: 1.0625rem; }
-  .dashboard-empty { margin-top: 0.75rem; padding: 1.25rem 0.75rem; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
-}
-
-button,
-a {
-  cursor: pointer;
-  font: inherit;
-}
-
-button:disabled {
-  cursor: not-allowed;
-}
-
-button,
-select,
-input,
-textarea {
-  -webkit-tap-highlight-color: transparent;
-}
-
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--wl-color-primary) 35%, transparent);
-  outline-offset: 2px;
-}
-
-.wl-category-mark {
-  border-color: var(--wl-color-border);
-  background: var(--wl-data-neutral-soft);
-  color: var(--wl-data-neutral);
-}
-
-.wl-category-mark--brand {
-  border-color: #cae9dd;
-  background: var(--wl-brand-100);
-  color: var(--wl-brand-700);
-}
-
-.wl-category-mark--blue {
-  border-color: #d7defb;
-  background: var(--wl-data-blue-soft);
-  color: var(--wl-data-blue);
-}
-
-.wl-category-mark--coral {
-  border-color: #f7d4da;
-  background: var(--wl-data-coral-soft);
-  color: var(--wl-data-coral);
-}
-
-.wl-category-mark--amber {
-  border-color: #f4ddb7;
-  background: var(--wl-data-amber-soft);
-  color: #b86f08;
-}
-
-.wl-category-mark--violet {
-  border-color: #ddd4f8;
-  background: var(--wl-data-violet-soft);
-  color: var(--wl-data-violet);
 }
