@@ -14,7 +14,8 @@
 ## Skill 사용
 
 - 코드를 수정하기 전에 `react-vite-frontend` skill을 사용합니다.
-- 새 화면이나 큰 UI 변경은 `ui-ux-pro-max` skill과 `docs/design/**`를 먼저 확인합니다.
+- 새 화면이나 큰 UI 변경은 `design-taste-frontend` skill과 `docs/design/**`를 먼저 확인합니다.
+- 인터랙션·모션을 다듬을 때는 `emil-design-eng` skill을 사용합니다.
 - 테스트 범위 판단이 필요하면 `testing-strategy` skill을 함께 사용합니다.
 - 어떤 reference를 읽을지는 [`../.agent/workflows/skill-routing.md`](../.agent/workflows/skill-routing.md)를 따릅니다.
 

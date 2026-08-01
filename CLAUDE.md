@@ -81,7 +81,19 @@ docs/      product · design · engineering · planning
 | 프론트엔드 React/Vite | `react-vite-frontend` |
 | 테스트 범위 결정 | `testing-strategy` |
 | 커밋/브랜치/PR/CI | `git-workflow` |
-| UI/UX 디자인 판단 | `ui-ux-pro-max` |
+| UI/UX 디자인 판단 | `design-taste-frontend` |
+| 인터랙션·모션 다듬기 | `emil-design-eng` |
+| 라이브러리 선택 (명시 호출 전용) | `pick-ui-library` |
+
+디자인 계열 skill의 역할 분담은 다음과 같습니다.
+
+- `design-taste-frontend`가 **디자인 작업의 메인 규칙**입니다. 화면 구조, 레이아웃, 타이포, 색 판단은 여기를 기준으로 합니다.
+  단 이 저장소에는 확정된 디자인 시스템이 있으므로, 충돌하면 `docs/design/**`와 `frontend/src/styles/tokens.css`가 우선합니다.
+- `emil-design-eng`는 **인터랙션을 다듬을 때** 사용합니다. 전환, 상태 피드백, 타이밍·이징, 마이크로 인터랙션처럼
+  화면이 정해진 뒤의 결을 다룹니다. 새 화면을 처음 설계할 때는 쓰지 않습니다.
+- `pick-ui-library`는 `disable-model-invocation: true`라 **사용자가 명시적으로 호출할 때만** 동작합니다.
+  기존 코드로 해결이 안 되는 문제(가상 스크롤, 드래그앤드롭, 커맨드 메뉴 등)를 만났을 때 후보를 받는 용도이며,
+  결과는 제안일 뿐입니다. 실제 의존성 추가는 아래 "하지 말 것"에 따라 **별도 기술 결정과 사용자 승인**을 거칩니다.
 
 skill과 reference는 필요한 것만 읽습니다. 어떤 파일을 고를지는
 [`.agent/workflows/skill-routing.md`](./.agent/workflows/skill-routing.md)의 라우팅 표를 따릅니다.
@@ -90,7 +102,8 @@ skill과 reference는 필요한 것만 읽습니다. 어떤 파일을 고를지�
 skill 내용을 고칠 때는 `.claude/skills/`를 원본으로 고친 뒤 `.codex/skills/`에 동기화합니다.
 
 ```bash
-for s in git-workflow kotlin-spring-backend react-vite-frontend testing-strategy ui-ux-pro-max; do
+for s in git-workflow kotlin-spring-backend react-vite-frontend testing-strategy \
+         design-taste-frontend emil-design-eng pick-ui-library; do
   rsync -a --delete --exclude '__pycache__' ".claude/skills/$s/" ".codex/skills/$s/"
 done
 ```
