@@ -25,10 +25,12 @@ assets/tmp/
 .vscode/
 
 # AI/local workflow files
+.claude/
 .codex/
 .agent/
 .agents/
 .agents.local.md
+skills-lock.json
 
 # Test output
 coverage/
