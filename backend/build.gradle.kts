@@ -19,6 +19,11 @@ repositories {
     mavenCentral()
 }
 
+// Spring Boot 3.5의 관리 버전(1.21.0)은 docker-java 3.4.2를 쓰는데,
+// docker-java 3.4.2는 Docker Engine 29(MinAPIVersion 1.44)와 통신하지 못한다.
+// testcontainers 2.x가 docker-java 3.7.x를 가져오므로 관리 버전을 덮어쓴다.
+extra["testcontainers.version"] = "2.0.5"
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -38,8 +43,8 @@ dependencies {
     testImplementation("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:mysql")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-mysql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
