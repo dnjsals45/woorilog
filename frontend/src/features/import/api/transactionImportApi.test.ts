@@ -23,14 +23,18 @@ describe('V1 transaction import API', () => {
   })
 
   it('saves selected candidates with the preview session id', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ transactionIds: [9] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    // 목 응답은 백엔드 SaveImportSessionResponse 와 같은 모양이어야 한다.
+    // 예전에는 { transactionIds: [...] } 로 두어, 실제 응답과 다른데도 테스트가 통과했다.
+    const created = [{ candidateId: 3, transaction: { id: 9 } }]
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ created }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
     const candidates = [{ candidateId: 3, amount: 12_000, occurredOn: '2026-07-21', merchant: '점심', categoryId: 1, budgetSource: { type: 'PERSONAL' as const, ownerUserId: 1 }, selected: true }]
 
-    await saveImportSession(1, 7, candidates)
+    const result = await saveImportSession(1, 7, candidates)
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('http://localhost:8080/api/ledgers/1/transaction-imports')
     expect(options.body).toBe(JSON.stringify({ sessionId: 7, candidates }))
+    expect(result.created[0].candidateId).toBe(3)
   })
 })

@@ -10,9 +10,7 @@ export type LedgerSummary = {
   type: LedgerType
   ownerId: number
   recurringSummaryClosingDay: number
-  /** GET /api/ledgers, PATCH /api/ledgers/{ledgerId} 응답에는 아직 노출되지 않습니다.
-   * 요청 시 보낼 수는 있지만, 저장 뒤 조회로 값을 다시 확인할 수는 없습니다. */
-  budgetCycle?: BudgetCycle
+  budgetCycle: BudgetCycle
 }
 
 export type LedgerListResponse = {
@@ -61,7 +59,8 @@ export function leaveLedger(ledgerId: number) {
   return apiRequest<void>(`/api/ledgers/${ledgerId}/members/me`, { method: 'DELETE' })
 }
 
-export type V1LedgerSummary = { id: number; name: string; type: 'PERSONAL' | 'SHARED'; role: 'OWNER' | 'MEMBER'; accessState: 'ACTIVE' | 'FORMER'; budgetCycle: BudgetCycle }
+/** POST /api/ledgers/shared 와 초대 수락 응답이 쓰는 요약 타입. GET /api/ledgers 의 LedgerSummary 와 모양이 다릅니다. */
+export type V1LedgerSummary = { id: number; name: string; type: 'PERSONAL' | 'SHARED'; role: 'OWNER' | 'MEMBER'; accessState: 'ACTIVE' | 'FORMER'; partner: { id: number; nickname: string } | null; budgetCycle: BudgetCycle }
 export type CreateSharedLedgerRequest = { name: string; totalBudget: number; budgetCycle: BudgetCycle }
 export function createSharedLedger(request: CreateSharedLedgerRequest) { return apiRequest<{ ledger: V1LedgerSummary; currentBudgetPeriod: unknown }>('/api/ledgers/shared', { method: 'POST', body: request }) }
 export async function transferLedgerOwnership(ledgerId: number, newOwnerUserId: number) { const response = await apiRequest<{ items: LedgerMember[] }>(`/api/ledgers/${ledgerId}/ownership-transfer`, { method: 'POST', body: { newOwnerUserId } }); return response.items }

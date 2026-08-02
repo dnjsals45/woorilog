@@ -3,7 +3,6 @@ import type { LedgerSummary } from '../../ledger/api/ledgerApi'
 
 export type CurrentUser = {
   id: number
-  email?: string | null
   nickname: string
   nicknameConfirmed: boolean
   timezone: string

@@ -350,7 +350,7 @@ function BudgetConfigurationBody({
       : `예비비는 ${won(availableReserve)}으로 저장돼요`
     : undefined
 
-  const recentTransfers = [...(transfersQuery.data ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3)
+  const recentTransfers = [...(transfersQuery.data?.items ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3)
 
   return (
     <div style={{ padding: '28px 32px 140px', display: 'flex', flexDirection: 'column', gap: 32 }}>

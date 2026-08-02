@@ -13,4 +13,4 @@ export function configureBudgetPeriod(ledgerId: number, startDate: string, reque
 export function copyBudgetPeriod(ledgerId: number, startDate: string, sourceStartDate: string) { return apiRequest<BudgetPeriodDetail>(`${base(ledgerId)}/${startDate}/copy`, { method: 'POST', body: { sourceStartDate } }) }
 export function transferReserve(ledgerId: number, startDate: string, amount: number, target: BudgetSource) { return apiRequest<{ period: BudgetPeriod; transfer: unknown }>(`${base(ledgerId)}/${startDate}/reserve-transfers`, { method: 'POST', body: { amount, target } }) }
 export type ReserveTransfer = { id: number; amount: number; target: BudgetSource; actor: { id: number; nickname: string }; createdAt: string }
-export function getReserveTransfers(ledgerId: number, startDate: string) { return apiRequest<ReserveTransfer[]>(`${base(ledgerId)}/${startDate}/reserve-transfers`) }
+export function getReserveTransfers(ledgerId: number, startDate: string) { return apiRequest<{ items: ReserveTransfer[] }>(`${base(ledgerId)}/${startDate}/reserve-transfers`) }

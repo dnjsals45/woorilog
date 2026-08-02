@@ -61,6 +61,28 @@ Claude Design **Crisp Calm V1** 디자인 14화면을 프론트엔드에 이식�
 
 부수적으로 `api-contract.md` 가 `candidateId` 를 문자열(`"cand_1"`)로 적고 있었으나 실제는 `Long` 이라 문서를 고쳤습니다.
 
+## 전수 점검 결과 — 같은 종류 4건 더
+
+프론트 `api/*.ts` 15개를 백엔드 컨트롤러·응답 DTO 와 전부 대조했습니다.
+
+| 위치 | 프론트 | 실제 백엔드 | 증상 |
+| --- | --- | --- | --- |
+| `budgetPeriodApi.getReserveTransfers` | `ReserveTransfer[]` | `{ items: ReserveTransfer[] }` | **런타임 예외.** `[...객체]` 는 iterable 이 아니라 `TypeError` 를 던져 예산 화면이 렌더 중 깨졌습니다 |
+| `authApi.SessionResponse.currentLedger` | 중첩 `budgetCycle` | `LedgerDto` 가 평평한 `budgetStartType`/`budgetStartDay` | 설정 화면이 `/api/ledgers` 대신 `/api/me` 로 폴백할 때 예산 기간 시작일이 항상 비었습니다 |
+| `invitationApi.acceptLinkInvitation` | `{ ledger: LedgerSummary }` | `{ ledger: LedgerSummaryResponse }` (`role`·`accessState`·`partner`) | 반환값을 아직 안 읽어 화면은 멀쩡하지만 타입이 틀렸습니다 |
+| `transactionImportApi.saveImportSession` | `{ transactionIds: number[] }` | `{ created: [{ candidateId, transaction }] }` | 위와 같음. **목(mock)까지 틀린 모양으로 맞춰져 있어** 테스트가 통과했습니다 |
+
+두 번째는 **이 작업에서 만든 회귀**입니다. B-2 를 고치며 `LedgerDto` 에 평평한 필드를,
+`LedgerResponse` 에 중첩 `budgetCycle` 을 넣어 같은 개념이 엔드포인트마다 다른 모양이 됐습니다.
+`LedgerDto` 도 중첩으로 통일해 어느 경로로 받든 같은 키가 나오게 했습니다.
+
+네 번째는 **이 문서가 경고한 패턴 그대로입니다.** 목이 실제 응답이 아니라 프론트 타입에 맞춰져 있으면
+테스트는 통과하면서 버그를 덮습니다. 목을 백엔드 응답 모양으로 고치고 반환값 단언을 넣었습니다.
+
+이름 불일치가 없는 것도 확인했습니다: `categoryApi`, `notificationApi`, `scheduledPlanApi`,
+`transactionApi`, `cardApi`, `analyticsApi`, `budgetApi`, `allocationDetailApi`, `periodSummaryApi`.
+`authApi.CurrentUser.email` 은 백엔드가 의도적으로 내보내지 않는 필드(테스트가 `doesNotExist` 로 단언)라 제거했습니다.
+
 ---
 
 # B. 문서와 구현이 어긋난 것 — **완료**

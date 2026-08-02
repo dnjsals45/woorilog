@@ -1,6 +1,6 @@
 import { apiRequest } from '../../../shared/api/client'
 import type { CurrentUser } from '../../auth/api/authApi'
-import type { BudgetCycle, LedgerSummary, LedgerType } from '../../ledger/api/ledgerApi'
+import type { BudgetCycle, LedgerType, V1LedgerSummary } from '../../ledger/api/ledgerApi'
 
 export type InvitationType = 'DIRECT' | 'LINK'
 export type InvitationStatus =
@@ -101,7 +101,7 @@ export function getLinkInvitationPreview(token: string) {
 }
 
 export function acceptLinkInvitation(token: string) {
-  return apiRequest<{ ledger: LedgerSummary }>(`/api/invitations/links/${token}/accept`, {
+  return apiRequest<{ ledger: V1LedgerSummary }>(`/api/invitations/links/${token}/accept`, {
     method: 'POST',
   })
 }

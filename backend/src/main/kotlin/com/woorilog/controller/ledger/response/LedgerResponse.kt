@@ -18,5 +18,5 @@ fun LedgerDto.toResponse() = LedgerResponse(
     type = type,
     ownerId = ownerId,
     recurringSummaryClosingDay = recurringSummaryClosingDay,
-    budgetCycle = BudgetCycleResponse(budgetStartType, budgetStartDay),
+    budgetCycle = BudgetCycleResponse(budgetCycle.startType, budgetCycle.startDay),
 )

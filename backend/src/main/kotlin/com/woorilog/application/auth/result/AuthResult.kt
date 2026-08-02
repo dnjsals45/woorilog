@@ -1,6 +1,7 @@
 package com.woorilog.application.auth.result
 
 import com.woorilog.domain.auth.entity.User
+import com.woorilog.application.ledger.result.BudgetCycleResult
 import com.woorilog.domain.budget.policy.BudgetStartType
 import com.woorilog.domain.ledger.entity.Ledger
 import com.woorilog.domain.ledger.entity.LedgerType
@@ -27,11 +28,11 @@ data class LedgerDto(
     val type: LedgerType,
     val ownerId: Long,
     val recurringSummaryClosingDay: Int,
-    /* 응답 계층은 이 둘을 BudgetCycleResponse 로 묶어 내보낸다(LedgerResponse.budgetCycle).
-     * 여기에 기본값을 두는 이유는 평평한 형태로 직렬화된 적 없는 페이로드를 역직렬화할 때
-     * 생성자 파라미터 누락으로 실패하지 않게 하기 위함이다. from(ledger) 는 항상 실제 값을 채운다. */
-    val budgetStartType: String = BudgetStartType.DAY_OF_MONTH.name,
-    val budgetStartDay: Int? = 1,
+    /* 장부 응답은 어느 엔드포인트에서든 같은 모양이어야 한다. LedgerDto 를 그대로 직렬화하는
+     * /api/me·dev-login·refresh 와 LedgerResponse 로 변환하는 /api/ledgers 가 서로 다른 키를
+     * 내보내면 프론트가 한쪽에서만 값을 읽게 된다. 기본값은 이 필드가 없는 페이로드를
+     * 역직렬화할 때 생성자 파라미터 누락으로 실패하지 않게 하기 위함이다. */
+    val budgetCycle: BudgetCycleResult = BudgetCycleResult(BudgetStartType.DAY_OF_MONTH.name, 1),
 ) {
     companion object {
         fun from(ledger: Ledger) = LedgerDto(
@@ -40,8 +41,7 @@ data class LedgerDto(
             type = ledger.type,
             ownerId = ledger.ownerId,
             recurringSummaryClosingDay = ledger.recurringSummaryClosingDay,
-            budgetStartType = ledger.budgetStartType.name,
-            budgetStartDay = ledger.budgetStartDay,
+            budgetCycle = BudgetCycleResult(ledger.budgetStartType.name, ledger.budgetStartDay),
         )
     }
 }
