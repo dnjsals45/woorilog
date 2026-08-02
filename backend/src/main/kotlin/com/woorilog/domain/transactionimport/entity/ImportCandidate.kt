@@ -31,4 +31,8 @@ class ImportCandidate(
     var selectedByDefault: Boolean = true,
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "generated_transaction_id")
     var generatedTransaction: Transaction? = null,
+    @Enumerated(EnumType.STRING) @Column(name = "source_type", nullable = false)
+    var sourceType: ImportSourceType = ImportSourceType.RECEIPT,
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "duplicate_transaction_id")
+    var duplicateTransaction: Transaction? = null,
 ) : BaseEntity()

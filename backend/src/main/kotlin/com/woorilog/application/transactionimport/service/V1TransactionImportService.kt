@@ -64,27 +64,29 @@ class V1TransactionImportService(
     fun preview(
         userId: Long,
         ledgerId: Long,
-        sourceType: String,
         images: List<TransactionImageInput>,
     ): ImportPreviewResult {
         val ledger = requireActiveLedger(userId, ledgerId)
         if (images.isEmpty()) invalid("이미지 파일은 필수입니다.")
-        val type = try {
-            ImportSourceType.valueOf(sourceType)
-        } catch (_: IllegalArgumentException) {
-            invalid("지원하지 않는 가져오기 종류입니다.")
+        val imageSourceTypes = images.map { image ->
+            try {
+                ImportSourceType.valueOf(image.sourceType ?: invalid("이미지별 가져오기 종류가 필요합니다."))
+            } catch (_: IllegalArgumentException) {
+                invalid("지원하지 않는 가져오기 종류입니다.")
+            }
         }
         val user = userRepository.findByIdOrNull(userId) ?: throw ForbiddenException("사용자를 찾을 수 없습니다.")
+        // 세션은 대표값으로 첫 이미지의 sourceType을 저장한다. 실제 판정 기준(중복 판정 등)에는 쓰이지 않고,
+        // 후보별 정확한 값은 ImportCandidate.sourceType에 별도로 저장된다.
         val session = importSessionRepository.save(
-            ImportSession(ledger, user, type, expiresAt = clock.instant().plusSeconds(SESSION_TTL_SECONDS))
+            ImportSession(ledger, user, imageSourceTypes.first(), expiresAt = clock.instant().plusSeconds(SESSION_TTL_SECONDS))
         )
         val defaultAllocation = currentPersonalAllocation(ledgerId, userId)
-        val existingKeys = transactionRepository.findByLedgerIdOrderByTransactionDateDescIdDesc(ledgerId)
-            .map { duplicateKey(it.transactionDate, it.amount, it.merchant ?: it.memo.orEmpty()) }
-            .toMutableSet()
+        val existingTransactionsByKey = transactionRepository.findByLedgerIdOrderByTransactionDateDescIdDesc(ledgerId)
+            .associateBy { duplicateKey(it.transactionDate, it.amount, it.merchant ?: it.memo.orEmpty()) }
         val pendingKeys = mutableSetOf<String>()
         var omitted = 0
-        images.forEach { image ->
+        images.forEachIndexed { index, image ->
             val parsed = try {
                 TransactionImportTextParser.parse(
                     transactionImageOcr.recognize(image, LocalDate.now(clock)).text,
@@ -92,10 +94,10 @@ class V1TransactionImportService(
                 )
             } catch (_: InvalidTransactionImageException) {
                 omitted += 1
-                return@forEach
+                return@forEachIndexed
             } catch (_: OcrProcessingException) {
                 omitted += 1
-                return@forEach
+                return@forEachIndexed
             }
             omitted += if (parsed.candidates.isEmpty()) 1 else parsed.nonBlankLineCount - parsed.candidates.size
             parsed.candidates.forEach { candidate ->
@@ -105,7 +107,8 @@ class V1TransactionImportService(
                     return@forEach
                 }
                 val key = duplicateKey(candidate.transactionDate, candidate.amount, merchant)
-                val duplicate = key in existingKeys || !pendingKeys.add(key)
+                val existingMatch = existingTransactionsByKey[key]
+                val duplicate = existingMatch != null || !pendingKeys.add(key)
                 val suggestedCategory = suggestedCategory(ledgerId, userId, merchant)
                     ?: ledgerCategoryRepository.findByLedgerIdOrderBySortOrderAsc(ledgerId)
                         .firstOrNull { it.type == CategoryType.EXPENSE && it.active }
@@ -120,6 +123,8 @@ class V1TransactionImportService(
                         duplicateSuspected = duplicate,
                         duplicateReason = if (duplicate) "DATE_AMOUNT_MERCHANT" else null,
                         selectedByDefault = !duplicate,
+                        sourceType = imageSourceTypes[index],
+                        duplicateTransaction = existingMatch,
                     )
                 )
             }
@@ -221,7 +226,9 @@ class V1TransactionImportService(
                 defaultBudgetSource = candidate.suggestedAllocation?.let { BudgetSource(BudgetScopeType.valueOf(it.scope.name), it.owner?.id) },
                 duplicateSuspected = candidate.duplicateSuspected,
                 duplicateReason = candidate.duplicateReason,
+                duplicateTransactionId = candidate.duplicateTransaction?.id,
                 selectedByDefault = candidate.selectedByDefault,
+                sourceType = candidate.sourceType,
             )
         },
     )

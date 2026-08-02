@@ -25,10 +25,12 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import java.time.LocalDate
 import com.woorilog.controller.transaction.response.toResponse
+import com.woorilog.common.exception.WoorilogException
 import com.woorilog.domain.transaction.entity.BudgetSource
 import com.woorilog.domain.transaction.entity.PaymentMethod
 import com.woorilog.domain.transaction.entity.V1PaymentMethod
 import com.woorilog.domain.transaction.policy.BudgetScopeType
+import org.springframework.http.HttpStatus
 
 @RestController
 class TransactionImportController(
@@ -44,14 +46,24 @@ class TransactionImportController(
     fun previewV1Images(
         @AuthenticationPrincipal principal: UserPrincipal,
         @PathVariable ledgerId: Long,
-        @RequestParam sourceType: String,
+        @RequestParam sourceTypes: List<String>,
         @RequestPart("images") images: List<MultipartFile>,
-    ): ImportPreviewResponse = v1TransactionImportService.preview(
-        userId = principal.userId,
-        ledgerId = ledgerId,
-        sourceType = sourceType,
-        images = images.map { TransactionImageInput(it.bytes, it.contentType) },
-    ).toResponse()
+    ): ImportPreviewResponse {
+        if (sourceTypes.size != images.size) {
+            throw WoorilogException(
+                "INVALID_REQUEST",
+                "sourceTypes 개수는 업로드한 이미지 개수와 일치해야 합니다.",
+                HttpStatus.BAD_REQUEST,
+            )
+        }
+        return v1TransactionImportService.preview(
+            userId = principal.userId,
+            ledgerId = ledgerId,
+            images = images.zip(sourceTypes) { image, sourceType ->
+                TransactionImageInput(image.bytes, image.contentType, sourceType)
+            },
+        ).toResponse()
+    }
 
     @PostMapping("/api/ledgers/{ledgerId}/transaction-imports/preview")
     fun preview(

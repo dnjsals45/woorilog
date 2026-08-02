@@ -7,6 +7,7 @@ import com.woorilog.application.transactionimport.result.SavedImportCandidateRes
 import com.woorilog.controller.transaction.response.TransactionResponse
 import com.woorilog.controller.transaction.response.toResponse
 import com.woorilog.domain.transaction.entity.BudgetSource
+import com.woorilog.domain.transactionimport.entity.ImportSourceType
 import java.time.Instant
 import java.time.LocalDate
 
@@ -20,13 +21,16 @@ data class ImportCandidatePreviewResponse(
     val defaultBudgetSource: BudgetSource?,
     val duplicateSuspected: Boolean,
     val duplicateReason: String?,
+    val duplicateTransactionId: Long?,
     val selectedByDefault: Boolean,
+    val sourceType: ImportSourceType,
 )
 data class SaveImportSessionResponse(val created: List<SavedImportCandidateResponse>)
 data class SavedImportCandidateResponse(val candidateId: Long, val transaction: TransactionResponse)
 
 fun ImportCandidatePreviewResult.toResponse() = ImportCandidatePreviewResponse(
-    candidateId, amount, occurredOn, merchant, suggestedCategoryId, defaultBudgetSource, duplicateSuspected, duplicateReason, selectedByDefault,
+    candidateId, amount, occurredOn, merchant, suggestedCategoryId, defaultBudgetSource,
+    duplicateSuspected, duplicateReason, duplicateTransactionId, selectedByDefault, sourceType,
 )
 
 fun ImportPreviewResult.toResponse() = ImportPreviewResponse(

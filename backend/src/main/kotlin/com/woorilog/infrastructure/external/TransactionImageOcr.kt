@@ -9,6 +9,7 @@ fun interface TransactionImageOcr {
 data class TransactionImageInput(
     val bytes: ByteArray,
     val contentType: String?,
+    val sourceType: String? = null,
 )
 
 data class TransactionImageOcrResult(

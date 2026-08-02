@@ -24,6 +24,13 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+/* OCR 스텁이 돌려주는 날짜는 실행 시점의 현재 예산 기간 안에 있어야 한다.
+ * 고정 날짜를 쓰면 그 날짜가 속한 기간이 지나는 순간 저장이 BUDGET_PERIOD_NOT_FOUND 로 실패한다. */
+private val OCR_DATE: LocalDate = LocalDate.now()
+private val OCR_TEXT: String = "${OCR_DATE.format(DateTimeFormatter.ofPattern("yy.MM.dd"))} 바오 25,000원"
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -260,12 +267,12 @@ class TransactionImportIntegrationTest {
             .param("transactionDate", "2026-07-21")
             .header("Authorization", "Bearer ${login.accessToken}"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.extractedText").value("26.07.12 바오 25,000원"))
+            .andExpect(jsonPath("$.extractedText").value(OCR_TEXT))
             .andExpect(jsonPath("$.ocrEngine").value("tesseract-5-server"))
             .andExpect(jsonPath("$.candidates", hasSize<Any>(1)))
             .andExpect(jsonPath("$.candidates[0].memo").value("바오"))
             .andExpect(jsonPath("$.candidates[0].amount").value(25000))
-            .andExpect(jsonPath("$.candidates[0].transactionDate").value("2026-07-12"))
+            .andExpect(jsonPath("$.candidates[0].transactionDate").value(OCR_DATE.toString()))
     }
 
     @Test
@@ -295,7 +302,7 @@ class TransactionImportIntegrationTest {
             .andExpect(jsonPath("$.candidates[1].id").value("image-2-candidate-1"))
             .andExpect(jsonPath("$.candidates[0].memo").value("바오"))
             .andExpect(jsonPath("$.candidates[1].memo").value("바오"))
-            .andExpect(jsonPath("$.extractedText").value("26.07.12 바오 25,000원\n\n26.07.12 바오 25,000원"))
+            .andExpect(jsonPath("$.extractedText").value("$OCR_TEXT\n\n$OCR_TEXT"))
     }
 
     @Test
@@ -332,22 +339,35 @@ class TransactionImportIntegrationTest {
         val login = devLogin("v1-import@example.com", "V1가져오기")
         val firstPreview = v1Preview(login, byteArrayOf(1))
         val firstCandidate = firstPreview.path("candidates")[0]
+        assert(firstCandidate.path("sourceType").asText() == "RECEIPT")
+        assert(firstCandidate.path("duplicateTransactionId").isNull)
         val firstSave = saveRequest(firstPreview, listOf(firstCandidate))
 
-        mockMvc.perform(post("/api/ledgers/${login.currentLedger.id}/transaction-imports")
+        val savedTransactionId = mockMvc.perform(post("/api/ledgers/${login.currentLedger.id}/transaction-imports")
             .header("Authorization", "Bearer ${login.accessToken}")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(firstSave)))
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.created", hasSize<Any>(1)))
+            .andReturn().let { objectMapper.readTree(it.response.contentAsString).path("created")[0].path("transaction").path("id").asLong() }
 
-        val duplicatePreview = v1Preview(login, byteArrayOf(1), byteArrayOf(0))
+        val duplicatePreview = v1Preview(login, byteArrayOf(1), byteArrayOf(0), sourceTypes = listOf("CARD_APP_SCREENSHOT", "RECEIPT"))
         .also { preview ->
             assert(preview.path("omittedCount").asInt() >= 1)
         }
         val duplicateCandidate = duplicatePreview.path("candidates")[0]
         assert(!duplicateCandidate.path("selectedByDefault").asBoolean())
         assert(duplicateCandidate.path("duplicateSuspected").asBoolean())
+        assert(duplicateCandidate.path("duplicateTransactionId").asLong() == savedTransactionId)
+        assert(duplicateCandidate.path("sourceType").asText() == "CARD_APP_SCREENSHOT")
+
+        mockMvc.perform(multipart("/api/ledgers/${login.currentLedger.id}/transaction-imports/previews")
+            .file(MockMultipartFile("images", "receipt-0.png", MediaType.IMAGE_PNG_VALUE, byteArrayOf(1)))
+            .file(MockMultipartFile("images", "receipt-1.png", MediaType.IMAGE_PNG_VALUE, byteArrayOf(2)))
+            .param("sourceTypes", "RECEIPT")
+            .header("Authorization", "Bearer ${login.accessToken}"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
 
         val sessionPreview = v1Preview(login, byteArrayOf(1), byteArrayOf(2))
         val candidates = sessionPreview.path("candidates").toList()
@@ -381,13 +401,14 @@ class TransactionImportIntegrationTest {
             .andExpect(jsonPath("$.created", hasSize<Any>(2)))
     }
 
-    private fun v1Preview(login: DevLoginResponse, vararg bytes: ByteArray): JsonNode {
+    private fun v1Preview(login: DevLoginResponse, vararg bytes: ByteArray, sourceTypes: List<String>? = null): JsonNode {
         val request = multipart("/api/ledgers/${login.currentLedger.id}/transaction-imports/previews")
         bytes.forEachIndexed { index, content ->
             request.file(MockMultipartFile("images", "receipt-$index.png", MediaType.IMAGE_PNG_VALUE, content))
         }
         request.header("Authorization", "Bearer ${login.accessToken}")
-        request.param("sourceType", "RECEIPT")
+        val resolvedSourceTypes = sourceTypes ?: bytes.map { "RECEIPT" }
+        resolvedSourceTypes.forEach { request.param("sourceTypes", it) }
         val result = mockMvc.perform(request)
             .andExpect(status().isOk)
             .andReturn()
@@ -419,7 +440,7 @@ class TransactionImportIntegrationTest {
         @Primary
         fun transactionImageOcr(): TransactionImageOcr = TransactionImageOcr { input, _ ->
             TransactionImageOcrResult(
-                text = if (input.bytes.firstOrNull() == 0.toByte()) "" else "26.07.12 바오 25,000원",
+                text = if (input.bytes.firstOrNull() == 0.toByte()) "" else OCR_TEXT,
                 engine = "tesseract-5-server",
             )
         }
