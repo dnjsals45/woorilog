@@ -244,6 +244,7 @@ V1 은 저장된 카드 없이 자유 텍스트 카드명만으로도 카드 결
 | --- | --- | --- |
 | 기간별 고정비·할부 **항목 목록** | `scheduledRecurringExpenseAmount` / `nextPeriodScheduledAmount` 총액만 있음 | 대시보드 예산 상세와 기간 종료 요약의 해당 영역이 빈 상태. C-2 로 `ScheduledPlan` 필드는 생겼으므로 목록 엔드포인트나 요약 응답 확장으로 풀 수 있음 |
 | 반복 거래 적용 범위 `ALL` | `updateFuture` 가 `FUTURE` 만 지원 | 화면에서 선택지를 제거해 지금은 문제가 드러나지 않음 |
+| 거래 저장 시 `cardId` | 해결됨 — 위 C-11 | — |
 
 ---
 

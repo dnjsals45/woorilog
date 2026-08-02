@@ -110,10 +110,12 @@ function planKind(plan: ScheduledPlan): Exclude<Filter, 'all'> {
 interface RuleEdit {
   frequency: ScheduledPlan['frequency']
   fixedExpense: boolean
+  /** 백엔드가 이 날짜부터 예정 발생분을 다시 만듭니다. 이미 기록된 거래는 그대로 둡니다. */
+  nextDueDate: string
 }
 
 function editSnapshot(plan: ScheduledPlan): RuleEdit {
-  return { frequency: plan.frequency, fixedExpense: plan.isFixedExpense }
+  return { frequency: plan.frequency, fixedExpense: plan.isFixedExpense, nextDueDate: plan.nextDueDate }
 }
 
 export function RecurringTransactionPage() {
@@ -174,7 +176,13 @@ export function RecurringTransactionPage() {
     .filter((item) => item.status === 'ACTIVE')
     .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate))[0]
 
-  const dirty = Boolean(edit && savedEdit && (edit.frequency !== savedEdit.frequency || edit.fixedExpense !== savedEdit.fixedExpense))
+  const dirty = Boolean(
+    edit
+      && savedEdit
+      && (edit.frequency !== savedEdit.frequency
+        || edit.fixedExpense !== savedEdit.fixedExpense
+        || edit.nextDueDate !== savedEdit.nextDueDate),
+  )
 
   function patchEdit(next: Partial<RuleEdit>) {
     setEdit((current) => (current ? { ...current, ...next } : current))
@@ -183,7 +191,13 @@ export function RecurringTransactionPage() {
   function saveEdit() {
     if (!selected || !edit) return
     update.mutate(
-      { planId: selected.id, scope: 'FUTURE', frequency: edit.frequency ?? undefined, isFixedExpense: edit.fixedExpense },
+      {
+        planId: selected.id,
+        scope: 'FUTURE',
+        frequency: edit.frequency ?? undefined,
+        isFixedExpense: edit.fixedExpense,
+        nextDueDate: edit.nextDueDate,
+      },
       {
         onSuccess: () => {
           setSavedEdit(edit)
@@ -483,30 +497,18 @@ export function RecurringTransactionPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     <div>
                       <span style={{ display: 'block', marginBottom: 9, fontSize: 12.5, fontWeight: 700, color: 'var(--wl-color-text-body)' }}>
-                        반복일
+                        다음 예정일
                       </span>
-                      {/* TODO(api): 반복일 자체를 수정하는 PUT /api/scheduled-plans/{planId}가 아직 훅으로
-                          연결되지 않아, 다음 예정일(nextDueDate)에서 읽기 전용으로 파생한 값만 보여줍니다. */}
-                      <div
-                        style={{
-                          height: 44,
-                          padding: '0 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          border: '1px solid var(--wl-color-border)',
-                          borderRadius: 'var(--wl-radius-md)',
-                          background: 'var(--wl-color-surface-subtle)',
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: 'var(--wl-color-text-secondary)',
-                        }}
-                        className="wl-tabular"
-                      >
-                        {selected.frequency === 'WEEKLY'
-                          ? `${WEEKDAYS[parseDate(selected.nextDueDate).getDay()]}요일`
-                          : `${parseDate(selected.nextDueDate).getDate()}일`}
-                      </div>
+                      {/* 반복 주기마다 의미가 달라(매주는 요일, 매월은 날짜) 파생값 대신 날짜 자체를 고치게 합니다.
+                          백엔드가 이 날짜부터 예정 발생분을 다시 만들고 이미 기록된 거래는 그대로 둡니다. */}
+                      <DatePicker
+                        ariaLabel="다음 예정일"
+                        onChange={(value) => patchEdit({ nextDueDate: value })}
+                        value={edit?.nextDueDate ?? selected.nextDueDate}
+                      />
+                      <p style={{ margin: '7px 0 0', fontSize: 12, color: 'var(--wl-color-text-secondary)' }}>
+                        {scheduleText({ ...selected, frequency: edit?.frequency ?? selected.frequency, nextDueDate: edit?.nextDueDate ?? selected.nextDueDate })}에 실행돼요
+                      </p>
                     </div>
                     <div>
                       <span style={{ display: 'block', marginBottom: 9, fontSize: 12.5, fontWeight: 700, color: 'var(--wl-color-text-body)' }}>
