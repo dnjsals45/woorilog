@@ -34,6 +34,8 @@ export interface TransactionFormValues {
   occurredOn: string
   budgetSourceType: TransactionFormBudgetSourceType
   paymentMethod: { type: PaymentMethod; displayName: string | null }
+  /** 저장된 카드를 고른 경우에만 채웁니다. 이 값이 있어야 대시보드 카드 결제 예정 금액에 잡힙니다. */
+  cardId: number | null
   installment: { months: number; monthlyInterest: number } | null
   memo: string
   /** 매달 반복 여부. 지출에서만 의미가 있습니다(V1은 반복 수입을 지원하지 않음). */
@@ -345,6 +347,8 @@ export function TransactionForm({
         type: isTransfer ? 'OTHER' : (paymentKind as PaymentMethod),
         displayName: isTransfer ? '계좌이체' : paymentDisplayName.trim() || null,
       },
+      // 카드 칩을 고르면 이름이 그대로 들어오므로 이름으로 되짚습니다. 직접 입력한 이름이면 매칭되지 않고 null 입니다.
+      cardId: isCard ? (cards.find((card) => card.name === paymentDisplayName.trim())?.id ?? null) : null,
       installment:
         isCard && isInstallment && Number(months) > 1
           ? { months: Number(months), monthlyInterest: Number(interestDigits || '0') }

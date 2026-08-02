@@ -146,6 +146,7 @@ export function TransactionAddDrawer({ open, onClose }: TransactionAddDrawerProp
         scope: source,
         budgetSource: budgetExpense ? source : null,
         paymentMethod: values.paymentMethod,
+        cardId: values.cardId,
         installment: values.installment,
       },
       {
