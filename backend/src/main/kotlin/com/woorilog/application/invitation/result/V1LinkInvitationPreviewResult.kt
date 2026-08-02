@@ -1,6 +1,7 @@
 package com.woorilog.application.invitation.result
 
 import com.woorilog.application.budget.result.UserSummaryResponse
+import com.woorilog.application.ledger.result.BudgetCycleResult
 import java.time.Instant
 
 data class V1LinkInvitationPreviewResult(
@@ -10,4 +11,7 @@ data class V1LinkInvitationPreviewResult(
     val status: String,
     val expiresAt: Instant,
     val authenticationRequired: Boolean,
+    val currentMemberCount: Int,
+    val viewerAlreadyMember: Boolean?,
+    val budgetCycle: BudgetCycleResult,
 )

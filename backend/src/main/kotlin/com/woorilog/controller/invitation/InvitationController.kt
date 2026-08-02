@@ -98,7 +98,7 @@ class InvitationController(
     fun getLinkInvitationPreview(
         @PathVariable token: String,
         @AuthenticationPrincipal principal: UserPrincipal?,
-    ): V1LinkInvitationPreviewResponse = invitationService.getV1LinkPreview(token, principal != null).toResponse()
+    ): V1LinkInvitationPreviewResponse = invitationService.getV1LinkPreview(token, principal?.userId).toResponse()
 
     // 10) POST /api/invitations/links/{token}/accept
     @PostMapping("/api/invitations/links/{token}/accept")

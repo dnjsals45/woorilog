@@ -178,6 +178,16 @@ class InvitationIntegrationTest {
             .andExpect(jsonPath("$.ledgerName").value("우리공동장부2"))
             .andExpect(jsonPath("$.status").value("PENDING"))
             .andExpect(jsonPath("$.authenticationRequired").value(true))
+            .andExpect(jsonPath("$.currentMemberCount").value(1))
+            .andExpect(jsonPath("$.viewerAlreadyMember").value(null))
+            .andExpect(jsonPath("$.budgetCycle.startType").value("DAY_OF_MONTH"))
+
+        // 2b. An authenticated, not-yet-member viewer can pre-determine "이미 멤버" before accepting.
+        mockMvc.perform(get("/api/invitations/links/$token")
+            .header("Authorization", "Bearer $inviteeToken"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.authenticationRequired").value(false))
+            .andExpect(jsonPath("$.viewerAlreadyMember").value(false))
 
         // 3. Accept link invitation by token
         mockMvc.perform(post("/api/invitations/links/$token/accept")
@@ -292,6 +302,8 @@ class InvitationIntegrationTest {
             .andExpect(jsonPath("$.ledgerName").value("V1 링크 장부"))
             .andExpect(jsonPath("$.status").value("PENDING"))
             .andExpect(jsonPath("$.authenticationRequired").value(true))
+            .andExpect(jsonPath("$.currentMemberCount").value(1))
+            .andExpect(jsonPath("$.budgetCycle.startDay").value(1))
 
         val second = mockMvc.perform(post("/api/ledgers/$ledgerId/invitations/links")
             .header("Authorization", "Bearer ${owner.accessToken}"))
@@ -299,15 +311,23 @@ class InvitationIntegrationTest {
             .andReturn()
         val secondToken = objectMapper.readTree(second.response.contentAsString)["url"].asText().substringAfterLast('/')
 
+        // A replaced link is a distinct state from a truly expired one: "이미 처리됨" -> 409.
         mockMvc.perform(get("/api/invitations/links/$firstToken"))
-            .andExpect(status().isGone)
-            .andExpect(jsonPath("$.code").value("INVITATION_EXPIRED"))
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.code").value("INVITATION_ALREADY_PROCESSED"))
 
         mockMvc.perform(post("/api/invitations/links/$secondToken/reject")
             .header("Authorization", "Bearer ${recipient.accessToken}"))
             .andExpect(status().isNoContent)
+        // A rejected link is also "이미 처리됨", not the generic expiry case.
         mockMvc.perform(get("/api/invitations/links/$secondToken"))
-            .andExpect(status().isGone)
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.code").value("INVITATION_ALREADY_PROCESSED"))
+
+        // An unknown token is a distinct "not found" case, not "expired".
+        mockMvc.perform(get("/api/invitations/links/does-not-exist"))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("NOT_FOUND"))
     }
 
     @Test
@@ -324,6 +344,7 @@ class InvitationIntegrationTest {
         invitationRepository.saveAndFlush(invitation)
         mockMvc.perform(get("/api/invitations/links/$token"))
             .andExpect(status().isGone)
+            .andExpect(jsonPath("$.code").value("INVITATION_EXPIRED"))
 
         val unconfirmed = userRepository.save(User("TEST", "unconfirmed-link", "unconfirmed-link@example.com", "미확정"))
         val second = invitationService.createV1InvitationLink(owner.user.id, ledger.id)

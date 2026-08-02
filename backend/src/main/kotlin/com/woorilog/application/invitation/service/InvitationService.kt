@@ -75,22 +75,27 @@ class InvitationService(
     }
 
     @Transactional(readOnly = true)
-    fun getV1LinkPreview(rawToken: String, authenticated: Boolean): V1LinkInvitationPreviewResult {
-        val invitation = invitationRepository.findByTokenHash(hashToken(rawToken)) ?: throw linkExpired()
+    fun getV1LinkPreview(rawToken: String, currentUserId: Long?): V1LinkInvitationPreviewResult {
+        val invitation = invitationRepository.findByTokenHash(hashToken(rawToken)) ?: throw linkNotFound()
         requireUsableLink(invitation)
+        val ledger = invitation.ledger
+        val activeMembers = ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledger.id!!)
         return V1LinkInvitationPreviewResult(
             invitationId = invitation.id!!,
-            ledgerName = invitation.ledger.name,
+            ledgerName = ledger.name,
             inviter = UserSummaryResponse(invitation.inviter.id!!, invitation.inviter.nickname),
             status = invitation.status.name,
             expiresAt = invitation.expiresAt!!,
-            authenticationRequired = !authenticated,
+            authenticationRequired = currentUserId == null,
+            currentMemberCount = activeMembers.size,
+            viewerAlreadyMember = currentUserId?.let { uid -> activeMembers.any { it.user.id == uid } },
+            budgetCycle = BudgetCycleResult(ledger.budgetStartType.name, ledger.budgetStartDay),
         )
     }
 
     fun acceptV1Link(currentUserId: Long, rawToken: String): V1InvitationAcceptedResult {
         val user = requireConfirmedUser(currentUserId)
-        val invitation = invitationRepository.findLockedByTokenHash(hashToken(rawToken)) ?: throw linkExpired()
+        val invitation = invitationRepository.findLockedByTokenHash(hashToken(rawToken)) ?: throw linkNotFound()
         requireUsableLink(invitation)
         val ledger = ledgerRepository.findByIdForUpdate(invitation.ledger.id!!) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
         if (ledgerMemberRepository.existsByLedgerIdAndUserId(ledger.id!!, currentUserId)) {
@@ -128,7 +133,7 @@ class InvitationService(
 
     fun rejectV1Link(currentUserId: Long, rawToken: String) {
         val user = requireConfirmedUser(currentUserId)
-        val invitation = invitationRepository.findLockedByTokenHash(hashToken(rawToken)) ?: throw linkExpired()
+        val invitation = invitationRepository.findLockedByTokenHash(hashToken(rawToken)) ?: throw linkNotFound()
         requireUsableLink(invitation)
         invitation.status = InvitationStatus.REJECTED
         invitation.respondedAt = clock.instant()
@@ -435,9 +440,23 @@ class InvitationService(
         return user
     }
 
+    /**
+     * 조회/수락/거절 세 진입점에서 공통으로 쓰는 상태 검증입니다.
+     * "없음/타입 오류"는 [linkNotFound]로 걸러진 뒤 호출되므로, 여기서는
+     * "이미 처리됨(수락·거절·교체)"과 "기간 만료"만 구분합니다.
+     */
     private fun requireUsableLink(invitation: Invitation) {
-        if (invitation.type != InvitationType.LINK || invitation.status != InvitationStatus.PENDING || invitation.isExpired(clock.instant())) {
-            throw linkExpired()
+        if (invitation.type != InvitationType.LINK) throw linkNotFound()
+        when (invitation.status) {
+            InvitationStatus.PENDING ->
+                if (invitation.isExpired(clock.instant())) throw linkExpired()
+
+            InvitationStatus.EXPIRED -> throw linkExpired()
+
+            InvitationStatus.ACCEPTED,
+            InvitationStatus.REJECTED,
+            InvitationStatus.CANCELLED,
+            InvitationStatus.REPLACED -> throw invitationAlreadyProcessed()
         }
     }
 
@@ -450,6 +469,14 @@ class InvitationService(
     private fun hashToken(token: String): String = MessageDigest.getInstance("SHA-256")
         .digest(token.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
+
+    private fun linkNotFound() = NotFoundException("초대 링크를 찾을 수 없습니다.")
+
+    private fun invitationAlreadyProcessed() = WoorilogException(
+        "INVITATION_ALREADY_PROCESSED",
+        "이미 처리된 초대 링크입니다.",
+        HttpStatus.CONFLICT,
+    )
 
     private fun linkExpired() = WoorilogException(
         "INVITATION_EXPIRED",
