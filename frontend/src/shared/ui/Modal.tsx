@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
 
@@ -20,9 +21,25 @@ export interface ModalProps {
 }
 
 export function Modal({ open = true, title, subtitle, width = 760, onClose, children }: ModalProps) {
+  useEffect(() => {
+    if (!open || !onClose) return undefined
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose?.()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
   if (!open) return null
   return (
-    <div className="wl-modal-scrim" role="dialog" aria-modal="true">
+    <div
+      className="wl-modal-scrim"
+      role="dialog"
+      aria-modal="true"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose?.()
+      }}
+    >
       <div className="wl-modal-panel" style={{ width: typeof width === 'number' ? `min(${width}px, 100%)` : width }}>
         {title || onClose ? (
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20 }}>

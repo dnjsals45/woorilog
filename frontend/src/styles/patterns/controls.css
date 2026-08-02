@@ -189,6 +189,18 @@
   font-weight: 600;
   display: flex;
 }
+/* 인라인 오류·힌트 등장 — 핸드오프 문서 공통 규칙: "6px 상승 + 페이드 180~200ms".
+ * prefers-reduced-motion 비활성화는 tokens/motion.css의 전역 규칙이 처리한다. */
+@keyframes wl-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 .wl-segmented {
   border-radius: var(--wl-radius-pill);
   background: var(--wl-data-neutral-soft);

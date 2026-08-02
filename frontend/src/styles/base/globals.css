@@ -22,10 +22,15 @@ a {
     background-color var(--motion-fast) ease-out,
     border-color var(--motion-fast) ease-out,
     box-shadow var(--motion-fast) ease-out,
-    opacity var(--motion-fast) ease-out;
+    opacity var(--motion-fast) ease-out,
+    transform var(--wl-motion-fast) var(--wl-ease-out-strong);
 }
+/* 누름 피드백은 핸드오프 문서의 전 화면 공통 규칙이다 —
+ * "모든 버튼 :active { transform: scale(0.97) }, transition: transform 160ms".
+ * 이식해 온 디자인 시스템 globals 는 opacity:.86 이었는데 그쪽이 문서와 어긋난다.
+ * 화면마다 개별로 얹지 말고 여기 한 곳에서만 정의한다. */
 button:active:not(:disabled) {
-  opacity: 0.86;
+  transform: scale(0.97);
 }
 button,
 a {

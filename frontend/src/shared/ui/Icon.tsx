@@ -55,6 +55,7 @@ const ICON_NODES = {
     ['path', { d: 'M21.21 15.89A10 10 0 1 1 8 2.83' }],
   ],
   check: [['path', { d: 'M20 6 9 17l-5-5' }]],
+  'chevron-down': [['path', { d: 'm6 9 6 6 6-6' }]],
   'chevron-left': [['path', { d: 'm15 18-6-6 6-6' }]],
   'chevron-right': [['path', { d: 'm9 18 6-6-6-6' }]],
   'circle-alert': [
@@ -111,6 +112,7 @@ const ICON_NODES = {
     ['path', { d: 'M12 16v-4' }],
     ['path', { d: 'M12 8h.01' }],
   ],
+  'message-circle': [['path', { d: 'M7.9 20A9 9 0 1 0 4 16.1L2 22Z' }]],
   pencil: [
     [
       'path',

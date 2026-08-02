@@ -25,6 +25,8 @@
 @import './styles/patterns/page-layout.css';
 @import './styles/patterns/dashboard.css';
 @import './styles/patterns/overlay.css';
+@import './styles/patterns/onboarding.css';
+@import './styles/patterns/landing.css';
 
 /* Tailwind 유틸리티가 참조하는 테마 값 — 전부 wl 토큰을 가리킵니다. */
 @theme {

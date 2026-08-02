@@ -1,0 +1,54 @@
+/* Landing page motion — only used by LandingPage. Global reduced-motion rule in
+ * tokens/motion.css already forces every transition/animation here to 1ms, so no
+ * dedicated prefers-reduced-motion override is needed. */
+.wl-landing-cta {
+  transition:
+    transform 160ms var(--wl-ease-out-strong),
+    background-color 160ms var(--wl-ease-out-strong),
+    color 160ms var(--wl-ease-out-strong),
+    box-shadow 160ms var(--wl-ease-out-strong);
+}
+.wl-landing-cta:active {
+  transform: scale(0.97);
+}
+.wl-landing-hero-copy {
+  animation: wl-landing-rise 640ms var(--wl-ease-out-strong) both;
+}
+.wl-landing-reveal {
+  transition:
+    opacity 520ms var(--wl-ease-out-strong),
+    transform 520ms var(--wl-ease-out-strong);
+}
+.wl-landing-reveal--hidden {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.wl-landing-faq-icon {
+  transition: transform 200ms var(--wl-ease-out-strong);
+}
+.wl-landing-faq-icon--open {
+  transform: rotate(180deg);
+}
+.wl-landing-faq-panel {
+  display: grid;
+  overflow: hidden;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 220ms var(--wl-ease-out-strong),
+    opacity 200ms var(--wl-ease-out-strong);
+}
+.wl-landing-faq-panel--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+@keyframes wl-landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,0 +1,42 @@
+/* 온보딩(닉네임 확정 → 시작점 선택) 2단계 카드에서만 쓰는 진입 키프레임.
+ * 나머지 트랜지션(눌림 피드백, 진행 바 scaleX 등)은 컴포넌트에서 Tailwind 유틸리티로 처리합니다. */
+@keyframes wl-onboarding-step-next {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wl-onboarding-step-back {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wl-onboarding-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wl-onboarding-hint {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

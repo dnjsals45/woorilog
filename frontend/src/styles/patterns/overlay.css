@@ -23,6 +23,40 @@
   transform-origin: center;
   animation: wl-modal-in 220ms var(--ease-out-strong) both;
 }
+/* 알림함 팝오버 — 대시보드 헤더 종 아이콘 위에 뜨는 플로팅 카드. 트리거(우상단) 기준으로 열립니다. */
+.wl-notification-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--wl-z-dropdown);
+  background: rgb(24 32 29 / 18%);
+}
+.wl-notification-inbox {
+  position: fixed;
+  top: 78px;
+  right: 36px;
+  z-index: calc(var(--wl-z-dropdown) + 1);
+  width: 436px;
+  max-height: calc(100vh - 110px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--wl-color-border);
+  border-radius: var(--wl-radius-lg);
+  background: var(--wl-color-surface);
+  box-shadow: var(--wl-shadow-modal);
+  overflow: hidden;
+  transform-origin: top right;
+  animation: wl-notif-in 180ms var(--ease-out-strong) both;
+}
+@keyframes wl-notif-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 /* 미저장 변경이 있을 때만 올라오는 하단 저장 바. left는 사이드바 폭만큼 비웁니다. */
 .wl-save-bar {
   position: fixed;
@@ -71,7 +105,239 @@
 @media (prefers-reduced-motion: reduce) {
   .wl-modal-scrim,
   .wl-modal-panel,
-  .wl-save-bar {
+  .wl-save-bar,
+  .wl-notification-inbox {
     animation-duration: 1ms;
+  }
+}
+/* 거래 추가 드로어 — 대시보드 등 위에 뜨는 우측 고정 패널(거래 추가.dc.html).
+ * 앱 셸 사이드바와 무관하게 뷰포트 기준으로 고정되고, 우측에서 슬라이드해 들어옵니다. */
+.wl-transaction-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(24 32 29 / 26%);
+  animation: wl-scrim-in 240ms var(--ease-out-strong) both;
+}
+.wl-transaction-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  width: 560px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--wl-color-border);
+  background: var(--wl-color-surface);
+  box-shadow: var(--wl-shadow-modal);
+  animation: wl-transaction-drawer-in 380ms var(--ease-drawer, var(--ease-out-strong)) both;
+}
+.wl-transaction-drawer-toast {
+  position: fixed;
+  right: calc(560px + 24px);
+  bottom: 28px;
+  z-index: 60;
+  animation: wl-toast-in 220ms var(--ease-out-strong) both;
+}
+@keyframes wl-transaction-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes wl-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-transaction-drawer-scrim,
+  .wl-transaction-drawer-panel,
+  .wl-transaction-drawer-toast {
+    animation-duration: 1ms;
+  }
+}
+
+/* 이미지로 거래 가져오기 모달 — 단계(pick/scanning/review)에 따라 폭·높이가 바뀌는 전용 셸
+ * (이미지 업로드.dc.html). 화면 중앙 모달이며 앱 셸 사이드바와 무관하게 뷰포트 기준으로 뜬다. */
+.wl-import-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(24 32 29 / 32%);
+  animation: wl-scrim-in 220ms var(--ease-out-strong) both;
+}
+.wl-import-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 48px);
+  border-radius: var(--wl-radius-xl);
+  background: var(--wl-color-surface);
+  box-shadow: var(--wl-shadow-modal);
+  overflow: hidden;
+  transform-origin: center;
+  animation: wl-modal-in 220ms var(--ease-out-strong) both;
+}
+.wl-import-panel--review {
+  width: min(1140px, 100%);
+  height: min(760px, calc(100vh - 48px));
+}
+.wl-import-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 180px;
+  border: 1.5px dashed var(--wl-data-neutral-muted);
+  border-radius: var(--wl-radius-lg);
+  background: var(--wl-color-surface-subtle);
+  color: var(--wl-color-text-secondary);
+  transition:
+    border-color 160ms var(--ease-out-strong),
+    background-color 160ms var(--ease-out-strong),
+    color 160ms var(--ease-out-strong);
+}
+.wl-import-dropzone:hover {
+  border-color: var(--wl-color-primary);
+  background: var(--wl-brand-50);
+  color: var(--wl-color-primary-dark);
+}
+.wl-import-scan-track {
+  height: 8px;
+  border-radius: var(--wl-radius-pill);
+  background: var(--wl-color-surface-subtle);
+  overflow: hidden;
+}
+.wl-import-scan-bar {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--wl-color-primary);
+  animation: wl-import-scan 1.2s var(--ease-out-strong) infinite;
+}
+@keyframes wl-import-scan {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.wl-import-filter {
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: var(--wl-radius-pill);
+  border: 1px solid var(--wl-color-border);
+  background: var(--wl-color-surface);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--wl-color-text-body);
+}
+.wl-import-filter[aria-selected='true'] {
+  border-color: var(--wl-color-primary);
+  background: var(--wl-brand-50);
+  color: var(--wl-color-primary-dark);
+}
+.wl-import-row {
+  border-top: 1px solid var(--wl-color-border);
+  background: var(--wl-color-surface);
+  transition: background-color 160ms var(--ease-out-strong);
+}
+.wl-import-row--dup {
+  background: var(--wl-danger-soft);
+  box-shadow: inset 3px 0 0 var(--wl-color-danger);
+}
+.wl-import-check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 7px;
+  border: 1px solid var(--wl-color-border);
+  background: var(--wl-color-surface);
+  color: var(--wl-color-text-body);
+}
+.wl-import-check--on {
+  border-color: var(--wl-color-primary);
+  background: var(--wl-color-primary);
+  color: #fff;
+}
+.wl-import-cell-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 8px;
+  margin-left: -8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--wl-color-text-body);
+}
+.wl-import-cell-input:hover,
+.wl-import-cell-input:focus-visible {
+  border-color: var(--wl-color-border);
+  background: var(--wl-color-surface);
+}
+.wl-import-select {
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--wl-color-border);
+  border-radius: 10px;
+  background: var(--wl-color-surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--wl-color-text-body);
+}
+.wl-import-select--uncat {
+  border-color: var(--wl-data-neutral-muted);
+  background: var(--wl-data-neutral-soft);
+  color: var(--wl-color-text-secondary);
+}
+.wl-import-pill {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--wl-color-border);
+  border-radius: var(--wl-radius-pill);
+  background: var(--wl-color-surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--wl-color-text-body);
+}
+.wl-import-pill:disabled {
+  color: var(--wl-color-text-secondary);
+  opacity: 0.45;
+}
+.wl-import-toast {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 60;
+  animation: wl-toast-in 220ms var(--ease-out-strong) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-import-scrim,
+  .wl-import-panel,
+  .wl-import-dropzone,
+  .wl-import-scan-bar,
+  .wl-import-row,
+  .wl-import-toast {
+    animation-duration: 1ms;
+    transition-duration: 1ms;
   }
 }

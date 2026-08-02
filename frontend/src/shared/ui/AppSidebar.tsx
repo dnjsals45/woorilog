@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
 import woorilogLogo from '../../assets/logo/woorilog-logo.svg'
@@ -17,6 +17,33 @@ const NAV_BASE: CSSProperties = {
   fontWeight: 600,
   textDecoration: 'none',
   transition: 'background-color var(--motion-fast) var(--ease-product), color var(--motion-fast) var(--ease-product)',
+}
+
+/* href 가 있으면 <a>, onClick 이 있으면 같은 모양의 <button> 을 그립니다.
+ * 원본이 <a href> 로만 그리던 자리를 SPA 라우팅에서도 쓰기 위한 최소 래퍼입니다. */
+function ChipAction({
+  href,
+  onClick,
+  style,
+  children,
+}: {
+  href?: string
+  onClick?: () => void
+  style: CSSProperties
+  children: ReactNode
+}) {
+  if (href) {
+    return (
+      <a href={href} style={style}>
+        {children}
+      </a>
+    )
+  }
+  return (
+    <button type="button" onClick={onClick} style={{ ...style, width: '100%' }}>
+      {children}
+    </button>
+  )
 }
 
 export interface LedgerRef {
@@ -55,6 +82,14 @@ export interface AppSidebarProps {
   onNavigate?: (id: string) => void
   settingsHref?: string
   user?: { name: string; role?: string; initials?: string }
+  /* 아래 둘은 이 저장소에서 추가한 prop 입니다. 원본은 설정과 장부 생성을 <a href> 로만 그리는데
+   * react-router SPA 에서는 전체 새로고침이 일어납니다. 넘기면 같은 모양의 <button> 으로 그립니다. */
+  onSettings?: () => void
+  onCreateLedger?: () => void
+  /** 사용자 영역 오른쪽에 놓을 액션(로그아웃 등). */
+  userAction?: ReactNode
+  /** 내비게이션 landmark 의 접근성 이름. */
+  navLabel?: string
 }
 
 export function AppSidebar({
@@ -68,6 +103,10 @@ export function AppSidebar({
   onNavigate,
   settingsHref = '#',
   user,
+  onSettings,
+  onCreateLedger,
+  userAction,
+  navLabel = '주요 메뉴',
 }: AppSidebarProps) {
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState<string | null>(null)
@@ -230,9 +269,17 @@ export function AppSidebar({
                   </li>
                 ))}
               </ul>
-              {createLedgerHref ? (
-                <a
-                  href={createLedgerHref}
+              {createLedgerHref || onCreateLedger ? (
+                <ChipAction
+                  href={onCreateLedger ? undefined : createLedgerHref}
+                  onClick={
+                    onCreateLedger
+                      ? () => {
+                          setOpen(false)
+                          onCreateLedger()
+                        }
+                      : undefined
+                  }
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -247,14 +294,14 @@ export function AppSidebar({
                   }}
                 >
                   <Icon name="plus" size="sm" />새 공동 장부 만들기
-                </a>
+                </ChipAction>
               ) : null}
             </div>
           ) : null}
         </div>
       ) : null}
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 22 }}>
+      <nav aria-label={navLabel} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 22 }}>
         {nav.map((item) => {
           const active = item.id === activeId
           const tone: CSSProperties = active
@@ -273,12 +320,34 @@ export function AppSidebar({
               {item.label}
             </Fragment>
           )
+          /* href 와 onNavigate 를 함께 주면 진짜 <a>(스크린리더·새 탭 열기 유지)로 그리되
+           * 클릭은 가로채 SPA 라우팅으로 넘깁니다. 원본은 <a> 또는 <button> 중 하나만 그렸습니다. */
           return item.href ? (
-            <a key={item.id} href={item.href} {...shared}>
+            <a
+              key={item.id}
+              href={item.href}
+              aria-current={active ? 'page' : undefined}
+              onClick={
+                onNavigate
+                  ? (event) => {
+                      if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
+                      event.preventDefault()
+                      onNavigate(item.id)
+                    }
+                  : undefined
+              }
+              {...shared}
+            >
               {body}
             </a>
           ) : (
-            <button key={item.id} type="button" onClick={() => onNavigate && onNavigate(item.id)} {...shared}>
+            <button
+              key={item.id}
+              type="button"
+              aria-current={active ? 'page' : undefined}
+              onClick={() => onNavigate && onNavigate(item.id)}
+              {...shared}
+            >
               {body}
             </button>
           )
@@ -286,9 +355,13 @@ export function AppSidebar({
       </nav>
 
       <div style={{ marginTop: 'auto', paddingTop: 24 }}>
-        <a href={settingsHref} style={{ ...NAV_BASE, color: 'var(--wl-color-text-secondary)' }}>
+        <ChipAction
+          href={onSettings ? undefined : settingsHref}
+          onClick={onSettings}
+          style={{ ...NAV_BASE, color: 'var(--wl-color-text-secondary)' }}
+        >
           <Icon name="settings" size="lg" />설정
-        </a>
+        </ChipAction>
         {user ? (
           <div
             style={{
@@ -316,12 +389,13 @@ export function AppSidebar({
             >
               {user.initials}
             </span>
-            <span style={{ minWidth: 0 }}>
+            <span style={{ minWidth: 0, flex: 1 }}>
               <strong style={{ display: 'block', fontSize: 13, fontWeight: 600 }}>{user.name}</strong>
               <span style={{ display: 'block', fontSize: 11, color: 'var(--wl-color-text-secondary)' }}>
                 {user.role}
               </span>
             </span>
+            {userAction ? <span style={{ flex: 'none' }}>{userAction}</span> : null}
           </div>
         ) : null}
       </div>
