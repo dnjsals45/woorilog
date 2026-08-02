@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import landingBackground from '../assets/landing/landing-desk-bg.jpg'
+import landingReceipts from '../assets/landing/landing-receipts.jpg'
 import logo from '../assets/logo/woorilog-logo.svg'
 import { getKakaoLoginUrl } from '../features/auth/api/authApi'
 import { formatWon } from '../shared/lib/money'
@@ -298,11 +299,12 @@ export function LandingPage() {
                     여러 장을 올리면 거래 후보를 하나의 목록으로 모읍니다. 중복 의심 건은 저장 대상에서 빼 두고, 카테고리와 차감 예산은 여러 건을 골라 한 번에 바꿉니다.
                   </p>
                 </div>
-                {/* TODO(asset): 영수증 여러 장을 모아 촬영한 사진, 가로세로 5:3 */}
-                <div className="mt-6 grid aspect-[5/3] place-items-center gap-1.5 border-t border-dashed border-[var(--wl-color-border-strong)] bg-[var(--wl-color-surface-subtle)] text-center">
-                  <span className="text-[13.5px] font-bold text-[var(--wl-color-text-secondary)]">이미지 필요</span>
-                  <span className="max-w-[30ch] text-[12.5px] leading-[1.6] text-[var(--wl-color-text-secondary)]">영수증 여러 장을 모아 둔 사진<br />가로 5:3</span>
-                </div>
+                <img
+                  alt=""
+                  className="mt-6 block aspect-[5/3] w-full border-t border-[var(--wl-color-border)] object-cover"
+                  loading="lazy"
+                  src={landingReceipts}
+                />
               </article>
               <article className="rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-brand-50)] p-6.5">
                 <h3 className="m-0 text-xl font-bold tracking-[-0.02em]">월급날 기준 예산 기간</h3>
