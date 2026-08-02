@@ -9,6 +9,7 @@ data class LedgerResponse(
     val type: LedgerType,
     val ownerId: Long,
     val recurringSummaryClosingDay: Int,
+    val budgetCycle: BudgetCycleResponse,
 )
 
 fun LedgerDto.toResponse() = LedgerResponse(
@@ -17,4 +18,5 @@ fun LedgerDto.toResponse() = LedgerResponse(
     type = type,
     ownerId = ownerId,
     recurringSummaryClosingDay = recurringSummaryClosingDay,
+    budgetCycle = BudgetCycleResponse(budgetStartType, budgetStartDay),
 )

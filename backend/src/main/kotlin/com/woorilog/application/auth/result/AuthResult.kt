@@ -1,6 +1,7 @@
 package com.woorilog.application.auth.result
 
 import com.woorilog.domain.auth.entity.User
+import com.woorilog.domain.budget.policy.BudgetStartType
 import com.woorilog.domain.ledger.entity.Ledger
 import com.woorilog.domain.ledger.entity.LedgerType
 
@@ -26,6 +27,11 @@ data class LedgerDto(
     val type: LedgerType,
     val ownerId: Long,
     val recurringSummaryClosingDay: Int,
+    /* 응답 계층은 이 둘을 BudgetCycleResponse 로 묶어 내보낸다(LedgerResponse.budgetCycle).
+     * 여기에 기본값을 두는 이유는 평평한 형태로 직렬화된 적 없는 페이로드를 역직렬화할 때
+     * 생성자 파라미터 누락으로 실패하지 않게 하기 위함이다. from(ledger) 는 항상 실제 값을 채운다. */
+    val budgetStartType: String = BudgetStartType.DAY_OF_MONTH.name,
+    val budgetStartDay: Int? = 1,
 ) {
     companion object {
         fun from(ledger: Ledger) = LedgerDto(
@@ -34,6 +40,8 @@ data class LedgerDto(
             type = ledger.type,
             ownerId = ledger.ownerId,
             recurringSummaryClosingDay = ledger.recurringSummaryClosingDay,
+            budgetStartType = ledger.budgetStartType.name,
+            budgetStartDay = ledger.budgetStartDay,
         )
     }
 }
