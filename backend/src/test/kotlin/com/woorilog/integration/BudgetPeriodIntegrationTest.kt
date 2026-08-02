@@ -234,6 +234,66 @@ class BudgetPeriodIntegrationTest {
             .andExpect(jsonPath("$.categoryBudgets[?(@.groupCode == '$groupCode')].previousSpentAmount").value(150_000))
     }
 
+    @Test
+    fun should_TransferReserveToPartnerAllocation() {
+        val owner = devLogin("reserve-owner@example.com", "예산주인")
+        val partner = devLogin("reserve-partner@example.com", "상대방")
+        val created = mockMvc.perform(post("/api/ledgers/shared")
+            .header("Authorization", "Bearer ${owner.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(mapOf(
+                "name" to "우리 생활비",
+                "totalBudget" to 2_000_000,
+                "budgetCycle" to mapOf("startType" to "DAY_OF_MONTH", "startDay" to 1),
+            )))).andExpect(status().isCreated).andReturn()
+        val ledgerId = body(created).path("ledger").path("id").asLong()
+        val startDate = body(created).path("currentBudgetPeriod").path("startDate").asText()
+
+        val link = body(mockMvc.perform(post("/api/ledgers/$ledgerId/invitations/links")
+            .header("Authorization", "Bearer ${owner.accessToken}")).andExpect(status().isCreated).andReturn())
+            .path("url").asText().substringAfterLast('/')
+        mockMvc.perform(post("/api/invitations/links/$link/accept")
+            .header("Authorization", "Bearer ${partner.accessToken}")).andExpect(status().isOk)
+
+        val periodPath = "/api/ledgers/$ledgerId/budget-periods/$startDate"
+        mockMvc.perform(put(periodPath)
+            .header("Authorization", "Bearer ${owner.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(mapOf(
+                "totalBudget" to 2_000_000,
+                "personalAllocations" to listOf(
+                    mapOf("userId" to owner.user.id, "amount" to 400_000),
+                    mapOf("userId" to partner.user.id, "amount" to 300_000),
+                ),
+                "sharedAllocation" to 1_000_000,
+            )))).andExpect(status().isOk)
+            .andExpect(jsonPath("$.reserveAmount").value(300_000))
+
+        // 상대가 부탁하거나 한 사람이 예산을 도맡는 경우가 있어 상대방 개인 예산도 대상이다.
+        mockMvc.perform(post("$periodPath/reserve-transfers")
+            .header("Authorization", "Bearer ${owner.accessToken}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(mapOf(
+                "amount" to 120_000,
+                "target" to mapOf("type" to "PERSONAL", "ownerUserId" to partner.user.id),
+            ))))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.transfer.amount").value(120_000))
+            .andExpect(jsonPath("$.period.reserveAmount").value(180_000))
+
+        val partnerAllocation = allocationRepository
+            .findByBudgetPeriodIdOrderById(periodRepository.findByLedgerIdAndStartDate(ledgerId, LocalDate.parse(startDate))!!.id!!)
+            .single { it.scope == BudgetAllocationScope.PERSONAL && it.owner?.id == partner.user.id }
+        assertEquals(420_000, partnerAllocation.amount)
+
+        // 상대방도 알림을 받아야 몰래 바뀌지 않는다.
+        assertEquals(
+            1,
+            notificationRepository.findTop50ByUserIdOrderByCreatedAtDesc(partner.user.id!!).count { it.type == NotificationType.RESERVE_TRANSFER },
+            "예비비를 상대방 예산으로 옮기면 상대방에게도 알림이 가야 합니다.",
+        )
+    }
+
     private fun devLogin(email: String, nickname: String): DevLoginResponse {
         val result = mockMvc.perform(post("/api/auth/dev-login")
             .contentType(MediaType.APPLICATION_JSON)

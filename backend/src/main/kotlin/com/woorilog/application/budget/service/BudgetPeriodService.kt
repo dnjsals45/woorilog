@@ -303,14 +303,17 @@ class BudgetPeriodService(
         if (amount > reserve) {
             throw WoorilogException("INSUFFICIENT_RESERVE", "예비비가 부족합니다.", HttpStatus.CONFLICT)
         }
+        /* 상대방 개인 예산도 대상이다. 상대가 부탁하거나 한 사람이 예산을 도맡아 관리하는 경우가 있어
+         * 본인 것만 허용하면 매번 상대에게 직접 옮기라고 해야 한다. 이동 내역이 남고 두 사람 모두에게
+         * 알림이 가므로 몰래 바꿀 수는 없다. */
         val targetAllocation = allocations.firstOrNull {
             when (targetType) {
                 "SHARED" -> it.scope == BudgetAllocationScope.SHARED && targetOwnerUserId == null
                 "PERSONAL" -> it.scope == BudgetAllocationScope.PERSONAL &&
-                    it.owner?.id == userId && targetOwnerUserId == userId
+                    targetOwnerUserId != null && it.owner?.id == targetOwnerUserId
                 else -> false
             }
-        } ?: throw ForbiddenException("본인 개인 예산 또는 공동 예산으로만 옮길 수 있습니다.")
+        } ?: throw ForbiddenException("이 기간에 없는 예산으로는 옮길 수 없습니다.")
         val actor = userRepository.findByIdOrNull(userId) ?: throw ForbiddenException("사용자를 찾을 수 없습니다.")
         targetAllocation.amount = Math.addExact(targetAllocation.amount, amount)
         budgetAllocationRepository.save(targetAllocation)
@@ -321,7 +324,7 @@ class BudgetPeriodService(
             ledgerId,
             NotificationType.RESERVE_TRANSFER,
             "예비비가 이동했어요",
-            "예비비 ${amount}원이 ${if (targetAllocation.scope == BudgetAllocationScope.SHARED) "공동 예산" else "개인 예산"}으로 이동했습니다.",
+            "예비비 ${amount}원이 ${if (targetAllocation.scope == BudgetAllocationScope.SHARED) "공동 예산" else "${targetAllocation.owner?.nickname ?: "개인"} 예산"}으로 이동했습니다.",
             "/budgets?period=$startDate",
             "reserve-transfer-$ledgerId-${transfer.id}",
         )

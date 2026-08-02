@@ -329,16 +329,16 @@ function BudgetConfigurationBody({
     )
   }
 
-  // 예비비는 공동 예산이나 본인 할당 예산으로만 옮길 수 있습니다. 상대방 개인 예산은 대상이 아닙니다.
+  /* 상대방 개인 예산도 대상입니다. 상대가 부탁하거나 한 사람이 예산을 도맡아 관리하는 경우가 있어서
+   * 본인 것만 허용하면 매번 상대에게 직접 옮기라고 해야 합니다. 이동하면 내역이 남고 두 사람 모두
+   * 알림을 받습니다. */
   const moveTargetOptions: Array<{ value: string; label: string; source: BudgetSource }> = [
     ...(isSharedLedger ? [{ value: 'SHARED', label: '공동 예산', source: { type: 'SHARED', ownerUserId: null } as BudgetSource }] : []),
-    ...members
-      .filter((member) => member.userId === meUserId)
-      .map((member) => ({
-        value: `PERSONAL:${member.userId}`,
-        label: `${member.nickname} 예산`,
-        source: { type: 'PERSONAL', ownerUserId: member.userId } as BudgetSource,
-      })),
+    ...members.map((member) => ({
+      value: `PERSONAL:${member.userId}`,
+      label: `${member.nickname} 예산`,
+      source: { type: 'PERSONAL', ownerUserId: member.userId } as BudgetSource,
+    })),
   ]
   const moveTargetValue = moveTarget ? (moveTarget.type === 'SHARED' ? 'SHARED' : `PERSONAL:${moveTarget.ownerUserId}`) : ''
 
