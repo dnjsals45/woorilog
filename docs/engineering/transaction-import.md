@@ -4,7 +4,7 @@
 
 ## 입력과 세션
 
-- 입력 종류는 `RECEIPT`, `CARD_APP_SCREENSHOT`입니다.
+- 입력 종류는 `RECEIPT`, `CARD_APP_SCREENSHOT`입니다. 한 요청에 영수증과 카드앱 캡처를 섞어 올릴 수 있도록 **이미지별로** 지정합니다(`sourceTypes`는 `images[]`와 같은 개수·순서).
 - 한 요청에서 여러 PNG/JPEG 이미지를 받을 수 있으며 허용 크기와 장수는 서버 설정으로 제한하고 API 오류에 현재 제한을 반환합니다.
 - 이미지는 한 사용자의 한 장부에 속한 import session으로 묶습니다.
 - OCR 결과를 자동 저장하지 않고 preview와 명시적 save를 분리합니다.
@@ -32,12 +32,10 @@
 
 ## 중복 판단
 
-다음 우선순위로 같은 session 후보와 기존 장부 거래를 비교합니다.
+현재 구현은 정규화한 **날짜·금액·사용처(소문자화 후 영숫자만 남긴 문자열)** 완전 일치로 같은 session의 다른 후보, 그리고 같은 장부의 기존 확정 거래와 비교합니다.
 
-1. 안정적으로 인식한 카드 승인번호 등 외부 식별자의 hash 일치
-2. 정규화한 날짜·금액·사용처 일치
-
-- 중복 의심은 `duplicateSuspected=true`와 일반화한 reason으로 표시합니다.
+- 중복 의심은 `duplicateSuspected=true`와 `duplicateReason="DATE_AMOUNT_MERCHANT"`로 표시합니다.
+- 기존에 저장된 거래와 겹치면 `duplicateTransactionId`에 그 거래의 id를 채웁니다. 같은 업로드 배치의 다른 후보와만 겹치는 경우(아직 저장되지 않은 후보끼리의 충돌)에는 `duplicateTransactionId`가 `null`입니다.
 - 중복 후보는 `selectedByDefault=false`, 정상 후보는 `true`입니다.
 - 후보나 기존 거래를 자동 삭제하지 않습니다.
 - 정상적인 반복 결제라면 사용자가 후보를 다시 선택해 저장할 수 있습니다.

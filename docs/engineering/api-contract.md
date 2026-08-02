@@ -194,6 +194,8 @@
 - `scope`: 공동 장부의 개인·공동 공개 범위입니다. 개인 장부는 소유자의 `PERSONAL`입니다.
 - `sharedWithPartner`: 공동 장부의 개인 scope 거래면 boolean, 공동 scope와 개인 장부 거래면 `null`
 - `schedule`: 일반 거래면 `null`, 자동 거래면 `{kind, planId, sequence, totalSequences}`
+- `installment`: 할부 거래가 아니면 `null`, 할부 거래면 `{planId, sequence, totalCount, monthlyInterest}`.
+  `monthlyInterest`는 예약 할부 계획(`ScheduledPlan.monthlyInterestAmount`)이 있을 때만 값이 채워지고, 없으면 `null`입니다.
 - `paymentMethod`: 미입력이면 `null`. 조회자가 결제자가 아니면 `displayName` key를 생략합니다.
 
 ## Health와 인증
@@ -448,7 +450,7 @@
 
 ### `GET /api/invitations/links/{token}`
 
-- public
+- public. 로그인 상태면 `Authorization` 헤더로 뷰어를 식별해 사전 판별 필드를 채웁니다.
 
 ```json
 {
@@ -457,24 +459,39 @@
   "inviter": { "id": 1, "nickname": "민지" },
   "status": "PENDING",
   "expiresAt": "2026-07-31T13:00:00Z",
-  "authenticationRequired": true
+  "authenticationRequired": true,
+  "currentMemberCount": 1,
+  "viewerAlreadyMember": null,
+  "budgetCycle": { "startType": "DAY_OF_MONTH", "startDay": 1 }
 }
 ```
 
-- 만료·교체·취소된 token은 일반화한 상태를 포함해 `410 INVITATION_EXPIRED`를 반환합니다.
+- `currentMemberCount`: 링크가 걸린 장부의 현재 활성 멤버 수. 2명이면 참여 버튼을 누르기 전에 정원 초과를 안내할 수 있습니다.
+- `viewerAlreadyMember`: 비로그인 조회(`authenticationRequired: true`)에서는 판별 불가이므로 `null`입니다. 로그인 상태에서는 뷰어가 해당 장부의 활성 멤버인지 여부(`true`/`false`)입니다.
+- `budgetCycle`: 장부의 예산 기간 시작 규칙(`BudgetCycleResponse`, `ledger.budgetCycle`과 동일 형식).
+- 상태 판별은 조회 단계에서 세 가지로 구분합니다.
+
+| status | code | 조건 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | token이 존재하지 않거나 LINK 타입이 아님 |
+| 409 | `INVITATION_ALREADY_PROCESSED` | 이미 수락·거절·취소되었거나 새 링크로 교체됨 |
+| 410 | `INVITATION_EXPIRED` | PENDING 상태에서 유효 시간이 지남 |
 
 ### `POST /api/invitations/links/{token}/accept`
 
 - authenticated, nickname confirmed
 - 수락과 멤버십 생성, 마지막 사용 장부 변경을 한 트랜잭션에서 처리합니다.
 - `200 OK`: `{ "ledger": LedgerSummary }`
+- 조회와 같은 token 상태 검증(`requireUsableLink`)을 공유하므로 아래 404/409/410 코드도 동일하게 발생합니다.
 
 | status | code | 조건 |
 | --- | --- | --- |
+| 404 | `NOT_FOUND` | token이 존재하지 않거나 LINK 타입이 아님 |
 | 409 | `ALREADY_LEDGER_MEMBER` | 이미 활성 멤버 |
 | 409 | `LEDGER_MEMBER_LIMIT_REACHED` | 동시 수락 등으로 두 명 도달 |
 | 409 | `DIFFERENT_PARTNER_NOT_ALLOWED` | 과거 상대방과 다른 사용자 |
-| 410 | `INVITATION_EXPIRED` | 만료·교체·취소·거절됨 |
+| 409 | `INVITATION_ALREADY_PROCESSED` | 이미 수락·거절·취소되었거나 새 링크로 교체됨 |
+| 410 | `INVITATION_EXPIRED` | PENDING 상태에서 유효 시간이 지남 |
 
 ### `POST /api/invitations/links/{token}/reject`
 
@@ -544,22 +561,38 @@
 - active 또는 해당 기간 former member
 - `BudgetPeriodDetail`과 조회자에게 허용된 category budgets를 반환합니다.
 
+응답은 `BudgetPeriodDetail`이며 `categoryBudgets`는 그 안의 필드입니다(별도 `period` 래핑 없음):
+
 ```json
 {
-  "period": {},
+  "id": 1,
+  "ledgerId": 1,
+  "startDate": "2026-07-10",
+  "endDate": "2026-08-09",
+  "status": "CURRENT",
+  "totalBudget": 2000000,
+  "allocations": [],
+  "reserveAmount": 600000,
+  "prepared": true,
+  "copiedFromPeriodId": null,
   "categoryBudgets": [
     {
       "source": { "type": "SHARED", "ownerUserId": null },
       "groupCode": "FOOD",
       "groupName": "식비",
       "amount": 400000,
-      "spentAmount": 320000
+      "spentAmount": 320000,
+      "previousSpentAmount": 280000
     }
   ]
 }
 ```
 
 개인 category budget은 본인 것만 반환합니다.
+
+- `previousSpentAmount`는 같은 장부에서 이 기간 바로 이전 기간의 같은 대분류·source 사용액입니다.
+- 이전 기간이 없거나(첫 기간), 이전 기간에 같은 scope/owner의 allocation 자체가 없었으면 `null`입니다.
+- 이전 기간에 해당 allocation은 있었지만 그 대분류 지출이 없었으면 `0`입니다.
 
 ### `PUT /api/ledgers/{ledgerId}/budget-periods/{startDate}`
 
@@ -904,6 +937,9 @@
 - 총지출, 미분류 포함 대분류 분포, 일별·누적 흐름, 이전 기간 증감과 6·12개 기간 추세를 반환합니다.
 - `ALL`은 공동 거래와 본인 개인 거래만 포함합니다. 상대방 개인 거래는 공유 여부와 관계없이 제외합니다.
 - `INCOME`, `TRANSFER/OWN_ACCOUNTS`, `TRANSFER/INBOUND`는 총지출에서 제외합니다.
+- `categoryDistribution`의 각 항목은 `{ groupCode, groupName, amount, previousAmount }`입니다.
+  `previousAmount`는 조회 중인 기간 바로 이전 기간(같은 `scope` 필터 적용)의 같은 대분류 지출액입니다.
+  이전 기간 자체가 없으면(첫 기간) `null`이고, 이전 기간은 있지만 해당 대분류 지출이 없었으면 `0`입니다.
 
 ## 이미지 가져오기
 
@@ -913,7 +949,7 @@
 
 - active member
 - `multipart/form-data`
-- fields: `sourceType=RECEIPT|CARD_APP_SCREENSHOT`, `images[]`
+- fields: `sourceTypes=RECEIPT|CARD_APP_SCREENSHOT` (반복 필드, `images[]`와 같은 개수·순서로 이미지별 종류를 지정합니다), `images[]`
 
 `200 OK`:
 
@@ -922,10 +958,6 @@
   "sessionId": "imp_opaque_id",
   "expiresAt": "2026-07-31T14:00:00Z",
   "omittedCount": 2,
-  "omittedReasons": {
-    "LOW_CONFIDENCE": 1,
-    "MISSING_REQUIRED_FIELD": 1
-  },
   "candidates": [
     {
       "candidateId": "cand_1",
@@ -936,14 +968,21 @@
       "defaultBudgetSource": { "type": "PERSONAL", "ownerUserId": 1 },
       "duplicateSuspected": false,
       "duplicateReason": null,
-      "selectedByDefault": true
+      "duplicateTransactionId": null,
+      "selectedByDefault": true,
+      "sourceType": "RECEIPT"
     }
   ]
 }
 ```
 
+- `duplicateSuspected=true`인 후보는 `duplicateReason`이 항상 `"DATE_AMOUNT_MERCHANT"`(날짜·금액·정규화한 사용처 일치)입니다.
+- `duplicateTransactionId`는 그 후보가 겹치는 **기존에 저장된 거래**의 id입니다. 같은 업로드 배치 안의 다른 후보와만 겹치는 경우(아직 저장되지 않음)에는 `duplicateSuspected=true`이지만 `duplicateTransactionId`는 `null`입니다.
+- `sourceType`은 그 후보가 만들어진 원본 이미지에 대해 요청에서 지정한 값입니다.
+
 | status | code | 조건 |
 | --- | --- | --- |
+| 400 | `INVALID_REQUEST` | `sourceTypes` 개수가 `images[]` 개수와 다름 |
 | 400 | `UNSUPPORTED_MEDIA` | 지원하지 않는 파일 |
 | 413 | `UPLOAD_LIMIT_EXCEEDED` | 장수 또는 크기 제한 초과 |
 
@@ -987,6 +1026,9 @@
 - active member
 - query: `status=ACTIVE|PAUSED`, `kind=RECURRING_EXPENSE|INSTALLMENT`, `fixedExpense`
 - 결제수단 식별 정보는 계획 소유자에게만 반환합니다.
+- 응답 항목은 `categoryId`, `categoryName`, `budgetSource`를 포함합니다.
+- `INSTALLMENT` 계획은 `totalAmount`(할부 전체 원금), `round`(현재까지 발생 처리된 회차), `totalRounds`(총 회차),
+  `principalAmount`(현재 회차 원금), `monthlyInterest`(월 이자)를 함께 반환합니다. `RECURRING_EXPENSE` 계획은 이 다섯 필드를 `null`로 반환합니다.
 
 ### `POST /api/ledgers/{ledgerId}/scheduled-plans/recurring-expenses`
 
