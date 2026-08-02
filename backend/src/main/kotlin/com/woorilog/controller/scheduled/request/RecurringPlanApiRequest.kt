@@ -16,7 +16,7 @@ data class RecurringPlanApiRequest(
     val frequency: ScheduleFrequency,
     val startDate: LocalDate,
     val endDate: LocalDate?,
-    val fixedExpense: Boolean,
+    val isFixedExpense: Boolean,
     val paymentMethod: V1PaymentMethod?,
 ) {
     fun toCommand() = RecurringPlanCommand(
@@ -29,7 +29,7 @@ data class RecurringPlanApiRequest(
         frequency = frequency,
         startDate = startDate,
         endDate = endDate,
-        fixedExpense = fixedExpense,
+        fixedExpense = isFixedExpense,
         paymentMethod = paymentMethod,
     )
 }

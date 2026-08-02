@@ -41,6 +41,9 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDate
 
+/** 반복 지출은 회차 수가 정해져 있지 않아 이만큼의 발생분을 미리 만들어 둔다. */
+private const val DEFAULT_RECURRING_OCCURRENCES = 12
+
 @Service
 @Transactional
 class ScheduledPlanService(
@@ -67,7 +70,7 @@ class ScheduledPlanService(
                 generate(occurrence)
                 occurrence.generatedTransactionId?.let { transactionRepository.findByIdOrNull(it) }
             }
-        return ScheduledPlanResult.from(plan, firstTransaction)
+        return toResult(plan, firstTransaction)
     }
     fun createInstallment(userId: Long, ledgerId: Long, request: InstallmentPlanCommand): ScheduledPlanResult {
         return createInstallmentAndGenerateFirst(userId, ledgerId, request).plan
@@ -91,7 +94,7 @@ class ScheduledPlanService(
         generate(first)
         val transaction = first.generatedTransactionId?.let { transactionRepository.findByIdOrNull(it) }
             ?: error("할부 첫 거래를 만들 수 없습니다.")
-        return ScheduledPlanCreationResult(ScheduledPlanResult.from(plan), transaction)
+        return ScheduledPlanCreationResult(toResult(plan), transaction)
     }
     @Transactional(readOnly = true)
     fun list(userId: Long, ledgerId: Long, status: ScheduledPlanStatus? = null, kind: ScheduledPlanType? = null, fixedExpense: Boolean? = null): List<ScheduledPlanResult> {
@@ -100,19 +103,68 @@ class ScheduledPlanService(
             .filter { status == null || it.status == status }
             .filter { kind == null || it.type == kind }
             .filter { fixedExpense == null || it.fixedExpense == fixedExpense }
-            .map(ScheduledPlanResult::from)
+            .map { toResult(it) }
             .toList()
     }
-    fun pause(userId: Long, planId: Long, reason: ScheduledPauseReason = ScheduledPauseReason.USER_REQUEST): ScheduledPlanResult { val plan = plan(planId); requirePlanWrite(userId, plan); plan.status = ScheduledPlanStatus.PAUSED; plan.pauseReason = reason; return ScheduledPlanResult.from(plan) }
-    fun resume(userId: Long, planId: Long, nextDueDate: LocalDate): ScheduledPlanResult { val plan = plan(planId); requirePlanWrite(userId, plan); if (nextDueDate.isBefore(LocalDate.now(clock))) throw WoorilogException("INVALID_NEXT_DUE_DATE", "다음 실행일은 오늘 이전일 수 없습니다.", HttpStatus.BAD_REQUEST); plan.status = ScheduledPlanStatus.ACTIVE; plan.pauseReason = null; plan.nextDueDate = nextDueDate; return ScheduledPlanResult.from(plan) }
+    fun pause(userId: Long, planId: Long, reason: ScheduledPauseReason = ScheduledPauseReason.USER_REQUEST): ScheduledPlanResult { val plan = plan(planId); requirePlanWrite(userId, plan); plan.status = ScheduledPlanStatus.PAUSED; plan.pauseReason = reason; return toResult(plan) }
+    fun resume(userId: Long, planId: Long, nextDueDate: LocalDate): ScheduledPlanResult { val plan = plan(planId); requirePlanWrite(userId, plan); if (nextDueDate.isBefore(LocalDate.now(clock))) throw WoorilogException("INVALID_NEXT_DUE_DATE", "다음 실행일은 오늘 이전일 수 없습니다.", HttpStatus.BAD_REQUEST); plan.status = ScheduledPlanStatus.ACTIVE; plan.pauseReason = null; plan.nextDueDate = nextDueDate; return toResult(plan) }
     fun delete(userId: Long, planId: Long) { val plan = plan(planId); requirePlanWrite(userId, plan); plan.status = ScheduledPlanStatus.CANCELLED; occurrenceRepository.findByPlanIdAndStatus(planId, ScheduledOccurrenceStatus.SCHEDULED).forEach { it.status = ScheduledOccurrenceStatus.CANCELLED } }
-    fun updateFuture(userId: Long, planId: Long, request: UpdateScheduledPlanCommand): ScheduledPlanResult { val plan = plan(planId); requirePlanWrite(userId, plan); require(request.scope == "FUTURE") { "FUTURE만 지원합니다." }; request.amount?.let { require(it > 0); plan.amount = it }; request.nextDueDate?.let { plan.nextDueDate = it }; request.endDate?.let { plan.endDate = it }; request.fixedExpense?.let { plan.fixedExpense = it }; request.name?.let { plan.name = it.trim() }; return ScheduledPlanResult.from(plan) }
-    @Transactional(readOnly = true) fun fixedExpenses(userId: Long, ledgerId: Long): List<ScheduledPlanResult> { requireActive(userId, ledgerId); return planRepository.findByLedgerIdAndFixedExpenseTrueAndStatus(ledgerId, ScheduledPlanStatus.ACTIVE).map(ScheduledPlanResult::from) }
+    fun updateFuture(userId: Long, planId: Long, request: UpdateScheduledPlanCommand): ScheduledPlanResult {
+        val plan = plan(planId); requirePlanWrite(userId, plan); require(request.scope == "FUTURE") { "FUTURE만 지원합니다." }
+        request.amount?.let { require(it > 0); plan.amount = it }
+        request.nextDueDate?.let { plan.nextDueDate = it }
+        request.endDate?.let { plan.endDate = it }
+        request.isFixedExpense?.let { plan.fixedExpense = it }
+        request.name?.let { plan.name = it.trim() }
+        request.frequency?.let { plan.frequency = it }
+        request.categoryId?.let { plan.category = category(userId, plan.ledger.id!!, it) }
+        request.budgetSource?.let { source ->
+            plan.budgetAllocation = allocation(userId, plan.ledger.id!!, plan.nextDueDate, source)
+            plan.scopeType = source.type
+            plan.scopeOwnerUserId = source.ownerUserId
+        }
+        regenerateScheduledOccurrences(plan, request.nextDueDate)
+        return toResult(plan)
+    }
+
+    /* generate() 는 plan 이 아니라 occurrence 의 amount·dueDate 로 거래를 만든다.
+     * 그래서 plan 의 금액·주기·종료일을 바꾸면 아직 생성되지 않은 발생분을 다시 만들어야
+     * 변경이 실제 거래에 반영된다. 이미 거래가 만들어진 GENERATED 발생분은 건드리지 않는다. */
+    private fun regenerateScheduledOccurrences(plan: ScheduledPlan, explicitNextDueDate: LocalDate?) {
+        val all = occurrenceRepository.findByPlanIdOrderBySequence(plan.id!!)
+        val stale = all.filter { it.status == ScheduledOccurrenceStatus.SCHEDULED }
+        if (stale.isEmpty()) return
+        val kept = all.filter { it.status != ScheduledOccurrenceStatus.SCHEDULED }
+        occurrenceRepository.deleteAll(stale)
+
+        val total = plan.installmentTotalCount ?: DEFAULT_RECURRING_OCCURRENCES
+        val frequency = plan.frequency ?: ScheduleFrequency.MONTHLY
+        /* 이어붙일 지점: 요청이 다음 예정일을 명시했으면 그 날짜, 아니면 마지막으로 생성된
+         * 발생분의 다음 날짜. 생성분이 없으면 플랜 시작일부터. */
+        var due = explicitNextDueDate
+            ?: kept.maxByOrNull { it.sequence }
+                ?.let { ScheduleDatePolicy.nextDate(it.dueDate, frequency, plan.anchorDay) }
+            ?: plan.startDate
+        val rebuilt = buildList {
+            ((kept.size + 1)..total).forEach { sequence ->
+                if (plan.endDate == null || !due.isAfter(plan.endDate)) {
+                    add(occurrenceRepository.save(ScheduledOccurrence(plan, due, sequence, occurrenceAmount(plan, sequence))))
+                }
+                due = ScheduleDatePolicy.nextDate(due, frequency, plan.anchorDay)
+            }
+        }
+        rebuilt.firstOrNull()?.let { plan.nextDueDate = it.dueDate }
+    }
+    @Transactional(readOnly = true) fun fixedExpenses(userId: Long, ledgerId: Long): List<ScheduledPlanResult> { requireActive(userId, ledgerId); return planRepository.findByLedgerIdAndFixedExpenseTrueAndStatus(ledgerId, ScheduledPlanStatus.ACTIVE).map { toResult(it) } }
+    private fun toResult(plan: ScheduledPlan, transaction: Transaction? = null) = ScheduledPlanResult.from(
+        plan, transaction,
+        if (plan.type == ScheduledPlanType.INSTALLMENT) occurrenceRepository.countByPlanIdAndStatus(plan.id!!, ScheduledOccurrenceStatus.GENERATED).toInt() else null,
+    )
     fun pauseForMembershipChange(ledgerId: Long) { planRepository.findByLedgerIdOrderByIdDesc(ledgerId).filter { it.status == ScheduledPlanStatus.ACTIVE }.forEach { it.status = ScheduledPlanStatus.PAUSED; it.pauseReason = ScheduledPauseReason.MEMBERSHIP_CHANGED } }
     fun generateDue(asOf: LocalDate): Int = occurrenceRepository.lockDue(asOf).filter { it.plan.status == ScheduledPlanStatus.ACTIVE }.count { generate(it) }
     private fun generateOccurrences(plan: ScheduledPlan): List<ScheduledOccurrence> {
         var due = plan.startDate
-        val count = plan.installmentTotalCount ?: 12
+        val count = plan.installmentTotalCount ?: DEFAULT_RECURRING_OCCURRENCES
         return buildList {
             repeat(count) { index ->
                 if (plan.endDate == null || !due.isAfter(plan.endDate)) {

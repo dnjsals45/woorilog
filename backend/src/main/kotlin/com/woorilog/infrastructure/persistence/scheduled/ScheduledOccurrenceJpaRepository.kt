@@ -16,6 +16,7 @@ interface ScheduledOccurrenceJpaRepository : JpaRepository<ScheduledOccurrence, 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     fun lockDue(@Param("dueDate") dueDate: LocalDate): List<ScheduledOccurrence>
     fun findByPlanIdAndStatus(planId: Long, status: ScheduledOccurrenceStatus): List<ScheduledOccurrence>
+    fun countByPlanIdAndStatus(planId: Long, status: ScheduledOccurrenceStatus): Long
     fun findByPlanIdOrderBySequence(planId: Long): List<ScheduledOccurrence>
     @Query(
         "select occurrence from ScheduledOccurrence occurrence where occurrence.plan.ledger.id = :ledgerId and occurrence.dueDate between :startDate and :endDate and occurrence.status = :status"

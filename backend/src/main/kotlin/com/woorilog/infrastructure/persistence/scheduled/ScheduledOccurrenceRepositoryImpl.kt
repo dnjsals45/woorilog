@@ -12,8 +12,10 @@ class ScheduledOccurrenceRepositoryImpl(
 ) : ScheduledOccurrenceRepository {
     override fun lockDue(dueDate: LocalDate) = jpaRepository.lockDue(dueDate)
     override fun findByPlanIdAndStatus(planId: Long, status: ScheduledOccurrenceStatus) = jpaRepository.findByPlanIdAndStatus(planId, status)
+    override fun countByPlanIdAndStatus(planId: Long, status: ScheduledOccurrenceStatus) = jpaRepository.countByPlanIdAndStatus(planId, status)
     override fun findByPlanIdOrderBySequence(planId: Long) = jpaRepository.findByPlanIdOrderBySequence(planId)
     override fun findByLedgerAndDueDateBetweenAndStatus(ledgerId: Long, startDate: LocalDate, endDate: LocalDate, status: ScheduledOccurrenceStatus) =
         jpaRepository.findByLedgerAndDueDateBetweenAndStatus(ledgerId, startDate, endDate, status)
     override fun save(scheduledOccurrence: ScheduledOccurrence): ScheduledOccurrence = jpaRepository.save(scheduledOccurrence)
+    override fun deleteAll(occurrences: List<ScheduledOccurrence>) = jpaRepository.deleteAllInBatch(occurrences)
 }

@@ -7,6 +7,7 @@ import java.time.LocalDate
 interface ScheduledOccurrenceRepository {
     fun lockDue(dueDate: LocalDate): List<ScheduledOccurrence>
     fun findByPlanIdAndStatus(planId: Long, status: ScheduledOccurrenceStatus): List<ScheduledOccurrence>
+    fun countByPlanIdAndStatus(planId: Long, status: ScheduledOccurrenceStatus): Long
     fun findByPlanIdOrderBySequence(planId: Long): List<ScheduledOccurrence>
     fun findByLedgerAndDueDateBetweenAndStatus(
         ledgerId: Long,
@@ -15,4 +16,5 @@ interface ScheduledOccurrenceRepository {
         status: ScheduledOccurrenceStatus,
     ): List<ScheduledOccurrence>
     fun save(scheduledOccurrence: ScheduledOccurrence): ScheduledOccurrence
+    fun deleteAll(occurrences: List<ScheduledOccurrence>)
 }
