@@ -1,130 +1,427 @@
-import {
-  Bell,
-  CreditCard,
-  Download,
-  Heart,
-  House,
-  PieChart,
-  ShieldCheck,
-  Users,
-} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import landingBackground from '../assets/landing/landing-desk-bg.jpg'
+import logo from '../assets/logo/woorilog-logo.svg'
+import { getKakaoLoginUrl } from '../features/auth/api/authApi'
+import { formatWon } from '../shared/lib/money'
 import { getAccessToken } from '../shared/api/client'
+import { Icon } from '../shared/ui/Icon'
 
-const recentTransactions = [
-  { category: '마트', name: '이마트', amount: '-87,450원', color: 'bg-amber-100 text-amber-700' },
-  { category: '간식', name: '카페 그린', amount: '-6,200원', color: 'bg-rose-100 text-rose-700' },
-  { category: '교통', name: '버스', amount: '-1,400원', color: 'bg-blue-100 text-blue-700' },
+/* 한 기간 예산을 네 갈래로 나누는 예시 그림입니다. 실제 사용자 데이터가 아니라
+ * "예산 구조" 개념을 설명하기 위한 랜딩 전용 예시 수치이며, 디자인 원본(랜딩.dc.html)의
+ * SPLIT 상수를 그대로 옮긴 것입니다. */
+const BUDGET_SPLIT = [
+  { label: '공동 예산', amount: 1_120_000, percent: 56, fill: 'var(--wl-color-primary)', ink: '#fff', note: '월세, 장보기처럼 함께 쓰는 돈' },
+  { label: '홍길동', amount: 500_000, percent: 25, fill: 'var(--wl-data-blue)', ink: '#fff', note: '각자 알아서 쓰는 개인 예산' },
+  { label: '홍길순', amount: 260_000, percent: 13, fill: 'var(--wl-data-violet)', ink: '#fff', note: '상대방 예산은 총액만 공유' },
+  { label: '예비비', amount: 120_000, percent: 6, fill: 'var(--wl-data-neutral-soft)', ink: 'var(--wl-color-text-body)', note: '옮겨서 쓰는 여유분' },
+] as const
+
+const COMPARISON_ROWS = [
+  { label: '혼자 쓰면', body: '한 사람이 영수증을 모으고, 나머지 한 사람은 결과만 듣습니다.', tone: 'muted' },
+  { label: '합치면', body: '개인 소비까지 다 보여서 기록을 줄이거나 숨기게 됩니다.', tone: 'muted' },
+  { label: '우리로그', body: '공동은 함께 보고 개인은 각자 봅니다. 공개할 거래는 직접 고릅니다.', tone: 'brand' },
+] as const
+
+const SHARED_ROWS = [
+  '공동 예산의 전체 금액, 사용액과 남은 금액',
+  '공동 예산에서 차감한 모든 거래',
+  '상대방 개인 예산의 총액과 사용액',
+  '예비비를 옮긴 기록과 예산 변경 알림',
 ]
 
-const features = [
-  { icon: Users, title: '함께 관리', description: '같은 장부에서 수입과 지출을 함께 기록하고 확인해요.' },
-  { icon: CreditCard, title: '예산 설정', description: '항목별 예산을 설정하고 지출을 계획적으로 관리해요.' },
-  { icon: PieChart, title: '지출 분석', description: '카테고리별 통계로 소비 패턴을 한눈에 파악할 수 있어요.' },
-  { icon: ShieldCheck, title: '카드 연동 없이', description: '민감한 카드 정보를 등록하지 않고 직접 기록해요.' },
+const PERSONAL_ROWS = [
+  '내 예산에서 차감한 거래의 사용처와 메모',
+  '내가 공개하지 않기로 한 개인 거래',
+  '내 카드의 식별 정보',
+  '내 개인 예산의 주간 기준액 알림',
 ]
 
-function ProductPreview() {
+const FLOW_ROWS = [
+  { verb: '기록해요', body: '금액 키패드가 먼저 열립니다. 사용처를 입력하면 지난 기록을 보고 카테고리를 먼저 채워 둡니다.' },
+  { verb: '나눠요', body: '이 지출을 공동에서 뺄지 내 예산에서 뺄지 저장 전에 확인합니다. 상대방 예산은 선택지에 없습니다.' },
+  { verb: '돌아봐요', body: '기간이 끝나면 사용액과 남은 돈, 대분류별 지출, 다음 기간에 이어지는 고정비를 한 장으로 정리합니다.' },
+]
+
+const FAQ_ROWS = [
+  { question: '개인 지출까지 상대방에게 다 보이나요?', answer: '아니요. 내 예산에서 차감한 거래는 기본적으로 나만 봅니다. 상대방에게는 예산 총액과 사용액만 보이고, 개별 거래는 내가 공개를 선택한 것만 보입니다.' },
+  { question: '남은 예산은 다음 기간으로 넘어가나요?', answer: '넘기지 않습니다. 남은 돈과 초과한 돈은 끝난 기간의 결과로만 남고, 다음 기간 예산은 이번 기간 설정을 그대로 복사해 시작합니다.' },
+  { question: '한 명이 그만두면 기록은 어떻게 되나요?', answer: '함께 쓴 기간의 기록은 두 사람 모두 읽을 수 있게 남습니다. 다만 고정비와 할부 자동 등록은 잠시 멈추고, 남은 사람이 필요한 것만 다시 켭니다.' },
+  { question: '수입을 기록하면 예산이 늘어나나요?', answer: '자동으로 늘지 않습니다. 수입은 수입 내역과 통계에만 반영하고, 쓸 수 있는 돈을 늘리려면 예산 설정에서 직접 전체 예산을 바꿉니다.' },
+]
+
+/** 뷰포트에 들어오면 은은하게 떠오르는 섹션. IntersectionObserver가 없는 환경(테스트 등)에서는
+ * 그냥 바로 보이는 상태로 렌더합니다. */
+function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined')
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setVisible(true)
+            observer.unobserve(entry.target)
+          }
+        }
+      },
+      { threshold: 0.15 },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <div className="relative w-full max-w-[680px] px-2 sm:px-5 md:px-0" aria-hidden="true">
-      <div className="flex aspect-[4/3] w-full overflow-hidden rounded-lg border border-[#e5ede8] bg-white/95 text-[9px] shadow-2xl shadow-emerald-950/10 backdrop-blur-sm md:text-[10px]">
-        <aside className="flex w-[18%] flex-col gap-4 border-r border-[#e5ede8] bg-[#f8faf8] p-2">
-          <div className="flex items-center gap-1.5 font-bold text-[#0e9f6e]">
-            <House className="size-4" />
-            <span className="hidden text-[9px] sm:inline">우리로그</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            {['홈', '내역', '예산', '통계', '자산', '멤버', '설정'].map((menu, index) => (
-              <div className={`flex items-center gap-2 rounded-md px-2 py-1 font-bold ${index === 0 ? 'bg-[#e7f7ef] text-[#0e9f6e]' : 'text-[#6b7280]'}`} key={menu}>
-                <span className={`size-1.5 rounded-full ${index === 0 ? 'bg-[#0e9f6e]' : 'bg-transparent'}`} />
-                <span>{menu}</span>
-              </div>
-            ))}
-          </div>
-        </aside>
+    <div ref={ref} className={`wl-landing-reveal ${visible ? '' : 'wl-landing-reveal--hidden'} ${className}`}>
+      {children}
+    </div>
+  )
+}
 
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f8faf8]">
-          <div className="flex h-10 shrink-0 items-center justify-between border-b border-[#e5ede8] bg-white px-3">
-            <strong>2026년 7월 <span className="text-[7px]">▼</span></strong>
-            <div className="flex items-center gap-2"><Bell className="size-3.5 text-[#6b7280]" /><span className="flex size-5 items-center justify-center rounded-full bg-orange-100 font-bold text-orange-600">우</span></div>
-          </div>
-          <div className="grid flex-1 content-start grid-cols-2 gap-2.5 overflow-hidden p-3">
-            <div className="flex flex-col justify-between rounded-lg border border-[#e5ede8] bg-white p-2.5">
-              <div><p className="font-semibold text-[#6b7280]">이번 달 예산</p><p className="mt-0.5 text-[13px] font-black text-[#111827]">3,200,000원</p><p className="mt-1 text-[7px] text-[#6b7280]">사용 1,650,000원 (51%)</p></div>
-              <div><div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full w-[51%] rounded-full bg-[#0e9f6e]" /></div><p className="mt-2 font-bold text-[#0e9f6e]">예산 설정하기 ›</p></div>
-            </div>
-            <div className="flex flex-col justify-between rounded-lg border border-[#e5ede8] bg-white p-2.5">
-              <div><p className="font-semibold text-[#6b7280]">이번 달 지출</p><p className="mt-0.5 text-[13px] font-black text-[#111827]">1,650,000원</p><p className="mt-1 text-[7px] text-[#6b7280]">지난달보다 120,000원 적게 사용했어요</p></div>
-              <div className="mt-2 flex h-8 items-end justify-around gap-2 px-1">{[45, 72, 95, 58, 76].map((height, index) => <span className="w-2 rounded-t bg-emerald-200" key={height} style={{ height: `${height}%`, backgroundColor: index === 2 ? '#0e9f6e' : undefined }} />)}</div>
-            </div>
-            <div className="rounded-lg border border-[#e5ede8] bg-white p-2.5">
-              <p className="mb-1.5 font-semibold text-[#6b7280]">지출 캘린더</p>
-              <div className="grid grid-cols-7 gap-y-1 text-center text-[6px]">
-                {['일', '월', '화', '수', '목', '금', '토'].map((day) => <strong className="text-[#6b7280]" key={day}>{day}</strong>)}
-                {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <span className={`mx-auto flex size-3.5 items-center justify-center rounded-full font-bold ${day === 15 ? 'bg-[#0e9f6e] text-white' : 'text-[#111827]'}`} key={day}>{day}</span>)}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="rounded-lg border border-[#e5ede8] bg-white p-2.5"><p className="mb-1 text-[#6b7280]">함께하는 멤버</p>{['우리집', '나', '파트너'].map((name, index) => <div className="mt-1 flex items-center justify-between" key={name}><span className="flex items-center gap-1.5 font-bold"><i className="flex size-3.5 items-center justify-center rounded-full bg-emerald-100 not-italic text-[#0e9f6e]">{name[0]}</i>{name}</span><span className="rounded bg-[#e7f7ef] px-1 text-[#0e9f6e]">{index === 0 ? '관리자' : '멤버'}</span></div>)}</div>
-              <div className="rounded-lg border border-[#e5ede8] bg-white p-2"><p className="text-[#6b7280]">이번 달 한마디</p><p className="mt-0.5 flex items-center gap-1 font-bold">이번 달도 잘하고 있어요! <Heart className="size-2.5 fill-[#0e9f6e] text-[#0e9f6e]" /></p></div>
-            </div>
-          </div>
-        </div>
-      </div>
+function KakaoCta({ label, size = 'md', className = '', onClick }: { label: string; size?: 'md' | 'lg'; className?: string; onClick?: () => void }) {
+  const sizing = size === 'lg' ? 'min-h-13 gap-2.5 px-6 text-base' : 'min-h-11 gap-2 px-4 text-sm'
+  return (
+    <button
+      className={`wl-landing-cta inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[#FEE500] font-bold text-[#191600] shadow-[var(--wl-shadow-card)] ${sizing} ${className}`}
+      onClick={onClick}
+      type="button"
+    >
+      <Icon name="message-circle" size={size === 'lg' ? 'lg' : 'md'} />
+      {label}
+    </button>
+  )
+}
 
-      <div className="absolute -bottom-7 right-0 flex aspect-[9/18] w-[145px] flex-col overflow-hidden rounded-xl border-[5px] border-slate-900 bg-white text-[7px] shadow-2xl sm:-right-3 sm:w-[180px] md:-right-8 md:w-[210px] md:text-[8px]">
-        <div className="flex h-5 items-center justify-between border-b border-gray-100 px-2.5 font-bold"><span>9:41</span><span>● ●</span></div>
-        <div className="flex flex-1 flex-col gap-2 overflow-hidden bg-[#f8faf8] p-2">
-          <div className="flex items-center justify-between font-bold"><span>2026년 7월 ▼</span><Bell className="size-3" /></div>
-          <div className="rounded-lg border border-[#e5ede8] bg-white p-2 shadow-sm"><p className="text-[#6b7280]">이번 달 예산</p><p className="mt-0.5 text-[11px] font-black">3,200,000원</p><div className="mt-1.5 h-1 overflow-hidden rounded-full bg-gray-100"><div className="h-full w-[51%] bg-[#0e9f6e]" /></div></div>
-          <div className="rounded-lg border border-[#e5ede8] bg-white p-2 shadow-sm"><p className="mb-1 font-semibold text-[#6b7280]">최근 내역</p>{recentTransactions.map((transaction) => <div className="mt-1.5 flex items-center justify-between" key={transaction.name}><span className="flex items-center gap-1"><i className={`rounded px-1 py-0.5 font-bold not-italic ${transaction.color}`}>{transaction.category}</i><strong>{transaction.name}</strong></span><strong>{transaction.amount}</strong></div>)}</div>
-          <div className="rounded-lg border border-[#e5ede8] bg-white p-2 shadow-sm"><p className="mb-1 font-semibold text-[#6b7280]">지출 분석</p><div className="flex items-end gap-1.5 pt-2">{[35, 68, 48, 90, 60, 75].map((height) => <span className="flex-1 rounded-t bg-emerald-200" key={height} style={{ height: `${height * 0.35}px` }} />)}</div></div>
-        </div>
-        <div className="relative flex h-7 items-center justify-around border-t border-[#e5ede8] bg-white text-[#6b7280]"><span>홈</span><span>내역</span><span className="absolute -top-2.5 flex size-6 items-center justify-center rounded-full border-2 border-white bg-[#0e9f6e] text-xs font-bold text-white">+</span><span className="w-4" /><span>예산</span><span>통계</span></div>
+function AuthedCta({ label, size = 'md', className = '' }: { label: string; size?: 'md' | 'lg'; className?: string }) {
+  const sizing = size === 'lg' ? 'min-h-13 gap-2.5 px-6 text-base' : 'min-h-11 gap-2 px-4 text-sm'
+  return (
+    <Link
+      className={`wl-landing-cta inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[var(--wl-color-primary)] font-bold text-white shadow-[var(--wl-shadow-card)] ${sizing} ${className}`}
+      to="/dashboard"
+    >
+      {label}
+    </Link>
+  )
+}
+
+function LoginModal({ onClose }: { onClose: () => void }) {
+  const [kakaoError, setKakaoError] = useState(false)
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  async function handleKakaoLogin() {
+    setKakaoError(false)
+    try {
+      const { loginUrl } = await getKakaoLoginUrl()
+      window.location.assign(loginUrl)
+    } catch {
+      setKakaoError(true)
+    }
+  }
+
+  return (
+    <div className="wl-modal-scrim" onClick={onClose} role="presentation">
+      <div
+        aria-label="카카오로 시작하기"
+        aria-modal="true"
+        className="wl-modal-panel"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        style={{ width: 'min(420px, 100%)' }}
+      >
+        <h2 className="text-xl font-extrabold tracking-[-0.025em] text-[var(--wl-color-text-main)]">카카오로 시작하기</h2>
+        <p className="mt-2.5 text-[14.5px] leading-relaxed text-[var(--wl-color-text-body)]">처음이면 닉네임을 정하고 개인 장부가 만들어져요. 이미 계정이 있으면 바로 대시보드로 들어갑니다.</p>
+        <button
+          className="wl-landing-cta mt-5 inline-flex h-13 w-full items-center justify-center gap-2.5 rounded-[var(--wl-radius-md)] bg-[#FEE500] text-base font-bold text-[#191600]"
+          onClick={handleKakaoLogin}
+          type="button"
+        >
+          <Icon name="message-circle" size="lg" />
+          카카오 계정으로 계속
+        </button>
+        {kakaoError ? (
+          <p className="mt-3 rounded-[var(--wl-radius-md)] bg-[var(--wl-danger-soft)] px-3 py-2 text-sm text-[var(--wl-color-danger)]">카카오 로그인이 아직 설정되지 않았거나 연결에 실패했습니다.</p>
+        ) : null}
+        <p className="mt-4 text-[12.5px] leading-relaxed text-[var(--wl-color-text-secondary)]">초대 링크를 받았다면 로그인 후 초대 확인 화면으로 돌아옵니다.</p>
+        <button
+          className="mt-3.5 min-h-11 w-full rounded-xl text-[13.5px] font-semibold text-[var(--wl-color-text-secondary)] hover:bg-[var(--wl-color-surface-subtle)] hover:text-[var(--wl-color-text-main)]"
+          onClick={onClose}
+          type="button"
+        >
+          닫기
+        </button>
       </div>
     </div>
   )
 }
 
 export function LandingPage() {
-  const startPath = getAccessToken() ? '/dashboard' : '/login'
+  const [loginOpen, setLoginOpen] = useState(false)
+  const [openFaqIndex, setOpenFaqIndex] = useState(-1)
+  const isAuthenticated = Boolean(getAccessToken())
+
+  function renderCta(size: 'md' | 'lg', className?: string) {
+    return isAuthenticated ? (
+      <AuthedCta className={className} label="내 장부로 가기" size={size} />
+    ) : (
+      <KakaoCta className={className} label="카카오로 시작하기" onClick={() => setLoginOpen(true)} size={size} />
+    )
+  }
 
   return (
-    <main className="min-h-dvh bg-[#f8faf8] text-[#111827] antialiased">
-      <header className="sticky top-0 z-50 border-b border-[#e5ede8] bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link className="flex min-h-11 items-center gap-2" to="/"><House className="size-6 text-[#0e9f6e]" strokeWidth={2.5} /><strong className="text-lg tracking-tight">우리로그</strong></Link>
-          <nav aria-label="랜딩 메뉴" className="hidden items-center gap-6 md:flex"><a className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#features">기능</a><a className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-medium text-[#6b7280] hover:text-[#0e9f6e]" href="#support">도움말</a></nav>
-          <Link className="inline-flex h-11 items-center justify-center rounded-lg border border-[#e5ede8] bg-white px-4 text-sm font-medium shadow-sm hover:border-[#0e9f6e] hover:text-[#0e9f6e]" to={startPath}>{getAccessToken() ? '내 장부' : '로그인'}</Link>
-        </div>
+    <div className="bg-[var(--wl-color-surface)] text-[var(--wl-color-text-main)]" style={{ wordBreak: 'keep-all' }}>
+      <header className="sticky top-0 z-20 flex h-18 items-center justify-between gap-6 border-b border-[var(--wl-color-border)] bg-white/88 px-6 backdrop-blur-md">
+        <a className="flex flex-none items-center" href="#top">
+          <img alt="우리로그" className="block h-auto w-33" src={logo} />
+        </a>
+        <nav className="flex items-center gap-4 sm:gap-5.5">
+          <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] sm:inline" href="#budget">예산 구조</a>
+          <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] sm:inline" href="#features">기능</a>
+          <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] md:inline" href="#privacy">공개 범위</a>
+          <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] md:inline" href="#faq">자주 묻는 질문</a>
+          {renderCta('md')}
+        </nav>
       </header>
 
-      <section className="relative overflow-hidden px-6 pb-24 pt-12 md:pb-32 md:pt-20">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden w-[82%] lg:block">
-          <img alt="" className="h-full w-full object-cover object-right opacity-90" src={landingBackground} />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#f8faf8] via-[#f8faf8]/30 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#f8faf8]/10 via-transparent to-[#f8faf8]/25" />
-        </div>
-
-        <div className="relative z-10 mx-auto grid max-w-7xl gap-14 lg:grid-cols-12 lg:items-center xl:gap-10">
-          <div className="flex flex-col items-start lg:col-span-5">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#d1ebd9] bg-[#e7f7ef] px-3.5 py-1.5 text-xs font-semibold text-[#0e9f6e]"><Users className="size-3.5" /><span>함께 관리하고, 더 잘 모이는 우리 집 가계부</span></div>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-[54px] lg:leading-[1.15]">함께 쓰는<br />우리 집 <span className="text-[#0e9f6e]">가계부</span></h1>
-            <p className="mt-6 text-[15px] leading-relaxed text-[#6b7280] sm:text-base">수입과 지출을 함께 관리하고,<br className="hidden sm:inline" /> 투명한 소비로 더 단단해지는 우리.</p>
-            <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row"><Link className="inline-flex h-12 items-center justify-center rounded-lg bg-[#0e9f6e] px-8 text-[15px] font-semibold text-white shadow-md transition hover:bg-[#057a55]" to={startPath}>{getAccessToken() ? '내 장부로 가기' : '무료로 시작하기'}</Link><a className="inline-flex h-12 items-center justify-center rounded-lg border border-[#e5ede8] bg-white px-8 text-[15px] font-semibold text-[#6b7280] shadow-sm transition hover:border-slate-300 hover:text-[#111827]" href="#features">둘러보기</a></div>
-            <div className="mt-12 w-full rounded-lg border border-[#e5ede8] bg-white p-4 shadow-sm sm:max-w-md"><div className="grid grid-cols-3 divide-x divide-[#e5ede8] text-center"><div className="flex flex-col items-center gap-1.5"><Download className="size-4 text-[#0e9f6e]" /><strong className="text-[11px]">무료로 시작</strong></div><div className="flex flex-col items-center gap-1.5 px-1"><CreditCard className="size-4 text-[#0e9f6e]" /><strong className="text-[11px]">카드 등록 없이 사용</strong></div><div className="flex flex-col items-center gap-1.5"><Users className="size-4 text-[#0e9f6e]" /><strong className="text-[11px]">오늘부터 함께</strong></div></div></div>
+      <main id="top">
+        <section className="relative isolate bg-[var(--wl-color-surface-subtle)]">
+          <img
+            alt="창가 책상에서 노트북으로 가계부를 보는 장면"
+            className="absolute inset-0 -z-20 hidden h-full w-full object-cover object-right lg:block"
+            src={landingBackground}
+          />
+          <div
+            className="absolute inset-0 -z-10 hidden lg:block"
+            style={{
+              background:
+                'linear-gradient(100deg, color-mix(in srgb, var(--wl-color-surface-subtle) 98%, transparent) 0%, color-mix(in srgb, var(--wl-color-surface-subtle) 94%, transparent) 38%, color-mix(in srgb, var(--wl-color-surface-subtle) 58%, transparent) 62%, color-mix(in srgb, var(--wl-color-surface-subtle) 8%, transparent) 82%)',
+            }}
+          />
+          <div className="mx-auto grid max-w-[1160px] grid-cols-1 px-6 py-16 sm:py-20 lg:py-28">
+            <div className="wl-landing-hero-copy min-w-0 max-w-[600px]">
+              <h1 className="m-0 font-extrabold leading-[1.16] tracking-[-0.035em]" style={{ fontSize: 'clamp(34px, 4.2vw, 54px)', textWrap: 'pretty' }}>
+                함께 쓰는 돈을<br />서로 감시하지 않고 기록해요
+              </h1>
+              <p className="mt-5 max-w-[47ch] text-[17.5px] leading-[1.68] text-[var(--wl-color-text-body)]">
+                공동 생활비와 각자 예산을 나눠 운영하고, 이번 기간에 남은 돈을 두 사람이 같은 화면에서 봅니다.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                {renderCta('lg')}
+                <a
+                  className="wl-landing-cta inline-flex min-h-13 items-center gap-1.5 rounded-full border border-[var(--wl-color-border-strong)] bg-[color-mix(in_srgb,var(--wl-color-surface-subtle)_92%,transparent)] px-4.5 text-[15px] font-semibold text-[var(--wl-color-text-body)]"
+                  href="#budget"
+                >
+                  어떻게 나누는지 보기
+                  <Icon name="chevron-right" size="md" />
+                </a>
+              </div>
+            </div>
           </div>
+        </section>
 
-          <div className="relative mt-2 flex justify-center lg:col-span-7 lg:mt-0 lg:justify-end"><ProductPreview /></div>
+        <section className="border-t border-[var(--wl-color-border)] bg-[var(--wl-color-background)]">
+          <Reveal className="mx-auto grid max-w-[1160px] grid-cols-1 gap-14 px-6 py-20 md:grid-cols-2">
+            <div className="min-w-0">
+              <h2 className="m-0 max-w-[22ch] font-extrabold leading-[1.28] tracking-[-0.03em]" style={{ fontSize: 'clamp(26px, 2.8vw, 34px)' }}>
+                가계부를 멈추는 이유는 게을러서가 아니에요
+              </h2>
+              <p className="mt-4.5 max-w-[44ch] text-base leading-[1.7] text-[var(--wl-color-text-body)]">
+                둘이 쓰는 돈인데 기록은 혼자 합니다. 누가 얼마를 썼는지 확인하는 일이 대화가 아니라 확인 작업이 되면 오래 가지 못합니다.
+              </p>
+            </div>
+            <div className="grid min-w-0 content-start gap-0 py-1">
+              {COMPARISON_ROWS.map((row, index) => (
+                <div
+                  className="grid grid-cols-[104px_minmax(0,1fr)] gap-5 py-4"
+                  key={row.label}
+                  style={index < COMPARISON_ROWS.length - 1 ? { borderBottom: '1px solid var(--wl-color-border)' } : undefined}
+                >
+                  <span className={`text-[13px] font-bold ${row.tone === 'brand' ? 'text-[var(--wl-color-primary-dark)]' : 'text-[var(--wl-color-text-secondary)]'}`}>{row.label}</span>
+                  <span className="text-[15px] leading-[1.6]">{row.body}</span>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </section>
+
+        <section className="border-t border-[var(--wl-color-border)]" id="budget">
+          <Reveal className="mx-auto max-w-[1160px] px-6 py-21">
+            <h2 className="m-0 max-w-[24ch] font-extrabold leading-[1.28] tracking-[-0.03em]" style={{ fontSize: 'clamp(26px, 2.8vw, 34px)' }}>
+              한 기간의 예산을 네 갈래로 나눠요
+            </h2>
+            <p className="mt-4 max-w-[56ch] text-base leading-[1.7] text-[var(--wl-color-text-body)]">
+              기준은 달력 월이 아니라 월급날입니다. 시작일을 정하면 그날부터 다음 시작일 전날까지가 한 기간이 됩니다.
+            </p>
+
+            <div className="mt-10 flex h-19 gap-1 overflow-hidden rounded-[var(--wl-radius-md)]">
+              {BUDGET_SPLIT.map((row) => (
+                <div className="grid min-w-0 place-items-center" key={row.label} style={{ flex: row.percent, background: row.fill, color: row.ink }}>
+                  <strong className="text-[15px] font-extrabold tracking-[-0.02em]">{row.percent}%</strong>
+                </div>
+              ))}
+            </div>
+            <ul className="mt-5.5 grid list-none grid-cols-2 gap-5 p-0 sm:grid-cols-4">
+              {BUDGET_SPLIT.map((row) => (
+                <li className="min-w-0" key={row.label}>
+                  <strong className="block text-[15px] font-bold">{row.label}</strong>
+                  <span className="wl-tabular mt-1 block text-xl font-extrabold tracking-[-0.03em]">{formatWon(row.amount)}</span>
+                  <span className="mt-1.5 block text-[13.5px] leading-[1.6] text-[var(--wl-color-text-secondary)]">{row.note}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-7 max-w-[60ch] text-[14.5px] leading-[1.7] text-[var(--wl-color-text-secondary)]">
+              예비비는 바로 차감하지 않습니다. 필요할 때 공동 예산이나 각자 예산으로 옮겨 쓰고, 옮긴 기록은 두 사람 모두에게 남습니다.
+            </p>
+          </Reveal>
+        </section>
+
+        <section className="border-t border-[var(--wl-color-border)] bg-[var(--wl-color-background)]" id="features">
+          <Reveal className="mx-auto max-w-[1160px] px-6 py-21">
+            <h2 className="m-0 max-w-[20ch] font-extrabold leading-[1.28] tracking-[-0.03em]" style={{ fontSize: 'clamp(26px, 2.8vw, 34px)' }}>
+              기록하는 시간을 줄이는 쪽으로 만들었어요
+            </h2>
+            <div className="mt-9 grid auto-rows-[minmax(0,auto)] grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]">
+              <article className="flex flex-col overflow-hidden rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] lg:row-span-2">
+                <div className="p-6.5 pb-0">
+                  <h3 className="m-0 text-xl font-bold tracking-[-0.02em]">영수증과 카드 내역 캡처를 한 번에</h3>
+                  <p className="mt-2.5 text-[15px] leading-[1.68] text-[var(--wl-color-text-body)]">
+                    여러 장을 올리면 거래 후보를 하나의 목록으로 모읍니다. 중복 의심 건은 저장 대상에서 빼 두고, 카테고리와 차감 예산은 여러 건을 골라 한 번에 바꿉니다.
+                  </p>
+                </div>
+                {/* TODO(asset): 영수증 여러 장을 모아 촬영한 사진, 가로세로 5:3 */}
+                <div className="mt-6 grid aspect-[5/3] place-items-center gap-1.5 border-t border-dashed border-[var(--wl-color-border-strong)] bg-[var(--wl-color-surface-subtle)] text-center">
+                  <span className="text-[13.5px] font-bold text-[var(--wl-color-text-secondary)]">이미지 필요</span>
+                  <span className="max-w-[30ch] text-[12.5px] leading-[1.6] text-[var(--wl-color-text-secondary)]">영수증 여러 장을 모아 둔 사진<br />가로 5:3</span>
+                </div>
+              </article>
+              <article className="rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-brand-50)] p-6.5">
+                <h3 className="m-0 text-xl font-bold tracking-[-0.02em]">월급날 기준 예산 기간</h3>
+                <p className="mt-2.5 text-[15px] leading-[1.68] text-[var(--wl-color-text-body)]">
+                  시작일을 10일로 두면 10일부터 다음 달 9일까지를 한 기간으로 계산합니다. 남은 날짜에 맞춰 하루 쓸 수 있는 돈도 함께 보여줍니다.
+                </p>
+              </article>
+              <article className="rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] p-6.5">
+                <h3 className="m-0 text-xl font-bold tracking-[-0.02em]">고정비와 할부는 알아서</h3>
+                <p className="mt-2.5 text-[15px] leading-[1.68] text-[var(--wl-color-text-body)]">
+                  월세와 구독료는 예정일에 자동 기록되고, 할부는 회차 금액이 그 결제일이 속한 기간에 반영됩니다. 남은 예정액을 뺀 실제 쓸 수 있는 돈이 대시보드에 뜹니다.
+                </p>
+              </article>
+              <article className="grid grid-cols-1 overflow-hidden rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] sm:grid-cols-[minmax(0,1fr)_300px] lg:col-span-2">
+                <div className="p-6.5">
+                  <h3 className="m-0 text-xl font-bold tracking-[-0.02em]">일요일 밤에 도착하는 다음 주 기준액</h3>
+                  <p className="mt-2.5 max-w-[52ch] text-[15px] leading-[1.68] text-[var(--wl-color-text-body)]">
+                    이번 주에 더 쓴 만큼만 다음 주 기준액에서 빼서 알려줍니다. 아껴 쓴 주에는 더 쓰라고 권하지 않습니다.
+                  </p>
+                </div>
+                {/* TODO(asset): 일요일 저녁 집 안 분위기 사진, 가로세로 16:10 */}
+                <div className="grid min-h-45 place-items-center gap-1.5 border-t border-dashed border-[var(--wl-color-border-strong)] bg-[var(--wl-color-surface-subtle)] text-center sm:border-t-0 sm:border-l">
+                  <span className="text-[13.5px] font-bold text-[var(--wl-color-text-secondary)]">이미지 필요</span>
+                  <span className="max-w-[26ch] text-[12.5px] leading-[1.6] text-[var(--wl-color-text-secondary)]">일요일 저녁 집 안 분위기<br />가로 16:10</span>
+                </div>
+              </article>
+            </div>
+          </Reveal>
+        </section>
+
+        <section className="border-t border-[var(--wl-color-border)]" id="privacy">
+          <Reveal className="mx-auto max-w-[1160px] px-6 py-21">
+            <h2 className="m-0 max-w-[24ch] font-extrabold leading-[1.28] tracking-[-0.03em]" style={{ fontSize: 'clamp(26px, 2.8vw, 34px)' }}>
+              무엇을 함께 보고 무엇을 나만 볼지 정해요
+            </h2>
+            <div className="mt-9 grid grid-cols-1 gap-14 md:grid-cols-2">
+              <div className="min-w-0">
+                <strong className="block border-b-2 border-[var(--wl-color-primary)] pb-3.5 text-[15px] font-bold">함께 보는 것</strong>
+                {SHARED_ROWS.map((row) => (
+                  <p className="m-0 border-b border-[var(--wl-color-border)] py-3.5 text-[15px] leading-[1.6]" key={row}>{row}</p>
+                ))}
+              </div>
+              <div className="min-w-0">
+                <strong className="block border-b-2 border-[var(--wl-color-border-strong)] pb-3.5 text-[15px] font-bold">나만 보는 것</strong>
+                {PERSONAL_ROWS.map((row) => (
+                  <p className="m-0 border-b border-[var(--wl-color-border)] py-3.5 text-[15px] leading-[1.6] text-[var(--wl-color-text-body)]" key={row}>{row}</p>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        </section>
+
+        <section className="border-t border-[var(--wl-color-border)] bg-[var(--wl-color-background)]">
+          <Reveal className="mx-auto max-w-[1160px] px-6 py-21">
+            {FLOW_ROWS.map((row, index) => (
+              <div
+                className="grid grid-cols-1 items-baseline gap-4 py-6.5 sm:grid-cols-[200px_minmax(0,1fr)] sm:gap-8"
+                key={row.verb}
+                style={index < FLOW_ROWS.length - 1 ? { borderBottom: '1px solid var(--wl-color-border)' } : undefined}
+              >
+                <strong className="text-[30px] font-extrabold tracking-[-0.03em]">{row.verb}</strong>
+                <p className="m-0 max-w-[58ch] text-base leading-[1.7] text-[var(--wl-color-text-body)]">{row.body}</p>
+              </div>
+            ))}
+          </Reveal>
+        </section>
+
+        <section className="border-t border-[var(--wl-color-border)]" id="faq">
+          <Reveal className="mx-auto max-w-[820px] px-6 py-21">
+            <h2 className="m-0 mb-7 text-[34px] font-extrabold tracking-[-0.03em]">자주 묻는 질문</h2>
+            {FAQ_ROWS.map((row, index) => {
+              const open = openFaqIndex === index
+              return (
+                <div className="border-b border-[var(--wl-color-border)]" key={row.question}>
+                  <button
+                    aria-expanded={open}
+                    className="flex min-h-16 w-full items-center justify-between gap-4 py-3 text-left text-[16.5px] font-semibold hover:text-[var(--wl-color-primary-dark)]"
+                    onClick={() => setOpenFaqIndex(open ? -1 : index)}
+                    type="button"
+                  >
+                    {row.question}
+                    <span className={`wl-landing-faq-icon grid size-7 flex-none place-items-center text-[var(--wl-color-text-secondary)] ${open ? 'wl-landing-faq-icon--open' : ''}`}>
+                      <Icon name="chevron-down" size="md" />
+                    </span>
+                  </button>
+                  <div className={`wl-landing-faq-panel ${open ? 'wl-landing-faq-panel--open' : ''}`}>
+                    <div style={{ minHeight: 0 }}>
+                      <p className="m-0 max-w-[64ch] px-0.5 pb-5 text-[15px] leading-[1.72] text-[var(--wl-color-text-body)]">{row.answer}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </Reveal>
+        </section>
+
+        <section className="border-t border-[var(--wl-color-border)] bg-[var(--wl-brand-50)]">
+          <Reveal className="mx-auto grid max-w-[720px] justify-items-center gap-5.5 px-6 py-22 text-center">
+            <h2 className="m-0 text-[36px] font-extrabold leading-[1.26] tracking-[-0.03em]">이번 기간부터 같이 기록해요</h2>
+            <p className="m-0 max-w-[44ch] text-[16.5px] leading-[1.7] text-[var(--wl-color-text-body)]">
+              카카오로 로그인하면 개인 장부가 먼저 생기고, 링크 하나로 상대방을 공동 장부에 초대할 수 있습니다.
+            </p>
+            {renderCta('lg')}
+          </Reveal>
+        </section>
+      </main>
+
+      <footer className="border-t border-[var(--wl-color-border)]">
+        <div className="mx-auto flex max-w-[1160px] flex-col items-center justify-between gap-6 px-6 py-8 sm:flex-row">
+          <img alt="우리로그" className="block h-auto w-28 opacity-75" src={logo} />
+          <div className="flex items-center gap-5 text-[13.5px] text-[var(--wl-color-text-secondary)]">
+            <a className="text-[var(--wl-color-text-secondary)]" href="#faq">자주 묻는 질문</a>
+            <a className="text-[var(--wl-color-text-secondary)]" href="#privacy">공개 범위</a>
+            <span>문의 hello@woorilog.kr</span>
+          </div>
         </div>
-      </section>
+      </footer>
 
-      <section className="border-y border-[#e5ede8] bg-white px-6 py-16" id="features">
-        <div className="mx-auto max-w-7xl"><div className="grid gap-12 lg:grid-cols-12 lg:items-center"><div className="lg:col-span-4"><p className="text-sm font-semibold text-[#0e9f6e]">우리집에 꼭 맞는 기능</p><h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">함께 쓰니까<br />더 쉬워요</h2></div><div className="lg:col-span-8"><div className="rounded-lg border border-[#e5ede8] bg-[#f8faf8] p-6 shadow-sm"><div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">{features.map(({ icon: Icon, title, description }) => <article key={title}><span className="flex size-10 items-center justify-center rounded-lg border border-[#e5ede8] bg-white text-[#0e9f6e] shadow-sm"><Icon className="size-5" /></span><h3 className="mt-4 text-[15px] font-bold">{title}</h3><p className="mt-2 text-xs leading-relaxed text-[#6b7280]">{description}</p></article>)}</div></div></div></div></div>
-      </section>
-
-      <footer className="border-t border-[#e5ede8] bg-[#f8faf8] py-8 text-center text-xs text-[#6b7280]" id="support"><p>© {new Date().getFullYear()} 우리로그 (Woorilog). All rights reserved.</p></footer>
-    </main>
+      {loginOpen ? <LoginModal onClose={() => setLoginOpen(false)} /> : null}
+    </div>
   )
 }
