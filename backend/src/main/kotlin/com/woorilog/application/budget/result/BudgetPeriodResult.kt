@@ -37,12 +37,15 @@ data class BudgetPeriodDetailResponse(
     val copiedFromPeriodId: Long?,
     val categoryBudgets: List<CategoryBudgetResponse>,
 )
+// previousSpentAmount is null when there is no previous budget period, or when the previous period had
+// no allocation of the same scope/owner to compare against. Otherwise it is the amount spent (0 if none).
 data class CategoryBudgetResponse(
     val source: BudgetSourceResponse,
     val groupCode: String,
     val groupName: String,
     val amount: Long,
     val spentAmount: Long,
+    val previousSpentAmount: Long?,
 )
 data class BudgetPeriodListResponse(val items: List<BudgetPeriodDetailResponse>, val nextCursor: String?)
 data class ReserveTransferResponse(

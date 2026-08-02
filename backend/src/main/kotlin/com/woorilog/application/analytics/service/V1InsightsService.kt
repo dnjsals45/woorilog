@@ -27,6 +27,7 @@ import com.woorilog.application.analytics.result.DailyCumulativeResponse
 import com.woorilog.application.analytics.result.DailySpendingResponse
 import com.woorilog.application.analytics.result.PeriodTrendResponse
 import com.woorilog.application.analytics.result.V1CategorySpendingResponse
+import com.woorilog.application.analytics.result.V1CategorySpendingWithComparisonResponse
 import com.woorilog.domain.transaction.policy.AnalyticsScope
 import com.woorilog.common.exception.ForbiddenException
 import com.woorilog.common.exception.NotFoundException
@@ -106,13 +107,7 @@ class V1InsightsService(
             ?: periods.firstOrNull { !LocalDate.now(clock).isBefore(it.startDate) && !LocalDate.now(clock).isAfter(it.endDate) }
             ?: periods.first()
         requireReadablePeriod(userId, ledgerId, selected.startDate)
-        val transactions = visibleTransactions(userId, ledgerId, selected).filter { transaction ->
-            when (scope) {
-                AnalyticsScope.ALL -> true
-                AnalyticsScope.SHARED -> transaction.scopeType == BudgetScopeType.SHARED
-                AnalyticsScope.MINE -> transaction.scopeType == BudgetScopeType.PERSONAL && transaction.scopeOwnerUserId == userId
-            }
-        }
+        val transactions = visibleTransactions(userId, ledgerId, selected).filter { matchesScope(it, scope, userId) }
         val expenses = transactions.filter(::isBudgetExpense)
         var cumulative = 0L
         val daily = expenses.groupBy { it.transactionDate }.toSortedMap().map { (date, items) ->
@@ -126,6 +121,19 @@ class V1InsightsService(
         }
         val previousAmount = trend.dropLast(1).lastOrNull()?.expenseAmount
         val total = expenses.sumOf { it.amount }
+
+        // Previous period for category-level comparison: the period immediately preceding `selected`
+        // in the same ledger-ordered-desc list already fetched above (no extra query per category).
+        val selectedIndex = periods.indexOf(selected)
+        val previousPeriod = if (selectedIndex >= 0) periods.getOrNull(selectedIndex + 1) else null
+        val previousCategoryAmounts: Map<String, Long>? = previousPeriod?.let { prevPeriod ->
+            visibleTransactions(userId, ledgerId, prevPeriod)
+                .filter { matchesScope(it, scope, userId) }
+                .filter(::isBudgetExpense)
+                .groupBy { it.categoryGroupCode ?: "UNCLASSIFIED" }
+                .mapValues { (_, items) -> items.sumOf { it.amount } }
+        }
+
         return AnalyticsResponse(
             periodStart = selected.startDate,
             periodEnd = selected.endDate,
@@ -133,10 +141,16 @@ class V1InsightsService(
             totalExpenseAmount = total,
             previousPeriodExpenseAmount = previousAmount,
             changeAmount = previousAmount?.let { total - it },
-            categoryDistribution = categorySpending(expenses),
+            categoryDistribution = categorySpendingWithComparison(expenses, previousCategoryAmounts),
             dailyFlow = daily,
             trend = trend,
         )
+    }
+
+    private fun matchesScope(transaction: Transaction, scope: AnalyticsScope, userId: Long): Boolean = when (scope) {
+        AnalyticsScope.ALL -> true
+        AnalyticsScope.SHARED -> transaction.scopeType == BudgetScopeType.SHARED
+        AnalyticsScope.MINE -> transaction.scopeType == BudgetScopeType.PERSONAL && transaction.scopeOwnerUserId == userId
     }
 
     private fun requireReadablePeriod(userId: Long, ledgerId: Long, startDate: LocalDate): BudgetPeriod {
@@ -164,6 +178,25 @@ class V1InsightsService(
         .filter(::isBudgetExpense)
         .groupBy { (it.categoryGroupCode ?: "UNCLASSIFIED") to (it.categoryGroupName ?: "미분류") }
         .map { (group, items) -> V1CategorySpendingResponse(group.first, group.second, items.sumOf { it.amount }) }
+        .sortedByDescending { it.amount }
+
+    // previousAmounts == null means there is no previous period to compare against (previousAmount stays
+    // null for every category). previousAmounts != null but missing a category means that category had
+    // no spending in the previous period (previousAmount is 0).
+    private fun categorySpendingWithComparison(
+        transactions: List<Transaction>,
+        previousAmounts: Map<String, Long>?,
+    ): List<V1CategorySpendingWithComparisonResponse> = transactions
+        .filter(::isBudgetExpense)
+        .groupBy { (it.categoryGroupCode ?: "UNCLASSIFIED") to (it.categoryGroupName ?: "미분류") }
+        .map { (group, items) ->
+            V1CategorySpendingWithComparisonResponse(
+                groupCode = group.first,
+                groupName = group.second,
+                amount = items.sumOf { it.amount },
+                previousAmount = previousAmounts?.let { it[group.first] ?: 0L },
+            )
+        }
         .sortedByDescending { it.amount }
 
     private fun isBudgetExpense(transaction: Transaction): Boolean = try {

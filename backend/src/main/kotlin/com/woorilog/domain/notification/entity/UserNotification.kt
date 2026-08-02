@@ -10,6 +10,7 @@ import com.woorilog.domain.auth.entity.User
 enum class NotificationType {
     INVITATION, BUDGET, MONTH_CLOSED, SYSTEM,
     BUDGET_THRESHOLD_80, BUDGET_THRESHOLD_100, BUDGET_PERIOD_PREPARATION, WEEKLY_GUIDE,
+    BUDGET_CHANGED, RESERVE_TRANSFER,
 }
 
 @Entity

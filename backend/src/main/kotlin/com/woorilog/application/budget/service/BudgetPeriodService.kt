@@ -19,6 +19,7 @@ import com.woorilog.domain.ledger.entity.Ledger
 import com.woorilog.domain.ledger.entity.LedgerType
 import com.woorilog.domain.ledger.repository.LedgerMemberRepository
 import com.woorilog.domain.ledger.repository.LedgerRepository
+import com.woorilog.domain.notification.entity.NotificationType
 import com.woorilog.domain.scheduled.entity.ScheduledOccurrenceStatus
 import com.woorilog.domain.scheduled.repository.ScheduledOccurrenceRepository
 import com.woorilog.domain.transaction.entity.Transaction
@@ -39,6 +40,7 @@ import com.woorilog.application.budget.result.ReserveTransferListResponse
 import com.woorilog.application.budget.result.ReserveTransferResponse
 import com.woorilog.application.budget.result.ReserveTransferResultResponse
 import com.woorilog.application.budget.result.UserSummaryResponse
+import com.woorilog.application.notification.service.NotificationService
 import com.woorilog.common.exception.ForbiddenException
 import com.woorilog.common.exception.NotFoundException
 import com.woorilog.common.exception.WoorilogException
@@ -62,6 +64,7 @@ class BudgetPeriodService(
     private val ledgerCategoryGroupRepository: LedgerCategoryGroupRepository,
     private val transactionRepository: TransactionRepository,
     private val scheduledOccurrenceRepository: ScheduledOccurrenceRepository,
+    private val notificationService: NotificationService,
     private val clock: Clock,
 ) {
     @Transactional
@@ -175,6 +178,7 @@ class BudgetPeriodService(
                 endDate = expected.endDate,
                 totalBudgetAmount = decision.totalBudget,
             )
+        val previousTotalBudgetAmount = period.id?.let { period.totalBudgetAmount }
         period.totalBudgetAmount = decision.totalBudget
         period.preparedAt = clock.instant()
         val savedPeriod = budgetPeriodRepository.save(period)
@@ -214,6 +218,17 @@ class BudgetPeriodService(
         if (request.applyToFutureDefaults) {
             ledger.defaultTotalBudgetAmount = decision.totalBudget
             ledgerRepository.save(ledger)
+        }
+
+        if (previousTotalBudgetAmount != null && previousTotalBudgetAmount != decision.totalBudget) {
+            notificationService.notifyLedgerMembers(
+                ledgerId,
+                NotificationType.BUDGET_CHANGED,
+                "예산이 변경되었어요",
+                "${startDate} 예산 기간의 전체 예산이 ${decision.totalBudget}원으로 변경되었습니다.",
+                "/budgets?period=$startDate",
+                "budget-changed-$ledgerId-$startDate-${clock.instant().toEpochMilli()}",
+            )
         }
 
         return toDetail(savedPeriod, LocalDate.now(clock), userId)
@@ -301,6 +316,14 @@ class BudgetPeriodService(
         budgetAllocationRepository.save(targetAllocation)
         val transfer = reserveTransferRepository.save(
             ReserveTransfer(period, targetAllocation, actor, amount)
+        )
+        notificationService.notifyLedgerMembers(
+            ledgerId,
+            NotificationType.RESERVE_TRANSFER,
+            "예비비가 이동했어요",
+            "예비비 ${amount}원이 ${if (targetAllocation.scope == BudgetAllocationScope.SHARED) "공동 예산" else "개인 예산"}으로 이동했습니다.",
+            "/budgets?period=$startDate",
+            "reserve-transfer-$ledgerId-${transfer.id}",
         )
         return ReserveTransferResultResponse(
             transfer = toTransfer(transfer),
@@ -393,6 +416,25 @@ class BudgetPeriodService(
             period.endDate,
             ScheduledOccurrenceStatus.SCHEDULED,
         )
+
+        // Previous period for "지난 기간 사용액" comparison: the closest earlier period for this ledger,
+        // fetched directly (no full period list load) to avoid overhead when toDetail() is called per item
+        // in list(). Allocations/transactions for it are loaded once per allocation, not per category.
+        val previousPeriod = budgetPeriodRepository.findFirstByLedgerIdAndStartDateLessThanOrderByStartDateDesc(
+            period.ledger.id!!,
+            period.startDate,
+        )
+        val previousAllocations = previousPeriod?.let { budgetAllocationRepository.findByBudgetPeriodIdOrderById(it.id!!) } ?: emptyList()
+        val previousTransactionsByAllocation = previousPeriod?.let { prevPeriod ->
+            previousAllocations.associate { allocation ->
+                allocation.id!! to transactionRepository.findByBudgetAllocationIdAndTransactionDateBetween(
+                    allocation.id!!,
+                    prevPeriod.startDate,
+                    prevPeriod.endDate,
+                ).filter(::isBudgetExpense)
+            }
+        } ?: emptyMap()
+
         return BudgetPeriodDetailResponse(
             id = period.id!!,
             ledgerId = period.ledger.id!!,
@@ -430,6 +472,9 @@ class BudgetPeriodService(
             categoryBudgets = allocations
                 .filter { it.scope == BudgetAllocationScope.SHARED || it.owner?.id == viewerUserId }
                 .flatMap { allocation ->
+                    val previousAllocation = previousAllocations.firstOrNull {
+                        it.scope == allocation.scope && it.owner?.id == allocation.owner?.id
+                    }
                     allocationCategoryBudgetRepository.findByBudgetAllocationId(allocation.id!!).map { categoryBudget ->
                         CategoryBudgetResponse(
                             source = BudgetSourceResponse(allocation.scope.name, allocation.owner?.id),
@@ -441,6 +486,11 @@ class BudgetPeriodService(
                             spentAmount = transactionsByAllocation.getValue(allocation.id!!)
                                 .filter { it.categoryGroupCode == categoryBudget.categoryGroupCode }
                                 .sumOf { it.amount },
+                            previousSpentAmount = previousAllocation?.let { prevAllocation ->
+                                previousTransactionsByAllocation.getValue(prevAllocation.id!!)
+                                    .filter { it.categoryGroupCode == categoryBudget.categoryGroupCode }
+                                    .sumOf { it.amount }
+                            },
                         )
                     }
                 },

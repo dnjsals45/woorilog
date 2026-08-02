@@ -12,4 +12,5 @@ interface BudgetPeriodJpaRepository : JpaRepository<BudgetPeriod, Long> {
         endDate: LocalDate,
     ): BudgetPeriod?
     fun findByLedgerIdOrderByStartDateDesc(ledgerId: Long): List<BudgetPeriod>
+    fun findFirstByLedgerIdAndStartDateLessThanOrderByStartDateDesc(ledgerId: Long, startDate: LocalDate): BudgetPeriod?
 }

@@ -13,5 +13,6 @@ interface BudgetPeriodRepository {
         endDate: LocalDate,
     ): BudgetPeriod?
     fun findByLedgerIdOrderByStartDateDesc(ledgerId: Long): List<BudgetPeriod>
+    fun findFirstByLedgerIdAndStartDateLessThanOrderByStartDateDesc(ledgerId: Long, startDate: LocalDate): BudgetPeriod?
     fun save(budgetPeriod: BudgetPeriod): BudgetPeriod
 }

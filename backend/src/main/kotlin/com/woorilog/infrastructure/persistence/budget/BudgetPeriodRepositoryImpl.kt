@@ -15,5 +15,7 @@ class BudgetPeriodRepositoryImpl(
     override fun findFirstByLedgerIdAndStartDateLessThanEqualAndEndDateGreaterThanEqual(ledgerId: Long, startDate: LocalDate, endDate: LocalDate) =
         jpaRepository.findFirstByLedgerIdAndStartDateLessThanEqualAndEndDateGreaterThanEqual(ledgerId, startDate, endDate)
     override fun findByLedgerIdOrderByStartDateDesc(ledgerId: Long) = jpaRepository.findByLedgerIdOrderByStartDateDesc(ledgerId)
+    override fun findFirstByLedgerIdAndStartDateLessThanOrderByStartDateDesc(ledgerId: Long, startDate: LocalDate) =
+        jpaRepository.findFirstByLedgerIdAndStartDateLessThanOrderByStartDateDesc(ledgerId, startDate)
     override fun save(budgetPeriod: BudgetPeriod): BudgetPeriod = jpaRepository.save(budgetPeriod)
 }

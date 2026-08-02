@@ -1,6 +1,9 @@
 package com.woorilog.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.woorilog.domain.budget.entity.BudgetAllocation
+import com.woorilog.domain.budget.entity.BudgetAllocationScope
+import com.woorilog.domain.budget.entity.BudgetPeriod
 import com.woorilog.domain.budget.repository.BudgetAllocationRepository
 import com.woorilog.domain.budget.repository.BudgetPeriodRepository
 import com.woorilog.domain.category.entity.CategoryType
@@ -71,6 +74,43 @@ class V1InsightsAutomationIntegrationTest {
         automation.evaluatePeriod(period.id!!)
         assertEquals(2, notificationRepository.findTop50ByUserIdOrderByCreatedAtDesc(user.id!!).count { it.type == NotificationType.BUDGET_THRESHOLD_80 })
     }
+    @Test
+    fun should_ComputeCategoryPreviousAmount_OnlyWhenPreviousPeriodExists() {
+        val login = login("insights-previous@example.com")
+        val currentPeriod = periodRepository.findByLedgerIdOrderByStartDateDesc(login.currentLedger.id).first()
+        val allocation = allocationRepository.findByBudgetPeriodIdOrderById(currentPeriod.id!!).single()
+        val category = categoryRepository.findByLedgerIdOrderBySortOrderAsc(login.currentLedger.id).first { it.type == CategoryType.EXPENSE }
+        val user = allocation.owner!!
+
+        fun saveExpense(period: BudgetPeriod, targetAllocation: BudgetAllocation, amount: Long) = transactionRepository.save(Transaction(
+            ledger = period.ledger, category = category, payer = user, type = CategoryType.EXPENSE, amount = amount, transactionDate = period.startDate, memo = null,
+            recorder = user, budgetAllocation = targetAllocation, transferType = null, merchant = "검증", scopeType = BudgetScopeType.PERSONAL,
+            scopeOwnerUserId = user.id, categoryGroupCode = category.categoryGroup.code, categoryGroupName = category.categoryGroup.name, categoryName = category.name,
+        ))
+        saveExpense(currentPeriod, allocation, 60)
+
+        // No previous period yet: previousAmount stays null for every category, including this one.
+        val withoutPrevious = insights.analytics(user.id!!, login.currentLedger.id, currentPeriod.startDate, com.woorilog.domain.transaction.policy.AnalyticsScope.ALL)
+        val distributionWithoutPrevious = withoutPrevious.categoryDistribution.first { it.groupCode == category.categoryGroup.code }
+        assertEquals(60, distributionWithoutPrevious.amount)
+        assertEquals(null, distributionWithoutPrevious.previousAmount)
+
+        // Add a previous period with spending in the same category.
+        val previousPeriod = periodRepository.save(BudgetPeriod(
+            ledger = currentPeriod.ledger,
+            startDate = currentPeriod.startDate.minusMonths(1),
+            endDate = currentPeriod.startDate.minusDays(1),
+            totalBudgetAmount = currentPeriod.totalBudgetAmount,
+        ))
+        val previousAllocation = allocationRepository.save(BudgetAllocation(previousPeriod, BudgetAllocationScope.PERSONAL, user, 100))
+        saveExpense(previousPeriod, previousAllocation, 40)
+
+        val withPrevious = insights.analytics(user.id!!, login.currentLedger.id, currentPeriod.startDate, com.woorilog.domain.transaction.policy.AnalyticsScope.ALL)
+        val distributionWithPrevious = withPrevious.categoryDistribution.first { it.groupCode == category.categoryGroup.code }
+        assertEquals(60, distributionWithPrevious.amount)
+        assertEquals(40, distributionWithPrevious.previousAmount)
+    }
+
     private fun login(email: String): DevLoginResponse {
         val result = mockMvc.perform(post("/api/auth/dev-login").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(mapOf("email" to email, "nickname" to "분석 사용자")))).andExpect(status().isOk).andReturn()
         return objectMapper.readValue(result.response.contentAsString, DevLoginResponse::class.java)
