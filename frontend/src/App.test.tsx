@@ -63,9 +63,10 @@ describe('App V1 routes', () => {
   it('renders the landing and login entry points', async () => {
     const actor = userEvent.setup()
     renderApp('/')
-    expect(screen.getByRole('heading', { level: 1, name: /함께 쓰는.*우리 집.*가계부/i })).toBeInTheDocument()
-    await actor.click(screen.getByRole('link', { name: '무료로 시작하기' }))
-    expect(screen.getByRole('button', { name: '개발자 로그인' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /함께 쓰는 돈을.*감시하지 않고 기록해요/i })).toBeInTheDocument()
+    // 디자인상 로그인은 별도 라우트가 아니라 랜딩 위의 모달이다.
+    await actor.click(screen.getAllByRole('button', { name: '카카오로 시작하기' })[0])
+    expect(await screen.findByRole('dialog', { name: '카카오로 시작하기' })).toBeInTheDocument()
   })
 
   it('redirects a protected V1 route to login without a session', async () => {
@@ -90,6 +91,9 @@ describe('App V1 routes', () => {
       status: 'PENDING',
       expiresAt: '2026-07-31T23:59:00+09:00',
       authenticationRequired: true,
+      currentMemberCount: 1,
+      viewerAlreadyMember: null,
+      budgetCycle: { startType: 'DAY_OF_MONTH', startDay: 1 },
     }) : undefined)
     renderApp('/invitations/invite-token')
     expect(await screen.findByRole('heading', { level: 2, name: '우리 공동 장부' })).toBeInTheDocument()
@@ -100,7 +104,7 @@ describe('App V1 routes', () => {
     setAccessToken('access-token')
     installApiMock((url) => url.pathname === '/api/me' ? response({ user: { ...user, nicknameConfirmed: false }, currentLedger: ledger }) : undefined)
     renderApp('/budget')
-    expect(await screen.findByRole('heading', { level: 1, name: '우리로그에서 사용할 이름을 정해주세요' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '어떤 이름으로 부를까요?' })).toBeInTheDocument()
   })
 
   it('uses only the documented primary navigation', async () => {
@@ -108,10 +112,15 @@ describe('App V1 routes', () => {
     installApiMock()
     renderApp('/dashboard')
     expect(await screen.findByRole('navigation', { name: '주요 메뉴' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '거래' })).toHaveAttribute('href', '/transactions')
-    expect(screen.getByRole('link', { name: '예산' })).toHaveAttribute('href', '/budget')
+    expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByRole('link', { name: '가계부' })).toHaveAttribute('href', '/transactions')
+    expect(screen.getByRole('link', { name: '반복 거래' })).toHaveAttribute('href', '/recurring')
+    expect(screen.getByRole('link', { name: '예산 설정' })).toHaveAttribute('href', '/budget')
     expect(screen.getByRole('link', { name: '분석' })).toHaveAttribute('href', '/analysis')
     expect(screen.queryByRole('link', { name: '캘린더' })).not.toBeInTheDocument()
+    // 사이드바 내비게이션은 위 5종만. 알림·카테고리 관리·도움말은 디자인에서 빠졌습니다.
+    expect(screen.queryByRole('link', { name: '알림' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '카테고리 관리' })).not.toBeInTheDocument()
   })
 
   it('renders removed legacy paths as not found', async () => {

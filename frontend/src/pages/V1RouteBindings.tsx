@@ -1,84 +1,74 @@
 import { useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useMeQuery, useUpdateProfileMutation } from '../features/auth/model/authQueries'
 import { clearAuthReturnPath, getAuthReturnPath } from '../features/auth/model/authReturnPath'
-import { useCreateInvitationLinkMutation } from '../features/invitation/model/invitationQueries'
+import { createInvitationLink } from '../features/invitation/api/invitationApi'
 import {
-  useCreateSharedLedgerMutation,
-  useLeaveLedgerMutation,
-  useLedgerMembersQuery,
-  useLedgersQuery,
-  useRemoveLedgerMemberMutation,
-  useRenameLedgerMutation,
-  useTransferLedgerOwnershipMutation,
-} from '../features/ledger/model/ledgerQueries'
+  useCreateInvitationLinkMutation,
+  useLinkInvitationPreviewQuery,
+} from '../features/invitation/model/invitationQueries'
+import { useCreateSharedLedgerMutation } from '../features/ledger/model/ledgerQueries'
 import { OnboardingPage } from './OnboardingPage'
 import { SharedLedgerCreatePage } from './SharedLedgerCreatePage'
-import { LedgerSettingsPage } from './LedgerSettingsPage'
 
 export function OnboardingRoute() {
   const me = useMeQuery()
   const mutation = useUpdateProfileMutation()
-  const navigate = useNavigate()
+  const invitationReturnPath = getAuthReturnPath().startsWith('/invitations/') ? getAuthReturnPath() : null
+  // '/invitations/:token' 과 '/invitations/links/:token' 두 경로 형태 모두에서 토큰만 뽑아냅니다.
+  const invitationToken = invitationReturnPath?.split(/[?#]/)[0].split('/').filter(Boolean).pop()
+  const invitationPreview = useLinkInvitationPreviewQuery(invitationToken)
   if (me.isLoading) return <OnboardingPage isLoading />
   if (me.data?.user.nicknameConfirmed) return <Navigate replace to={getAuthReturnPath()} />
   return <OnboardingPage
-    error={mutation.isError ? '입력한 이름과 시간대를 확인한 뒤 다시 시도해주세요.' : null}
+    error={mutation.isError ? '입력한 이름을 확인한 뒤 다시 시도해주세요.' : null}
     initialNickname={me.data?.user.nickname}
-    invitationReturnPath={getAuthReturnPath().startsWith('/invitations/') ? getAuthReturnPath() : null}
+    inviterNickname={invitationPreview.data?.inviter.nickname}
+    invitationReturnPath={invitationReturnPath}
     isLoading={mutation.isPending}
     onConfirm={async (request) => {
       await mutation.mutateAsync(request)
-      const returnPath = getAuthReturnPath()
-      clearAuthReturnPath()
-      navigate(returnPath, { replace: true })
     }}
+    onLeave={() => clearAuthReturnPath()}
   />
 }
 
 export function SharedLedgerCreateRoute() {
-  const mutation = useCreateSharedLedgerMutation()
+  const createLedger = useCreateSharedLedgerMutation()
   const navigate = useNavigate()
-  return <SharedLedgerCreatePage
-    error={mutation.isError ? '장부 이름, 예산과 시작일을 확인해주세요.' : null}
-    isLoading={mutation.isPending}
-    onCreate={async (request) => {
-      const created = await mutation.mutateAsync(request)
-      navigate(`/ledgers/${created.ledger.id}/settings`, { replace: true })
-    }}
-  />
-}
+  const [ledger, setLedger] = useState<{ id: number; name: string } | null>(null)
+  const [invitation, setInvitation] = useState<{ url: string; expiresAt: string } | null>(null)
+  const [invitationFailed, setInvitationFailed] = useState(false)
+  // 재생성만 이 훅으로 처리합니다. 최초 링크는 방금 만든 ledgerId를 바로 써야 해서 아래에서 API를 직접 호출합니다.
+  const regenerateInvitation = useCreateInvitationLinkMutation(ledger?.id)
 
-export function LedgerSettingsRoute() {
-  const { ledgerId } = useParams()
-  const me = useMeQuery()
-  const ledgers = useLedgersQuery()
-  const requestedLedgerId = Number(ledgerId)
-  const current = ledgers.data?.ledgers.find((ledger) => ledger.id === requestedLedgerId)
-  const members = useLedgerMembersQuery(current?.id)
-  const rename = useRenameLedgerMutation(current?.id)
-  const remove = useRemoveLedgerMemberMutation(current?.id)
-  const leave = useLeaveLedgerMutation(current?.id)
-  const invite = useCreateInvitationLinkMutation(current?.id)
-  const transferOwnership = useTransferLedgerOwnershipMutation(current?.id)
-  const [invitationUrl, setInvitationUrl] = useState<string | null>(null)
-  const viewer = members.data?.find((member) => member.userId === me.data?.user.id)
-  if (!Number.isFinite(requestedLedgerId)) return <Navigate replace to="/dashboard" />
-  if (current?.type === 'PERSONAL') return <Navigate replace to="/settings" />
-  return <LedgerSettingsPage
-    error={ledgers.isError || members.isError ? '장부 정보를 다시 불러와주세요.' : null}
-    invitationUrl={invitationUrl}
-    isLoading={ledgers.isLoading || members.isLoading}
-    ledger={current ? { id: current.id, name: current.name, role: viewer?.role ?? 'MEMBER', accessState: viewer?.status === 'FORMER' ? 'FORMER_READ_ONLY' : 'ACTIVE' } : undefined}
-    members={members.data?.map((member) => ({ id: member.userId, nickname: member.nickname, role: member.role, accessState: member.status === 'FORMER' ? 'FORMER_READ_ONLY' : 'ACTIVE' }))}
+  function toInvitation(created: { url: string; expiresAt: string }) {
+    return { url: new URL(created.url, window.location.origin).toString(), expiresAt: created.expiresAt }
+  }
+
+  return <SharedLedgerCreatePage
+    createError={createLedger.isError ? '장부 이름, 예산과 시작일을 확인해주세요.' : null}
+    invitation={invitation}
+    invitationError={invitationFailed || regenerateInvitation.isError ? '초대 링크를 만들지 못했습니다. 다시 시도해주세요.' : null}
+    isCreating={createLedger.isPending}
+    isCreatingInvitation={regenerateInvitation.isPending}
+    ledger={ledger}
     onCopyInvitation={(url) => void navigator.clipboard.writeText(url)}
-    onCreateInvitation={async () => {
-      const created = await invite.mutateAsync()
-      setInvitationUrl(new URL(created.url, window.location.origin).toString())
+    onCreate={async (request) => {
+      const created = await createLedger.mutateAsync(request)
+      setLedger({ id: created.ledger.id, name: created.ledger.name })
+      try {
+        const link = await createInvitationLink(created.ledger.id)
+        setInvitation(toInvitation(link))
+      } catch {
+        setInvitationFailed(true)
+      }
     }}
-    onLeave={async () => { await leave.mutateAsync(); window.location.assign('/dashboard') }}
-    onRemoveMember={async (userId) => { await remove.mutateAsync(userId) }}
-    onTransferOwnership={async (userId) => { await transferOwnership.mutateAsync(userId) }}
-    onRename={async (name) => { await rename.mutateAsync(name) }}
+    onDone={() => ledger && navigate(`/ledgers/${ledger.id}/settings`, { replace: true })}
+    onRegenerateInvitation={async () => {
+      setInvitationFailed(false)
+      const created = await regenerateInvitation.mutateAsync()
+      setInvitation(toInvitation(created))
+    }}
   />
 }
