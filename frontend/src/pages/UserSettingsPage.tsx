@@ -13,6 +13,7 @@ import type { CategorySummary } from '../features/category/api/categoryApi'
 import { useCancelInvitationMutation, useCreateInvitationLinkMutation } from '../features/invitation/model/invitationQueries'
 import type { BudgetCycle, LedgerMember } from '../features/ledger/api/ledgerApi'
 import {
+  useDeleteLedgerMutation,
   useLeaveLedgerMutation,
   useLedgerMembersQuery,
   useLedgersQuery,
@@ -59,7 +60,7 @@ function getNicknameError(value: string): string {
   return ''
 }
 
-type ConfirmState = { kind: 'leave' } | { kind: 'remove'; memberId: number; memberName: string }
+type ConfirmState = { kind: 'leave' } | { kind: 'delete' } | { kind: 'remove'; memberId: number; memberName: string }
 
 function kindLabel(type: TransactionType): string {
   if (type === 'EXPENSE') return '지출'
@@ -109,6 +110,8 @@ export function UserSettingsPage() {
   const members = useLedgerMembersQuery(currentLedgerId)
   const viewer = members.data?.find((member) => member.userId === me.data?.user.id)
   const partner = members.data?.find((member) => member.userId !== me.data?.user.id && member.status === 'ACTIVE')
+  /* 과거에 함께 쓴 사람. 장부를 지우면 이 사람들의 읽기 전용 접근도 함께 사라지므로 확인 모달에서 알립니다. */
+  const formerMembers = (members.data ?? []).filter((member) => member.userId !== me.data?.user.id && member.status === 'FORMER')
   const isOwner = viewer?.role === 'OWNER'
   const isShared = isSharedLedgerType(currentLedger?.type)
   const savedName = currentLedger?.name ?? ''
@@ -117,6 +120,7 @@ export function UserSettingsPage() {
   const updateBudgetCycle = useUpdateLedgerBudgetCycleMutation(currentLedgerId)
   const removeMember = useRemoveLedgerMemberMutation(currentLedgerId)
   const leaveLedger = useLeaveLedgerMutation(currentLedgerId)
+  const deleteLedger = useDeleteLedgerMutation(currentLedgerId)
   const transferOwnership = useTransferLedgerOwnershipMutation(currentLedgerId)
   const createInvitation = useCreateInvitationLinkMutation(currentLedgerId)
   const cancelInvitationLink = useCancelInvitationMutation(currentLedgerId)
@@ -212,6 +216,13 @@ export function UserSettingsPage() {
     if (confirm.kind === 'remove') {
       removeMember.mutate(confirm.memberId, {
         onSuccess: () => { setConfirm(null); setConfirmText(''); showToast(`${confirm.memberName}님을 내보냈어요. 자동 등록은 일시정지했어요`) },
+      })
+      return
+    }
+    if (confirm.kind === 'delete') {
+      deleteLedger.mutate(undefined, {
+        onSuccess: () => { setConfirm(null); setConfirmText(''); showToast('장부를 삭제했어요') },
+        onError: () => showToast('장부를 삭제하지 못했어요. 함께 쓰는 사람이 있는지 확인해주세요'),
       })
       return
     }
@@ -429,6 +440,11 @@ export function UserSettingsPage() {
                         : '소유자는 바로 나갈 수 없어요. 넘길 멤버가 없으면 탈퇴할 수 없어요.'
                       : '나가면 이 장부에 거래를 기록하거나 예산을 바꿀 수 없어요. 참여했던 기간은 읽기 전용으로 볼 수 있어요.'}
                   </p>
+                  {isOwner && !partner ? (
+                    <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: 1.6, color: 'var(--wl-color-text-secondary)' }}>
+                      함께 쓰는 사람이 없으면 장부를 삭제할 수 있어요. 나가기와 달리 장부 자체가 사라져요.
+                    </p>
+                  ) : null}
                   <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
                     {isOwner && partner ? (
                       <button
@@ -458,6 +474,24 @@ export function UserSettingsPage() {
                     >
                       장부 탈퇴
                     </button>
+                    {isOwner && !partner ? (
+                      <button
+                        onClick={() => setConfirm({ kind: 'delete' })}
+                        style={{
+                          minHeight: 44,
+                          padding: '0 14px',
+                          borderRadius: 'var(--wl-radius-md)',
+                          border: '1px solid var(--wl-color-danger)',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          background: 'var(--wl-color-surface)',
+                          color: 'var(--wl-color-danger)',
+                        }}
+                        type="button"
+                      >
+                        장부 삭제
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -802,15 +836,29 @@ export function UserSettingsPage() {
             <Icon name="triangle-alert" size="lg" />
           </span>
           <h2 style={{ margin: '16px 0 0', fontSize: 19, fontWeight: 800, letterSpacing: '-.025em', lineHeight: 1.35, wordBreak: 'keep-all' }}>
-            {confirm.kind === 'remove' ? `${confirm.memberName}님을 이 장부에서 내보낼까요?` : `'${savedName}'에서 나갈까요?`}
+            {confirm.kind === 'remove'
+              ? `${confirm.memberName}님을 이 장부에서 내보낼까요?`
+              : confirm.kind === 'delete'
+                ? `'${savedName}'을 삭제할까요?`
+                : `'${savedName}'에서 나갈까요?`}
           </h2>
           <p style={{ margin: '9px 0 0', fontSize: 13.5, lineHeight: 1.65, color: 'var(--wl-color-text-body)', wordBreak: 'keep-all' }}>
             {confirm.kind === 'remove'
               ? `'${savedName}'에서 ${confirm.memberName}님을 내보내면 다시 초대하기 전에는 함께 기록할 수 없어요.`
-              : '나가면 이 장부에 거래를 기록하거나 예산을 바꿀 수 없어요. 참여했던 기간은 읽기 전용으로 볼 수 있어요.'}
+              : confirm.kind === 'delete'
+                ? '삭제하면 이 장부의 거래, 예산, 반복 거래가 모두 사라져요. 되돌릴 수 없어요.'
+                : '나가면 이 장부에 거래를 기록하거나 예산을 바꿀 수 없어요. 참여했던 기간은 읽기 전용으로 볼 수 있어요.'}
           </p>
           <ul style={{ display: 'grid', gap: 9, margin: '18px 0 0', padding: 16, borderRadius: 'var(--wl-radius-md)', background: 'var(--wl-color-surface-subtle)', listStyle: 'none' }}>
-            {(confirm.kind === 'remove'
+            {(confirm.kind === 'delete'
+              ? [
+                  ...(formerMembers.length > 0
+                    ? [`${formerMembers.map((member) => member.nickname).join(', ')}님이 참여했던 기간을 더 이상 볼 수 없게 돼요.`]
+                    : []),
+                  '아직 살아 있는 초대 링크가 있으면 끊겨요. 링크를 받은 사람에게는 삭제된 장부라고 안내해요.',
+                  '삭제한 뒤에는 다른 장부로 이동해요. 개인 장부는 그대로 남아요.',
+                ]
+              : confirm.kind === 'remove'
               ? [
                   `내보낸 뒤에도 ${confirm.memberName}님은 함께했던 기간을 읽기 전용으로 볼 수 있어요.`,
                   '고정비, 할부와 반복 거래의 자동 등록이 모두 일시정지되고 알림으로 알려드려요.',
@@ -843,12 +891,12 @@ export function UserSettingsPage() {
             </button>
             <Button
               disabled={confirmText.trim() !== savedName}
-              loading={removeMember.isPending || leaveLedger.isPending}
+              loading={removeMember.isPending || leaveLedger.isPending || deleteLedger.isPending}
               onClick={runConfirm}
               size="lg"
               variant="danger"
             >
-              {confirm.kind === 'remove' ? '내보내기' : '장부에서 나가기'}
+              {confirm.kind === 'remove' ? '내보내기' : confirm.kind === 'delete' ? '장부 삭제' : '장부에서 나가기'}
             </Button>
           </div>
         </Modal>

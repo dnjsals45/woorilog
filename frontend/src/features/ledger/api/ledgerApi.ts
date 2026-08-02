@@ -55,6 +55,11 @@ export function removeLedgerMember(ledgerId: number, userId: number) {
   return apiRequest<void>(`/api/ledgers/${ledgerId}/members/${userId}`, { method: 'DELETE' })
 }
 
+/** 공동 장부 삭제. 소유자이고 현재 다른 활성 멤버가 없을 때만 성공합니다. */
+export function deleteLedger(ledgerId: number) {
+  return apiRequest<void>(`/api/ledgers/${ledgerId}`, { method: 'DELETE' })
+}
+
 export function leaveLedger(ledgerId: number) {
   return apiRequest<void>(`/api/ledgers/${ledgerId}/members/me`, { method: 'DELETE' })
 }

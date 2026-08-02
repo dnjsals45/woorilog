@@ -77,8 +77,11 @@ class InvitationService(
     @Transactional(readOnly = true)
     fun getV1LinkPreview(rawToken: String, currentUserId: Long?): V1LinkInvitationPreviewResult {
         val invitation = invitationRepository.findByTokenHash(hashToken(rawToken)) ?: throw linkNotFound()
-        requireUsableLink(invitation)
         val ledger = invitation.ledger
+        /* 삭제된 장부는 만료보다 먼저 확인한다. 링크가 만료되기 전에 장부가 지워질 수 있고,
+         * 그때 "만료됐어요"라고 하면 초대받은 사람이 링크를 다시 받으러 간다. */
+        requireLedgerAlive(ledger)
+        requireUsableLink(invitation)
         val activeMembers = ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledger.id!!)
         /* acceptV1Link 의 페어링 제한을 조회 단계에서 미리 알려준다. 이게 없으면 상대가 나간 장부가
          * 정상 초대처럼 보이고, 참여를 누른 뒤에야 거부된다. */
@@ -103,8 +106,10 @@ class InvitationService(
     fun acceptV1Link(currentUserId: Long, rawToken: String): V1InvitationAcceptedResult {
         val user = requireConfirmedUser(currentUserId)
         val invitation = invitationRepository.findLockedByTokenHash(hashToken(rawToken)) ?: throw linkNotFound()
+        requireLedgerAlive(invitation.ledger)
         requireUsableLink(invitation)
         val ledger = ledgerRepository.findByIdForUpdate(invitation.ledger.id!!) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        requireLedgerAlive(ledger)
         if (ledgerMemberRepository.existsByLedgerIdAndUserId(ledger.id!!, currentUserId)) {
             throw WoorilogException("ALREADY_LEDGER_MEMBER", "이미 참여 중인 장부입니다.", HttpStatus.CONFLICT)
         }
@@ -478,6 +483,13 @@ class InvitationService(
         .joinToString("") { "%02x".format(it) }
 
     private fun linkNotFound() = NotFoundException("초대 링크를 찾을 수 없습니다.")
+
+    /** 링크는 멀쩡한데 장부가 사라진 경우. 만료와 구분해야 초대받은 사람이 링크를 다시 받으러 가지 않는다. */
+    private fun requireLedgerAlive(ledger: Ledger) {
+        if (ledger.deletedAt != null) {
+            throw WoorilogException("LEDGER_DELETED", "삭제된 장부입니다.", HttpStatus.GONE)
+        }
+    }
 
     private fun invitationAlreadyProcessed() = WoorilogException(
         "INVITATION_ALREADY_PROCESSED",

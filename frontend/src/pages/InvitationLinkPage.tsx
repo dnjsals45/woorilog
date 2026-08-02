@@ -12,7 +12,7 @@ import {
 import { Icon } from '../shared/ui/Icon'
 import { Skeleton } from '../shared/ui/Skeleton'
 
-type ErrorVariant = 'expired' | 'full' | 'member' | 'differentPartner'
+type ErrorVariant = 'expired' | 'full' | 'member' | 'differentPartner' | 'deletedLedger'
 
 const ERROR_CONTENT: Record<ErrorVariant, { title: string; body: string; cta: string; href: string }> = {
   expired: {
@@ -36,6 +36,14 @@ const ERROR_CONTENT: Record<ErrorVariant, { title: string; body: string; cta: st
   /* 한 번이라도 두 사람이 쓴 장부는 원래 상대방만 다시 들어올 수 있습니다.
    * 남은 거래 기록이 처음부터 함께하지 않은 사람에게 넘어가지 않게 하기 위한 제한입니다.
    * 링크는 멀쩡하므로 "만료" 문구로 뭉뚱그리면 사용자가 링크를 다시 받으러 갑니다. */
+  /* 링크는 멀쩡한데 장부가 지워진 경우입니다. '만료'로 뭉뚱그리면 초대받은 사람이
+   * 링크를 다시 받으러 가는데, 다시 받을 장부가 없습니다. */
+  deletedLedger: {
+    title: '이 장부는 삭제됐어요',
+    body: '초대한 사람이 장부를 삭제했어요. 링크를 다시 받아도 참여할 수 없어요. 함께 쓰려면 새 공동 장부를 만들어 달라고 해주세요.',
+    cta: '내 장부로 가기',
+    href: '/dashboard',
+  },
   differentPartner: {
     title: '이 장부는 다른 분과 함께 쓰던 장부예요',
     body: '이미 기록된 거래가 남아 있어서 처음 함께 쓰던 분만 다시 들어올 수 있어요. 새로 시작하려면 공동 장부를 새로 만들어 주세요.',
@@ -97,14 +105,20 @@ export function InvitationLinkPage() {
   if (acceptMutation.isError && acceptMutation.error instanceof ApiClientError) {
     if (acceptMutation.error.code === 'LEDGER_MEMBER_LIMIT_REACHED') acceptErrorVariant = 'full'
     else if (acceptMutation.error.code === 'ALREADY_LEDGER_MEMBER') acceptErrorVariant = 'member'
+    else if (acceptMutation.error.code === 'LEDGER_DELETED') acceptErrorVariant = 'deletedLedger'
     else if (acceptMutation.error.code === 'DIFFERENT_PARTNER_NOT_ALLOWED') acceptErrorVariant = 'differentPartner'
     else acceptErrorVariant = 'expired'
   }
 
-  // 조회(GET) 실패는 404(없음/타입 오류)·409 INVITATION_ALREADY_PROCESSED(이미 처리됨)·
-  // 410 INVITATION_EXPIRED(진짜 만료)로 나뉘지만, 디자인의 5개 상태 중 이 셋을 구분하는 전용
-  // 화면은 없으므로 모두 같은 "링크 만료" 카드로 보여준다.
-  const previewErrorVariant: ErrorVariant | null = previewQuery.isError ? 'expired' : null
+  /* 조회(GET) 실패는 404(없음/타입 오류)·409 INVITATION_ALREADY_PROCESSED(이미 처리됨)·
+   * 410 INVITATION_EXPIRED(진짜 만료)·410 LEDGER_DELETED(장부 삭제됨)로 나뉜다.
+   * 앞의 셋은 "링크를 다시 받으면 된다"는 점이 같아 한 화면으로 묶고,
+   * 장부 삭제는 다시 받아도 소용없으므로 따로 보여준다. */
+  const previewErrorVariant: ErrorVariant | null = !previewQuery.isError
+    ? null
+    : previewQuery.error instanceof ApiClientError && previewQuery.error.code === 'LEDGER_DELETED'
+      ? 'deletedLedger'
+      : 'expired'
 
   // 정원 초과·이미 멤버는 참여 버튼을 누르기 전, 조회 응답만으로 바로 판별한다.
   // viewerAlreadyMember는 비로그인 조회면 null이므로 명시적으로 true일 때만 "이미 멤버"로 취급한다.

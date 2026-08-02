@@ -233,6 +233,53 @@ class InvitationIntegrationTest {
     }
 
     @Test
+    fun should_DeleteLedgerOnlyWhenAlone_AndTellInviteeTheLedgerIsGone() {
+        val owner = devLogin("delete-owner@example.com", "장부주인")
+        val partner = devLogin("delete-partner@example.com", "상대방")
+        val ledgerId = createGroupLedger(owner.accessToken, "지울 장부").id
+
+        fun link(): String = objectMapper.readTree(
+            mockMvc.perform(post("/api/ledgers/$ledgerId/invitations/links").header("Authorization", "Bearer ${owner.accessToken}"))
+                .andExpect(status().isCreated).andReturn().response.contentAsString,
+        )["url"].asText().substringAfterLast('/')
+
+        // 소유자가 아니면 지울 수 없다.
+        mockMvc.perform(delete("/api/ledgers/$ledgerId").header("Authorization", "Bearer ${partner.accessToken}"))
+            .andExpect(status().isForbidden)
+
+        // 함께 쓰는 사람이 있으면 지울 수 없다. 나가기와 다른 지점이다.
+        val joinToken = link()
+        mockMvc.perform(post("/api/invitations/links/$joinToken/accept").header("Authorization", "Bearer ${partner.accessToken}"))
+            .andExpect(status().isOk)
+        mockMvc.perform(delete("/api/ledgers/$ledgerId").header("Authorization", "Bearer ${owner.accessToken}"))
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.code").value("LEDGER_HAS_ACTIVE_MEMBER"))
+
+        // 상대가 나가면 혼자 남으므로 지울 수 있다.
+        mockMvc.perform(delete("/api/ledgers/$ledgerId/members/me").header("Authorization", "Bearer ${partner.accessToken}"))
+            .andExpect(status().isNoContent)
+
+        // 아직 살아 있는 링크를 만들어 두고 장부를 지운다.
+        val pendingToken = link()
+        mockMvc.perform(delete("/api/ledgers/$ledgerId").header("Authorization", "Bearer ${owner.accessToken}"))
+            .andExpect(status().isNoContent)
+
+        // 링크는 멀쩡한데 장부가 사라진 경우다. 만료가 아니라 전용 코드로 알려야 한다.
+        mockMvc.perform(get("/api/invitations/links/$pendingToken"))
+            .andExpect(status().isGone)
+            .andExpect(jsonPath("$.code").value("LEDGER_DELETED"))
+        mockMvc.perform(post("/api/invitations/links/$pendingToken/accept").header("Authorization", "Bearer ${partner.accessToken}"))
+            .andExpect(status().isGone)
+            .andExpect(jsonPath("$.code").value("LEDGER_DELETED"))
+
+        // 지운 장부는 목록에서 사라진다.
+        val ledgers = objectMapper.readTree(
+            mockMvc.perform(get("/api/ledgers").header("Authorization", "Bearer ${owner.accessToken}"))
+                .andExpect(status().isOk).andReturn().response.contentAsString)
+        assert(ledgers.path("items").none { it.path("id").asLong() == ledgerId }) { "삭제한 장부가 목록에 남아 있습니다." }
+    }
+
+    @Test
     fun should_ReturnForbidden_When_NonOwnerAccessesOwnerOnlyEndpoints() {
         val ownerResponse = devLogin("owner3@example.com", "장부주인3")
         val hackerResponse = devLogin("hacker@example.com", "해커")

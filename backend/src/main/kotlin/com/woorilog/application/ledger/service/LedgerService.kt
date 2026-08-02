@@ -6,6 +6,9 @@ import com.woorilog.domain.budget.policy.BudgetStartType
 import com.woorilog.domain.ledger.entity.Ledger
 import com.woorilog.domain.ledger.entity.LedgerMember
 import com.woorilog.domain.ledger.entity.LedgerRole
+import com.woorilog.domain.invitation.entity.InvitationStatus
+import com.woorilog.domain.invitation.entity.InvitationType
+import com.woorilog.domain.invitation.repository.InvitationRepository
 import com.woorilog.domain.ledger.entity.LedgerType
 import com.woorilog.domain.ledger.repository.LedgerMemberRepository
 import com.woorilog.domain.ledger.repository.LedgerRepository
@@ -26,6 +29,8 @@ import com.woorilog.application.ledger.result.LedgerSummaryResult
 import com.woorilog.application.ledger.result.toResult
 import com.woorilog.common.exception.ForbiddenException
 import com.woorilog.common.exception.NotFoundException
+import com.woorilog.common.exception.WoorilogException
+import org.springframework.http.HttpStatus
 import com.woorilog.common.exception.BadRequestException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -42,6 +47,7 @@ class LedgerService(
     private val budgetPeriodService: BudgetPeriodService,
     private val scheduledPlanService: ScheduledPlanService,
     private val notificationService: NotificationService,
+    private val invitationRepository: InvitationRepository,
     private val clock: Clock,
 ) {
 
@@ -248,6 +254,34 @@ class LedgerService(
             "/ledgers/$ledgerId",
             "member-removed-$ledgerId-${member.id}",
         )
+    }
+
+    /* 장부 삭제는 "나가기"와 다르다. 나가기는 상대에게 장부를 넘기고 빠지는 것이고,
+     * 삭제는 장부 자체를 없애는 것이라 현재 나 말고 활성 멤버가 없을 때만 할 수 있다.
+     * 과거에 함께 쓴 사람이 있으면 그 사람의 읽기 전용 접근도 함께 사라지므로,
+     * 화면에서 그 사실을 알리고 장부 이름을 입력받은 뒤 호출한다. */
+    fun deleteLedger(userId: Long, ledgerId: Long) {
+        val ledger = requireOwnerForUpdate(userId, ledgerId)
+        if (ledger.deletedAt != null) throw NotFoundException("장부를 찾을 수 없습니다.")
+        if (ledger.type != LedgerType.GROUP) {
+            throw WoorilogException("PERSONAL_LEDGER_NOT_DELETABLE", "개인 장부는 삭제할 수 없습니다.", HttpStatus.CONFLICT)
+        }
+        val otherActiveMembers = ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledgerId)
+            .filter { it.user.id != userId }
+        if (otherActiveMembers.isNotEmpty()) {
+            throw WoorilogException(
+                "LEDGER_HAS_ACTIVE_MEMBER",
+                "함께 쓰는 사람이 있는 장부는 삭제할 수 없습니다.",
+                HttpStatus.CONFLICT,
+            )
+        }
+        scheduledPlanService.pauseForMembershipChange(ledgerId)
+        invitationRepository.findByLedgerIdAndTypeAndStatus(ledgerId, InvitationType.LINK, InvitationStatus.PENDING)
+            .forEach { it.status = InvitationStatus.CANCELLED }
+        ledger.deletedAt = clock.instant()
+        ledger.archived = true
+        ledgerRepository.save(ledger)
+        clearLastUsedLedger(userId, ledgerId)
     }
 
     fun leaveLedger(userId: Long, ledgerId: Long) {

@@ -57,7 +57,8 @@ export function AppShell() {
   }
 
   const isShared = (type: string | undefined) => type === 'GROUP' || type === 'SHARED'
-  const memberCount = membersQuery.data?.length ?? 0
+  // 나간 사람까지 세면 혼자 쓰는 장부가 '공동 · 2명'으로 보입니다.
+  const memberCount = membersQuery.data?.filter((member) => member.status === 'ACTIVE').length ?? 0
   const memberNames = membersQuery.data?.map((member) => member.nickname).join(' · ')
 
   const ledgerChip: LedgerRef | undefined = currentLedger

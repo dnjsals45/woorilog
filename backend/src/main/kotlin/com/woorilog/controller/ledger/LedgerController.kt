@@ -86,6 +86,15 @@ class LedgerController(
         request.budgetCycle?.startDay,
     ).toResponse()
 
+    @DeleteMapping("/{ledgerId}")
+    fun deleteLedger(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @PathVariable ledgerId: Long,
+    ): ResponseEntity<Void> {
+        ledgerService.deleteLedger(principal.userId, ledgerId)
+        return ResponseEntity.noContent().build()
+    }
+
     @PostMapping("/{ledgerId}/archive")
     fun archiveLedger(
         @AuthenticationPrincipal principal: UserPrincipal,

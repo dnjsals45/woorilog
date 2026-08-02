@@ -5,6 +5,7 @@ import {
   createSharedLedger,
   getLedgerMembers,
   getLedgers,
+  deleteLedger,
   leaveLedger,
   removeLedgerMember,
   renameLedger,
@@ -77,6 +78,11 @@ export function useRemoveLedgerMemberMutation(ledgerId: number | undefined) {
 export function useLeaveLedgerMutation(ledgerId: number | undefined) {
   const queryClient = useQueryClient()
   return useMutation({ mutationFn: () => leaveLedger(ledgerId!), onSuccess: () => invalidateLedgerState(queryClient) })
+}
+
+export function useDeleteLedgerMutation(ledgerId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: () => deleteLedger(ledgerId!), onSuccess: () => invalidateLedgerState(queryClient) })
 }
 
 export function useCreateSharedLedgerMutation() {
