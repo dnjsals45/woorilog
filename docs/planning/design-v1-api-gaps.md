@@ -1,232 +1,224 @@
 # 확정 디자인 이식으로 드러난 백엔드 API 작업 목록
 
 Claude Design **Crisp Calm V1** 디자인 14화면을 프론트엔드에 이식하면서,
-디자인이 요구하지만 현재 API 로는 채울 수 없는 데이터를 정리한 문서입니다.
+디자인이 요구하지만 당시 API 로는 채울 수 없었던 데이터를 정리한 문서입니다.
 
-- 작성 시점: 2026-08-02
-- 원칙: **값을 지어내지 않았습니다.** 데이터가 없는 자리는 UI 구조만 만들고
-  빈 상태(`EmptyState`)나 비활성 컨트롤로 두고 코드에 `// TODO(api):` 주석을 남겼습니다.
+- 최초 작성: 2026-08-02
+- **재검증·구현 완료: 2026-08-02**
 - 화면 구조·기획 문서와의 불일치는 [`design-v1-divergences.md`](./design-v1-divergences.md)로 분리했습니다.
 
-## 분류
+## 재검증에서 드러난 것
 
-| 종류 | 뜻 | 개수 |
+최초 작성분을 백엔드 코드와 대조한 결과 **13개 항목 중 4개가 사실과 달랐습니다.**
+원인은 하나로 모입니다 — **백엔드에 legacy 계층과 V1 계층이 쌍으로 공존하는데,
+프론트엔드가 여러 곳에서 legacy 쪽에 배선돼 있었습니다.**
+
+`NotificationResponse` ↔ `V1NotificationResponse`, `BudgetMonthSettingsResponse` ↔ `BudgetPeriodDetailResponse`,
+`TransactionImportSaveApiRequest` ↔ `LegacyTransactionImportSaveApiRequest` 같은 쌍입니다.
+"백엔드에 없다"고 판단한 것들이 실제로는 V1 응답에 이미 있었습니다.
+
+| 항목 | 최초 판단 | 실제 |
 | --- | --- | --- |
-| **A. 프론트 배선만 필요** | 백엔드에 이미 있고 문서에도 있는데 프론트엔드 API 클라이언트에 없음 | 3 |
-| **B. 문서 ↔ 백엔드 불일치** | 문서에 적힌 필드를 백엔드가 받지 않음 | 1 |
-| **C. 백엔드 신규 작업** | 응답에 필드 자체가 없음 | 8 |
+| C-6 알림 타입 | "4종뿐, 백엔드 신규 필요" | **8종 존재.** `GET /api/notifications` 가 이미 V1 응답 반환. 진짜 공백은 2종뿐 |
+| C-1 대시보드 예산 상세 | "3개 필드 신규 필요" | `.../allocations/{allocationId}` 가 주체별 카테고리·일별 흐름·거래 목록을 전부 반환 |
+| C-4 서버 집계 | "`scope` 파라미터 없음" | analytics 에 `scope`, 거래 목록에 `scopes`·`unclassified`, 기간 요약에 `unclassifiedCount` 존재 |
+| C-10 부가 정보 | "대응 엔드포인트 없음" | `merchant-suggestions` 와 `cards` 둘 다 존재. **항목 삭제** |
+
+**교훈**: API 공백을 판단할 때 프론트 클라이언트의 부재를 백엔드의 부재로 오인하지 않도록,
+컨트롤러와 응답 DTO 를 직접 확인해야 합니다.
 
 ---
 
-# A. 프론트엔드 배선만 하면 되는 것
+# A. 프론트엔드 배선만 하면 됐던 것 — **완료**
 
-백엔드가 이미 지원합니다. 프론트엔드 `api/*.ts` 에 타입·함수가 없어서 UI 가 비활성 상태입니다.
-**백엔드 작업 불필요.**
+백엔드가 이미 지원하는데 프론트엔드 `api/*.ts` 에 타입·함수가 없어 UI 가 비활성이던 것들입니다.
+**백엔드 작업 없이 전부 해결했습니다.**
 
-## A-1. 예산 기간 시작일 변경 (`budgetCycle`)
+| 항목 | 내용 | 화면 |
+| --- | --- | --- |
+| A-1 | 예산 기간 시작일 (`budgetCycle`) | 설정 > 장부 탭 날짜 그리드 |
+| A-2 | 카테고리 그룹 숨김 (`hidden`) | 설정 > 카테고리 탭 토글 |
+| A-3 | 카테고리 이름을 과거 거래에 적용 (`applyNameToPastTransactions`) | 설정 > 카테고리 탭 체크박스 |
+| C-1 | `.../budget-periods/{startDate}/allocations/{allocationId}` | 대시보드 예산 상세 모달 |
+| C-4 | 거래 목록 `scopes`·`unclassified`, 기간 요약 `unclassifiedCount` | 가계부 필터, 분석 |
+| C-6 | `V1NotificationListResponse` (8종 type, `targetPath`, `budgetPeriodStart`) | 알림 팝오버, 기간 종료 딥링크 |
+| C-10 | `merchant-suggestions`, `cards` | 거래 폼 자동완성·결제수단 |
 
-- 문서: `docs/engineering/api-contract.md` — `GET /api/ledgers` 응답 항목과 `PATCH /api/ledgers/{ledgerId}` 요청에 모두 정의됨
-- 프론트 공백: `frontend/src/features/ledger/api/ledgerApi.ts` 의 `LedgerSummary` 타입에 없고, `renameLedger()` 가 보내지 않음
-- 화면 영향: **설정 > 장부 탭의 "예산 기간 시작일" 날짜 그리드가 비활성**
+> A-1 은 배선 중에 **문서↔구현 불일치가 하나 더 드러나** 백엔드까지 고쳤습니다. 아래 B-2 를 보세요.
 
-## A-2. 카테고리 그룹 숨김 (`hidden`)
+## 배선 중 발견한 필드명 불일치 2건 — 완료
 
-- 문서: `PATCH /api/ledgers/{ledgerId}/category-groups/{groupCode}` 에 `{ hidden: true }`, 그룹 조회 응답에 `hidden`
-- 프론트 공백: `frontend/src/features/category/api/categoryApi.ts` 에 해당 함수·필드 없음
-- 화면 영향: **설정 > 카테고리 탭의 "이 장부에서 숨기기" 토글이 비활성**
+프론트엔드 타입이 실제 응답 키와 달라 **런타임에 `undefined`** 가 되고 있었습니다.
 
-## A-3. 카테고리 이름을 과거 거래에 적용 (`applyNameToPastTransactions`)
+| 프론트 (틀림) | 실제 백엔드 |
+| --- | --- |
+| `ImportSessionCandidate.id` | `candidateId` |
+| `ImportSessionCandidate.suggestedAllocation` | `defaultBudgetSource` |
 
-- 문서: `PATCH /api/categories/{categoryId}` 가 지원
-- 프론트 공백: `UpdateCategoryRequest` 에 필드 없음
-- 화면 영향: 디자인의 "바꾼 이름을 과거 거래에도 적용" 체크박스를 **죽은 컨트롤로 두지 않으려고 생략**했습니다
+가져오기 후보의 id 와 추천 차감 예산이 항상 비어 있었습니다.
+**`tsc` 도 기존 단위 테스트도 잡지 못합니다** — 프론트 타입끼리는 일관됐고 실제 응답을 태우는 테스트가 없기 때문입니다.
+`docs/engineering/testing-strategy.md` 에 알려진 공백으로 기록했습니다.
 
-> 참고로 아래 두 건은 이번 작업에서 **이미 배선을 마쳤습니다.**
->
-> - `PUT /api/scheduled-plans/{planId}` — 백엔드에 있는데 프론트에 없었음 → `useUpdateScheduledPlanMutation` 추가
-> - `GET /api/ledgers/{ledgerId}/budget-periods/{startDate}/summary` 와
->   `POST .../copy` — 클라이언트 함수는 있었으나 훅이 없어 미사용 → 기간 종료 요약 화면에 연결
+부수적으로 `api-contract.md` 가 `candidateId` 를 문자열(`"cand_1"`)로 적고 있었으나 실제는 `Long` 이라 문서를 고쳤습니다.
 
 ---
 
-# B. 문서와 백엔드 구현이 어긋난 것
+# B. 문서와 구현이 어긋난 것 — **완료**
 
 ## B-1. `PUT /api/scheduled-plans/{planId}` 요청 필드 불일치
 
-`CLAUDE.md` 의 "코드와 문서가 충돌하면 구현하지 말고 충돌 지점을 먼저 정리한다" 규칙에 따라 보고합니다.
-
-| | `api-contract.md` (1013행~) | `UpdateScheduledPlanApiRequest.kt` 실제 |
+| | `api-contract.md` | 당시 구현 |
 | --- | --- | --- |
-| scope | 있음 | 있음 |
-| name / amount | 있음 | 있음 |
-| nextDueDate / endDate | 있음 | 있음 |
-| 고정비 여부 | `isFixedExpense` | **`fixedExpense`** (이름 다름) |
-| `categoryId` | 있음 | **없음** |
-| `budgetSource` | 있음 | **없음** |
-| `frequency` | 있음 | **없음** |
+| 고정비 여부 | `isFixedExpense` | `fixedExpense` (이름 다름) |
+| `categoryId` / `budgetSource` / `frequency` | 있음 | **없음** |
 
-**화면 영향 (반복 거래):**
+사용자가 반복 주기·카테고리·차감 예산을 바꿔도 **조용히 사라졌습니다.**
 
-- 저장됨: 이름, 금액, 다음 예정일, 종료일, 고정비 여부
-- **저장 안 됨: 반복 주기(frequency) 변경, 카테고리, 차감 예산**
+**결정: 백엔드를 문서에 맞춘다.** 세 필드를 받도록 추가하고 서비스까지 연결했으며 이름도 정정했습니다.
 
-반복 주기 변경은 사용자가 실제로 원할 기능으로 보입니다.
-**백엔드를 문서에 맞출지, 문서를 구현에 맞출지 결정이 필요합니다.**
+### 같은 실패 유형을 하나 더 발견 — 완료
 
-프론트엔드는 현재 **실제 구현 기준**으로 배선해 두었습니다
-(`frontend/src/features/scheduled/api/scheduledPlanApi.ts` 에 이유를 주석으로 남김).
+`POST /api/ledgers/{ledgerId}/scheduled-plans/recurring-expenses` 의 `RecurringPlanApiRequest` 도
+필드가 `fixedExpense` 인데 문서와 테스트는 `isFixedExpense` 를 보내고 있었습니다.
+**Jackson-Kotlin 이 누락된 non-null `Boolean` 생성자 파라미터를 실패시키지 않고 `false` 로 채우기 때문에,
+고정비 생성 요청이 매번 일반 지출로 저장되고 있었습니다.** 기존 통합 테스트가 해당 필드를 단언하지 않아 못 잡았습니다.
+
+필드명을 정정하고 테스트에 단언을 추가했습니다.
+
+### 더 깊은 문제 — 발생분이 갱신되지 않던 것 — 완료
+
+`frequency` 를 받도록 열고 나서 드러났습니다. `generate()` 는 plan 이 아니라 **occurrence 의 `amount`·`dueDate`**
+로 거래를 만드는데, 플랜 생성 시 발생분 12개(할부는 회차 수)를 미리 다 만들어 두고
+`updateFuture` 는 발생분을 다시 만들지 않았습니다.
+
+| 바꾸면 | 반영됐나 |
+| --- | --- |
+| 카테고리 · 차감 예산 · 고정비 여부 · 이름 · 상호 · 메모 · 결제수단 | 반영됨 (`generate()` 가 plan 에서 읽음) |
+| **금액 · 반복 주기** | **반영 안 됨** |
+
+즉 "이후 예정 거래부터 적용"조차 금액·주기에 대해서는 사실이 아니었습니다.
+`updateFuture` 가 SCHEDULED 발생분을 지우고 바뀐 plan 기준으로 다시 만들도록 고쳤습니다.
+이미 거래가 만들어진 GENERATED 발생분은 보존하고 회차 번호를 이어서 매깁니다.
+
+## B-2. 장부 응답에 `budgetCycle` 이 없음 (신규 발견)
+
+`PATCH /api/ledgers/{ledgerId}` 가 `budgetCycle` 을 받아 실제로 저장은 하는데,
+응답 `LedgerResponse` 와 `GET /api/ledgers` 에 그 값이 없었습니다.
+**저장은 되지만 새로고침하면 설정 화면이 선택된 시작일을 다시 보여줄 수 없습니다.**
+
+`api-contract.md` 의 `LedgerSummary` 스펙과 실제 `LedgerResponse` 가 어긋난 지점으로, B-1 과 같은 종류입니다.
+(`LedgerSummaryResult`/`LedgerSummaryResponse` 는 `POST /api/ledgers/shared` 에서만 쓰입니다.)
+
+`LedgerDto` 와 `LedgerResponse` 에 매핑을 추가했습니다.
 
 ---
 
-# C. 백엔드 신규 작업
+# C. 백엔드 신규 작업 — **완료**
 
-## C-1. 대시보드 예산 상세 모달 — 3개 필드
+## C-2. `ScheduledPlan` 필드 부족 — 완료
 
-**엔드포인트:** `GET /api/dashboard/current` (`DashboardSummary`)
+`{ id, type, name, amount, frequency, status, nextDueDate, isFixedExpense }` 뿐이라
+**반복 거래 화면의 모든 행이 "기타" 카테고리로 표시되고 할부 지표 4칸이 전부 `-`** 였습니다.
 
-디자인은 예산 카드를 누르면 모달에 아래 넷을 보여줍니다. 현재 응답은 요약값만 반환합니다.
+`categoryId`, `categoryName`, `budgetSource`, `totalAmount`, `round`, `totalRounds`,
+`principalAmount`, `monthlyInterest` 를 추가했습니다.
 
-| 필요한 것 | 현재 상태 | 제안 |
+**전부 엔티티에 이미 있던 값이라 스키마 변경이 필요 없었습니다.** `round` 만 `GENERATED` 발생분 수로 새로 계산합니다.
+반복 지출 플랜에서는 할부 관련 필드가 `null` 입니다.
+
+## C-3 · C-5. 지난 기간 비교 값 — 완료
+
+- 분석 `categoryDistribution[].previousAmount` — 카드가 통째로 비어 있던 원인
+- 예산 기간 상세 `categoryBudgets[].previousSpentAmount` — 디자인 문구 "지난 기간 X 사용"을 "이번 기간"으로 낮춰 쓰던 원인
+
+**`null` 은 비교할 이전 기간이 없다는 뜻이고 `0` 은 이전 기간에 그 카테고리를 쓰지 않았다는 뜻입니다.**
+화면이 둘을 구분합니다.
+
+공유 타입 `V1CategorySpendingResponse` 는 그대로 두고 분석 전용으로
+`V1CategorySpendingWithComparisonResponse` 를 새로 뒀습니다. `/summary` 와 `/allocations/{id}` 응답은 바뀌지 않습니다.
+
+## C-4. 서버 측 집계 — 배선으로 해소
+
+분석 화면이 거래 목록을 `limit=200` 한 페이지만 가져와 프론트에서 집계하던 문제입니다.
+재검증 결과 백엔드에 `scopes`·`unclassified` 파라미터와 기간 요약의 `unclassifiedCount` 가 이미 있어,
+프론트 필터링을 서버 파라미터로 옮기는 것으로 해소했습니다. 백엔드 신규 작업은 없었습니다.
+
+## C-6. 알림 타입 2종 — 완료
+
+기존 8종에 없던 **예산 변경**과 **예비비 이동**을 추가했습니다.
+재검증 결과 이 둘은 "BUDGET 으로 뭉쳐 보이는" 것이 아니라 **애초에 발행되지 않고 있었습니다.**
+예산 총액이 실제로 바뀔 때(최초 설정 제외)와 예비비 이동 성공 시 발행하도록 연결했습니다.
+
+`type` 컬럼이 네이티브 MySQL `ENUM` 이라 마이그레이션이 필요했습니다 (`V17`).
+
+## C-7. 초대 상태 5종 구분 — 완료
+
+`requireUsableLink()` 가 "없음 / 타입 오류 / 이미 처리됨 / 진짜 만료"를 전부 `INVITATION_EXPIRED`(410) 로 던져
+조회 단계에서 구분할 수 없었고, 정원 초과와 이미 멤버는 accept 를 호출한 뒤에야 알 수 있어
+**사용자가 잘못된 안내를 받았습니다.**
+
+| 코드 | HTTP | 케이스 |
 | --- | --- | --- |
-| 예산 주체별 카테고리 사용액 | `categorySpending` 이 장부 전체 합산 | `sharedCategorySpending` / `myCategorySpending` 으로 분리 |
-| **일별 소비 흐름** | 데이터 자체가 없음 | `dailySpending: { date, amount }[]` (주체별 스코프 포함) |
-| 남은 고정비·할부 **항목 목록** | `scheduledRecurringExpenseAmount` 총액만 | `upcomingFixedExpenses: { label, amount }[]` |
-| 해당 예산의 거래 목록 | `recentTransactions` 를 스코프로 필터링 중 | 전용 목록이 더 정확 (현재는 개수 제한에 걸림) |
+| `NOT_FOUND` | 404 | token 없음, LINK 타입 아님 |
+| `INVITATION_ALREADY_PROCESSED` | 409 | 수락·거절·취소·교체됨 |
+| `INVITATION_EXPIRED` | 410 | 진짜 만료 |
 
-**현재 화면**: 모달은 뜨지만 위 영역이 `EmptyState` 입니다.
+조회 응답에 `currentMemberCount`, `viewerAlreadyMember`(비로그인 시 `null`), `budgetCycle` 을 추가해
+**참여 버튼을 누르기 전에** 정원 초과와 이미 멤버를 판별합니다.
 
-## C-2. 반복 거래·기간 종료 요약 공통 — `ScheduledPlan` 필드 부족
+> `DIFFERENT_PARTNER_NOT_ALLOWED`(409) 는 디자인에 대응 화면이 없어 만료 화면으로 폴백합니다.
+> 미결 항목이며 [`design-v1-divergences.md`](./design-v1-divergences.md) 의 "남은 미결"에 있습니다.
 
-**엔드포인트:** `GET /api/ledgers/{ledgerId}/scheduled-plans` (및 상세, `/budget-periods/{startDate}/summary`)
+## C-8. 이미지 가져오기 — 완료
 
-현재 `ScheduledPlan` 타입:
-`{ id, type, name, amount, frequency, status, nextDueDate, isFixedExpense }`
+`sourceType` 이 요청 전체에 하나만 적용돼, 영수증과 카드 앱 캡처를 한 드롭존에 섞어 올리는 디자인 전제를
+지킬 수 없었습니다. `sourceTypes` 를 이미지 수와 1:1 로 받고 개수가 맞지 않으면 `400 INVALID_REQUEST` 로 거절합니다.
+자동 판별이 아니라 이미지별 수동 지정입니다 — `sourceType` 이 OCR·파싱 분기를 만든 적이 없어 메타데이터일 뿐이었습니다.
 
-| 필요한 것 | 화면 영향 |
-| --- | --- |
-| `categoryId` (또는 카테고리명) | **모든 행이 "기타" 카테고리 마크로 표시됨** |
-| `budgetSource` | 차감 예산 칩이 "확인 불가"로 비활성 |
-| `totalAmount` (할부 전체 금액) | 할부 지표 4칸이 전부 `-` |
-| `round` / `totalRounds` (회차) | 목록의 "4/12회차" 표기 불가, "할부" 뱃지로만 표시 |
-| `principalAmount` (회차 원금) | 위와 같음 |
-| `monthlyInterest` (월 이자) | 위와 같음 |
+중복 판정이 `duplicateSuspected` 불리언뿐이라 어떤 거래와 겹치는지 화면에 쓸 수 없었습니다.
+`duplicateTransactionId` 를 추가했습니다. 같은 배치 안의 후보끼리 겹친 경우는 아직 저장된 거래가 없어 `null` 입니다.
+**판정 기준(날짜 + 금액 + 정규화된 상호 완전일치)은 바꾸지 않았습니다.**
 
-기간 종료 요약의 "다음 기간에 이어지는 고정비와 할부" 항목별 목록도 같은 이유로 만들 수 없습니다
-(`nextPeriodScheduledAmount` 총액 하나만 존재). 다른 API 로 조합하는 것도 불가능합니다.
+마이그레이션 `V18` 로 `import_candidates` 에 `source_type` 과 `duplicate_transaction_id` 를 추가했습니다.
 
-## C-3. 분석 — 카테고리별 기간 비교
+> 이 과정에서 `transaction-import.md` 가 주장하던 "카드 승인번호 해시 기반 중복 우선순위"가
+> 코드에 존재하지 않아 문서에서 지웠습니다.
 
-**엔드포인트:** `GET /api/ledgers/{ledgerId}/analytics`
+## C-9. 할부 월 이자 — 완료
 
-- 필요: `categoryDistribution[].previousAmount` (또는 동등한 이전 기간 값)
-- 현재: 이번 기간 `amount` 만 있음. 전체 총지출 증감(`changeAmount`)은 있으나 **카테고리 단위 증감은 계산 불가**
-- 화면 영향: **"지난 기간과 비교" 카드가 통째로 `EmptyState`**
+`InstallmentSummary` 에 `monthlyInterest` 를 추가했습니다.
+`Transaction` 에 이자 필드는 없지만 이미 `scheduledPlan` 연관을 들고 있고
+`ScheduledPlan.monthlyInterestAmount` 가 채워지므로 **스키마 변경 없이** 해결했습니다.
 
-## C-4. 분석 — 서버 측 집계 필요
+**알려진 한계**: `TransactionService` 의 legacy UUID 기반 할부 경로는 `ScheduledPlan` 을 만들지 않아
+그 경로로 생성된 거래는 `monthlyInterest` 가 `null` 입니다. 실제 스키마 추가 없이는 메울 수 없는 기존 데이터 공백입니다.
 
-**엔드포인트:** `GET /api/ledgers/{ledgerId}/transactions`
+## C-10. ~~거래 폼 부가 정보~~ — 항목 삭제
 
-현재 분석 화면이 거래 목록을 `limit=200` 한 페이지만 가져와 프론트에서 집계합니다.
-**한 예산 기간에 거래가 200건을 넘으면 아래 값이 실제보다 적게 나옵니다.**
-
-- "최근 기록" 목록 (선택 카테고리 상세 포함)
-- **미분류 거래 건수**
-- **수입 합계**
-
-또한 이 엔드포인트에는 `scope`(전체/공동/내 예산) 파라미터가 없어 프론트에서 직접 필터링합니다.
-
-제안: analytics 응답에 `unclassifiedCount`(scope별), `incomeBreakdown` 등 집계 필드를 추가하거나,
-거래 목록에 `scope` 파라미터를 추가합니다.
-
-## C-5. 예산 설정 — 지난 기간 사용액
-
-**엔드포인트:** `GET /api/ledgers/{id}/budget-periods/{startDate}`
-
-- 필요: `categoryBudgets[].previousSpentAmount`
-- 현재: 이번 기간 `spentAmount` 만 있음
-- 화면 영향: 디자인 문구 "**지난 기간** X 사용" 을 "**이번 기간** X 사용" 으로 낮춰 표기 중
-
-## C-6. 알림 — 타입 세분화
-
-**엔드포인트:** `GET /api/notifications` (`UserNotification`)
-
-디자인은 알림을 **6종**으로 구분해 아이콘·톤을 다르게 씁니다.
-
-| 디자인 이벤트 | 아이콘 / 톤 |
-| --- | --- |
-| 예산 초과 | `triangle-alert` / danger |
-| 80% 경고 | `circle-alert` / amber |
-| 예산 변경 | `sliders-horizontal` / brand |
-| 예비비 이동 | `wallet` / brand |
-| 주간 가이드 | `chart-pie` / blue |
-| 기간 종료 | `chart-pie` / brand |
-
-현재 `type` 은 `INVITATION | BUDGET | MONTH_CLOSED | SYSTEM` **4종**뿐입니다.
-→ **BUDGET 알림 4종(초과·80%경고·예산변경·예비비이동)이 화면에서 전부 똑같이 보입니다.**
-
-부수적으로 **알림 설정 화면의 진입 경로가 정의돼 있지 않아** 톱니 버튼을 `/settings` 로 보냈습니다.
-
-## C-7. 초대 확인 — 상태 5종 구분 불가
-
-**엔드포인트:** `GET /api/invitations/links/{token}`, `POST .../accept`
-
-디자인은 상태 5종(정상 초대 / 참여 완료 / 링크 만료 / 정원 초과 / 이미 멤버)을 구분해 다른 화면을 보여줍니다.
-
-현재 백엔드 동작:
-
-- `requireUsableLink()` 가 **"없음 / 타입 오류 / 이미 처리됨(수락·거절·교체) / 진짜 만료"를 전부
-  같은 `INVITATION_EXPIRED`(410)** 로 던집니다. → 조회 단계에서 세분화 불가
-- **"정원 초과"(`LEDGER_MEMBER_LIMIT_REACHED`)와 "이미 멤버"(`ALREADY_LEDGER_MEMBER`)는
-  참여 버튼을 눌러 accept 를 호출한 뒤에야** 알 수 있습니다. 첫 진입 시엔 정상 초대와 구분되지 않습니다.
-- `DIFFERENT_PARTNER_NOT_ALLOWED`(409) 는 **디자인에 대응 상태가 없습니다.** 현재 만료 화면으로 폴백합니다.
-
-추가로 필요한 필드:
-
-- 디자인 문구 "매월 1일부터 시작하는 예산 기간 · 참여 인원 1명" 을 그리려면
-  조회 응답에 **예산 기간 시작일**과 **현재 참여 인원**이 필요합니다.
-- 사전 판별(참여 버튼을 누르기 전에 상태를 알려면)을 원하면 `currentMemberCount`, `viewerAlreadyMember` 가 필요합니다.
-
-## C-8. 이미지 업로드 — 소스 타입과 중복 판정 근거
-
-**엔드포인트:** `POST /transaction-imports/previews`
-
-| 필요한 것 | 현재 상태 | 화면 영향 |
-| --- | --- | --- |
-| **이미지별 `sourceType`** | 요청 전체에 **하나만** 적용 | 디자인은 영수증·카드앱 캡처를 한 드롭존에 **섞어 올리는 전제**인데 소스 타입 선택 UI 가 없습니다. 현재 `RECEIPT` 로 고정했습니다. 이미지별 지정 또는 자동 판별이 필요합니다. |
-| **중복 판정 근거** | `duplicateSuspected` 불리언만 있음 | 디자인 문구 "이미 저장된 거래와 날짜·금액·사용처가 같아요" 를 후보별로 못 씁니다. 어떤 기존 거래와 겹치는지(`reason`, 대상 거래 id)가 필요합니다. |
-
-일괄 수정 관련 필드(`categoryId` / `budgetSource` / `selected`)는 이미 충분해 **추가 불필요**합니다.
-
-## C-9. 거래 상세 — 할부 조건 조회
-
-**엔드포인트:** `GET /api/transactions/{id}` 및 목록 항목
-
-- 필요: `installment.monthlyInterest`
-- 현재: 개월 수(`totalCount`)는 있으나 월 이자가 없음
-- 화면 영향: **거래 상세 모달이 기존 할부 거래의 개월·월이자 조건을 보여주지 못합니다.**
-  (백엔드가 수정 시 할부 전환을 막고 있어 저장에는 영향 없음 — **조회 표시만 불가**)
-
-## C-10. 거래 폼 — 부가 정보 2건 (해결됨)
-
-| 필요한 것 | 상태 |
-| --- | --- |
-| 최근 사용처 자동완성 | `GET /api/ledgers/{ledgerId}/merchant-suggestions` 배선 완료. `TransactionForm` 이 `ledgerId` prop을 받아 입력한 사용처로 실시간 조회합니다. |
-| 저장된 결제수단(카드명) 목록 | `GET /api/ledgers/{ledgerId}/cards` 배선 완료. 결제수단을 카드로 고르면 저장된 카드 이름 칩에서 고를 수 있고, 그 이름이 기존 `paymentMethod.displayName` 자유 텍스트 입력에 채워집니다(요청 형식은 그대로). |
+`merchant-suggestions` 와 `cards` 엔드포인트가 처음부터 있었습니다. 프론트 배선만 하면 되는 A 류였습니다.
 
 ---
 
-# 우선순위 제안
+# 남은 백엔드 공백
 
-화면이 **비어 보이거나 잘못 보이는 정도** 기준입니다.
+구현하지 않았고 아직 필요한 것들입니다.
 
-| 순위 | 항목 | 이유 |
+| 항목 | 내용 | 영향 |
 | --- | --- | --- |
-| 1 | C-2 `ScheduledPlan` 필드 | 반복 거래 화면의 **모든 행이 "기타"로 표시**되고 할부 지표가 전부 `-`. 두 화면에 영향 |
-| 2 | C-1 대시보드 예산 상세 | 디자인의 핵심 상호작용인데 모달 내용이 대부분 비어 있음 |
-| 3 | B-1 `PUT scheduled-plans` | **사용자가 바꾼 값이 조용히 사라짐**. 데이터 손실은 아니지만 오동작으로 보임 |
-| 4 | C-7 초대 상태 구분 | 사용자가 잘못된 안내를 받음 (정원 초과인데 정상 초대로 보임) |
-| 5 | C-6 알림 타입 | BUDGET 알림 4종이 구분 안 됨 |
-| 6 | C-3 분석 기간 비교 | 카드 하나가 통째로 빈 상태 |
-| 7 | A-1~3 프론트 배선 | **백엔드 작업 불필요.** 프론트만 고치면 됨 |
-| 8 | C-4 서버 집계 | 거래 200건 넘는 사용자에게만 영향 |
-| 9 | C-5, C-8, C-9 | 표기·편의 수준 (C-10은 해결됨) |
+| 기간별 고정비·할부 **항목 목록** | `scheduledRecurringExpenseAmount` / `nextPeriodScheduledAmount` 총액만 있음 | 대시보드 예산 상세와 기간 종료 요약의 해당 영역이 빈 상태. C-2 로 `ScheduledPlan` 필드는 생겼으므로 목록 엔드포인트나 요약 응답 확장으로 풀 수 있음 |
+| 거래 저장 시 `cardId` | 카드를 골라도 이름만 저장됨 | 대시보드 `cardPaymentSummaries` 와 이어지지 않음. 제품 판단 필요 |
+| 반복 거래 적용 범위 `ALL` | `updateFuture` 가 `FUTURE` 만 지원 | 화면에서 선택지를 제거해 지금은 문제가 드러나지 않음 |
+
+---
+
+# 검증
+
+```
+backend:  ./gradlew test — 106 tests, 0 failures
+frontend: npm run lint / npm run test / npm run build — 전부 통과
+```
+
+작업 중 **기존 테스트 실패 1건**도 고쳤습니다.
+`TransactionImportIntegrationTest` 의 OCR 스텁이 고정 날짜(`26.07.12`)를 돌려주는데,
+그 날짜가 속한 예산 기간이 지나면 저장이 `BUDGET_PERIOD_NOT_FOUND`(409) 로 실패했습니다.
+**시간이 지나면 터지도록 만들어진 테스트**라 실행 시점 기준으로 바꿨습니다.

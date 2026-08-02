@@ -211,6 +211,7 @@ font-family:
 - 무한 반복하는 장식 애니메이션은 사용하지 않습니다.
 - 진입은 ease-out 성격을, 종료는 더 짧고 조용한 전환을 사용합니다.
 - `prefers-reduced-motion: reduce`에서는 animation과 transition을 즉시 완료합니다.
+- 누름 피드백은 모든 버튼 공통으로 `:active { transform: scale(0.97) }`, `transition: transform 160ms`를 사용합니다(`frontend/src/styles/base/globals.css`). `opacity` 변화로 누름을 표현하지 않습니다.
 
 ## Core Components
 
@@ -223,6 +224,7 @@ font-family:
 - secondary는 `surface + line`, text action은 배경 없이 사용합니다.
 - 삭제와 되돌리기 어려운 행동만 danger variant를 사용합니다.
 - loading 중에는 label을 진행형으로 바꾸고 중복 제출을 막습니다.
+- 누름 피드백은 위 Motion의 `scale(0.97)` 규칙을 그대로 따릅니다.
 
 ### Icon Button
 
@@ -252,6 +254,11 @@ font-family:
 - 항목은 2-3개를 기본으로 하며 모바일 터치 영역은 각각 최소 `44px`입니다.
 - 선택된 항목은 `brand-100 + brand-700 + line-strong`, 비선택 항목은 `surface + text`로 표현합니다.
 
+### Progress
+
+- 예산 소진율 막대의 경고 임계값은 **60% / 90%**입니다: `60%` 미만은 브랜드 톤, `60~90%`는 경고, `90%` 이상은 위험 톤입니다(`frontend/src/shared/ui/Progress.tsx`).
+- `Progress`(막대)와 `StatBlock`(금액 강조 블록)이 같은 60/90 규칙을 공유합니다. 화면마다 다른 임계값을 새로 만들지 않습니다.
+
 ### Transaction Row
 
 - category mark, 거래명/metadata, 금액의 3영역으로 구성합니다.
@@ -260,7 +267,17 @@ font-family:
 - 긴 거래명은 한 줄 말줄임하고 금액은 줄바꿈하지 않습니다.
 - 금액은 오른쪽 정렬하고 tabular number를 사용합니다.
 
-### Bottom Navigation
+### Sidebar (V1)
+
+- V1은 데스크톱 폭 전용이라 주요 이동 수단은 좌측 sidebar(232px 고정, `shared/ui/AppSidebar.tsx`) 하나입니다.
+- 주요 영역은 `홈 / 가계부 / 반복 거래 / 예산 설정 / 분석` 5개입니다.
+- 거래 기록은 헤더의 "거래 추가" 버튼이 여는 우측 드로어로 제공하고 같은 화면에 경쟁하는 추가 CTA를 중복 배치하지 않습니다.
+- 현재 위치는 배경색과 label로 함께 표시합니다.
+- 설정은 sidebar 하단, 알림은 대시보드 헤더 팝오버로 sidebar 내비게이션과 분리되어 있습니다.
+
+### Bottom Navigation (모바일 디자인 확정 후)
+
+아래는 V1 범위가 아니라 모바일 레이아웃이 확정된 이후의 작업입니다. 지우지 않고 남겨 둡니다.
 
 - 중간 화면과 모바일의 주요 이동 수단입니다.
 - 주요 영역은 `홈 / 거래 / 예산 / 분석`입니다.
@@ -271,9 +288,17 @@ font-family:
 ### Side Sheet And Bottom Sheet
 
 - 거래 입력처럼 현재 맥락을 유지해야 하는 짧은 작업에 사용합니다.
-- 데스크톱에서는 오른쪽 side sheet, 모바일에서는 bottom sheet로 전환합니다.
+- V1(데스크톱 전용)은 오른쪽 side sheet만 사용합니다. bottom sheet는 모바일 레이아웃이 확정된 이후 적용합니다.
 - 모바일 sheet는 화면 높이의 최대 `86dvh`를 기본으로 하며 내부 body만 스크롤합니다.
 - 제목, 닫기, 입력 본문, 취소/저장 영역을 명확히 분리합니다.
+
+### 공용화 후보 (디자인 시스템에 없는 컴포넌트)
+
+디자인에는 반복 등장하지만 아직 `shared/ui`에 공용 컴포넌트가 없어 화면마다 직접 만든 것들입니다. 두 곳 이상에서 같은 모양이 반복되는 시점부터 공용 컴포넌트 승격을 검토합니다.
+
+- **Switch(토글)** — 반복 거래 화면(고정비·자동등록)과 설정 알림 탭이 각각 인라인으로 구현합니다.
+- **꺾은선·막대 차트** — 분석 화면과 대시보드 예산 상세(`BudgetDetailModal`)가 각각 인라인 SVG로 구현합니다. `DonutChart`는 이미 공용 컴포넌트지만 line/bar 차트는 아직 없고, 차트 라이브러리는 채택하지 않았습니다.
+- **마케팅용 디스플레이 타입** — 랜딩 히어로(약 30~54px)는 위 Type Scale의 역할 클래스(최대 26px)를 넘어서 인라인 값을 씁니다.
 
 ## Data Visualization
 
@@ -284,18 +309,28 @@ font-family:
 - 선택되지 않은 조각은 원래 색과 중립색을 섞어 채도를 낮춥니다. 완전한 회색이나 투명 상태로 숨기지 않습니다.
 - hover, keyboard focus, touch 모두에서 같은 선택 결과를 제공합니다.
 - 데이터가 없을 때 빈 차트를 그리지 않고 다음 행동을 안내하는 empty state를 제공합니다.
+- donut은 `shared/ui/DonutChart`로 공용화되어 있습니다. 꺾은선·막대 차트가 아직 공용 컴포넌트가 없는 상태는 위 "공용화 후보"를 참고하세요.
 
 ## Responsive Rules
 
+**V1은 데스크톱 폭 전용입니다.** 사이드바 232px 고정 + 본문 최소 1080px(`frontend/src/components/layout/AppShell.tsx`)를 기준으로 합니다. 랜딩과 온보딩만 좁은 폭에서 자연스럽게 접힙니다. 모바일 하단 navigation은 앱 셸 교체로 제거됐고, 현재 구현은 좁은 폭에서 가로 스크롤이 발생하는 알려진 제약이 있습니다.
+
 | Range | Layout |
+| --- | --- |
+| `1080px+`(본문 기준) | 232px sidebar, 넓은 dashboard grid, side sheet(드로어·모달) |
+
+- 검수 기준 viewport는 `1080px`, `1280px`, `1440px`입니다.
+- 가로 스크롤, 고정 요소 겹침, 긴 장부명과 큰 금액의 잘림이 없어야 합니다.
+
+아래는 **모바일 디자인 확정 후** 다시 적용할 규칙입니다. 지우지 않고 남겨 둡니다.
+
+| Range (모바일 디자인 확정 후) | Layout |
 | --- | --- |
 | `0-760px` | 단일 column, 16px page padding, bottom navigation, bottom sheet |
 | `761-1040px` | 콘텐츠에 따라 1-2 column, top bar와 bottom navigation |
-| `1041px+` | 240px sidebar, 넓은 dashboard grid, side sheet |
 
 - `440px` 이하는 금액과 chart의 줄바꿈을 추가로 점검합니다.
-- 검수 기준 viewport는 `375px`, `390px`, `768px`, `1024px`, `1440px`입니다.
-- 가로 스크롤, 고정 요소 겹침, 긴 장부명과 큰 금액의 잘림이 없어야 합니다.
+- 검수 기준 viewport는 `375px`, `390px`, `768px`, `1024px`입니다.
 - 모바일에서는 현재 장부명을 화면 제목과 결합한 44px 선택 영역으로 제공합니다.
 
 ## Accessibility

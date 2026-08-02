@@ -8,8 +8,13 @@
 - 제품 기능과 정책은 V1 Scope에 확정되어 있습니다.
 - [User Flows](../product/user-flows.md), [Information Architecture](../design/information-architecture.md)와 [Screen Specs](../design/screen-specs.md)는 새 V1을 기준으로 교체되었습니다.
 - [Domain Model](../engineering/domain-model.md), [API Contract](../engineering/api-contract.md), 권한·개인정보·migration·OCR·예약 실행 문서는 새 V1 목표 계약으로 교체되었습니다.
-- 현재 백엔드와 프론트엔드는 여전히 이전 제품 범위의 구현 기준선이며 목표 문서의 완료 상태를 의미하지 않습니다.
+- 프론트엔드는 확정 디자인 14화면 이식이 끝났고 V1 API 에 배선되어 있습니다. 백엔드는 legacy 계층과 V1 계층이
+  아직 함께 있어 목표 계약의 완료 상태는 아닙니다.
 - 새 V1 구현은 아래 계약과 데이터 이전 순서에 맞춰 기능별로 전환해야 합니다.
+- 확정 디자인(Crisp Calm V1) 이식 과정에서 드러난 기획 문서와의 불일치와
+  백엔드 API 공백은 [Design V1 Divergences](./design-v1-divergences.md)와
+  [Design V1 API Gaps](./design-v1-api-gaps.md)에 정리되어 있습니다. 두 문서의 결정과 구현은 완료되었고
+  남은 미결은 각 문서의 마지막 절에 모여 있습니다.
 
 ## 구현 원칙
 

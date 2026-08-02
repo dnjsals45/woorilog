@@ -33,23 +33,33 @@ frontend/src/
   features/
     .../api/
     .../model/
-    transaction/ui/TransactionEntrySheet.tsx
+    transaction/ui/TransactionAddDrawer.tsx
+    transaction/ui/TransactionForm.tsx
+    transaction/ui/TransactionDetailModal.tsx
+    import/ui/TransactionImportModal.tsx
+    notification/ui/NotificationInbox.tsx
   pages/
     DashboardPage.tsx
-    LedgerPage.tsx
-    BudgetMonthPage.tsx
-    StatisticsPage.tsx
-    SettingsPage.tsx
+    TransactionsPage.tsx
+    BudgetPage.tsx
+    PeriodSummaryPage.tsx
+    AnalysisPage.tsx
+    RecurringTransactionPage.tsx
+    UserSettingsPage.tsx
     ...
   shared/ui/
-    DesignPrimitives.tsx
+    AppSidebar.tsx
+    Progress.tsx
+    StatBlock.tsx
+    DonutChart.tsx
     CategoryBadge.tsx
     ...
   styles/
     tokens.css
-    app-shell.css
-    dashboard.css
-    product-pages.css
+    base/globals.css
+    patterns/controls.css
+    patterns/overlay.css
+    patterns/page-layout.css
   index.css
 ```
 
@@ -66,23 +76,31 @@ frontend/src/
 ## Current Implementation
 
 - `tokens.css`가 Crisp Calm foundation, data accent, radius, elevation과 motion의 런타임 원본입니다.
-- `AppShell.tsx`와 `app-shell.css`가 데스크톱 sidebar, 장부 선택기와 모바일 navigation을 담당합니다.
-- `dashboard.css`는 대시보드 전용 밀도와 차트 표현을 담당합니다.
-- `product-pages.css`는 나머지 제품 화면, form, sheet와 semantic color 호환 규칙을 담당합니다.
-- 현재 거래 추가는 `TransactionEntrySheet` 안에서 직접 입력, 영수증, 문자 내역을 전환합니다. 새 V1에서는 직접 입력과 여러 영수증·카드사 앱 캡처 검토 흐름으로 교체합니다.
-- 거래 화면은 안정적인 달력 프레임, 6건 단위 pagination과 좁은 화면에서만 제공하는 달력 접기를 사용합니다.
-- 통계 화면은 6/12개월 결합 차트와 동기화된 category donut/stack, 선택 카테고리 거래 목록을 제공합니다.
+- `AppSidebar.tsx`(232px 고정, sticky)와 `AppShell.tsx`가 데스크톱 좌측 sidebar, 장부 선택기(스위처)와 본문 레이아웃을 담당합니다. 모바일 navigation은 앱 셸 교체 과정에서 제거됐습니다.
+- `base/globals.css`, `patterns/controls.css`, `patterns/overlay.css`, `patterns/page-layout.css`가 전역 기본값, control, overlay(모달·드로어·팝오버), 페이지 레이아웃 규칙을 나눠 담당합니다.
+- 거래 추가는 `TransactionAddDrawer`(우측 560px 드로어, `TransactionForm` 직접 입력)로 처리합니다. 영수증·카드사 앱 캡처 검토는 가계부 화면의 `TransactionImportModal`(중앙 모달)이 별도로 담당합니다.
+- 가계부 화면(`TransactionsPage`)은 날짜순 목록과 필터(미분류 필터 칩 포함)를 제공하고, 행 클릭은 `TransactionDetailModal`을 엽니다.
+- 알림함은 `NotificationInbox`로 대시보드 헤더의 종 아이콘이 여는 팝오버입니다. 다른 화면에는 진입점이 없습니다.
+- 분석 화면과 대시보드의 예산 상세(`BudgetDetailModal`)는 `DonutChart` 공용 컴포넌트와 인라인 SVG 꺾은선·막대 차트를 함께 사용합니다.
 - 예산 설정 화면은 총예산, 실제·예정 지출, 개인 카테고리 예산 또는 공동 멤버 할당에 집중합니다.
+- 설정 화면(`UserSettingsPage`)은 프로필·장부·멤버·카테고리·알림 5개 탭입니다.
 
 ## Responsive Mapping
 
+**V1은 데스크톱 폭 전용입니다.** 사이드바 232px + 본문 최소 1080px(`AppShell.tsx`)를 기준으로 합니다. 랜딩과 온보딩만 좁은 폭에서 자연스럽게 접힙니다.
+
 | Viewport | App Shell | Content |
+| --- | --- | --- |
+| `1080px+` (본문 기준, 사이드바 232px 포함 총 1312px+) | 232px sidebar | wide grid, right side sheet(드로어·모달) |
+
+아래는 이전 계획이며 **V1 범위가 아니라 모바일 디자인이 확정된 이후의 작업**입니다. 지우지 않고 남겨 둡니다.
+
+| Viewport (모바일 디자인 확정 후) | App Shell | Content |
 | --- | --- | --- |
 | `0-760px` | top bar, 5개 bottom navigation | single column, bottom sheet |
 | `761-1040px` | top bar, 5개 bottom navigation | 1-2 column |
-| `1041px+` | 240px sidebar | wide grid, right side sheet |
 
-현재 모바일 navigation은 `홈 / 거래 / 기록 / 예산 / 분석`입니다. 새 V1에서는 Information Architecture에 따라 `홈 / 거래 / 예산 / 분석`과 전역 `+` 행동으로 교체합니다.
+모바일 하단 navigation은 앱 셸 교체로 제거됐습니다. **현재 구현은 좁은 폭에서 가로 스크롤이 발생하는 알려진 제약이 있습니다.** 모바일 레이아웃은 별도 디자인 작업 이후 이 매핑을 다시 채웁니다.
 
 ## Styling Rules
 
@@ -112,12 +130,17 @@ npm run build
 npm run test:e2e
 ```
 
-브라우저 검수 항목:
+브라우저 검수 항목 (V1, 데스크톱 전용):
 
-- `375px`, `390px`, `768px`, `1024px`, `1440px`
-- 가로 스크롤과 fixed navigation 겹침
-- keyboard focus와 dialog focus 이동
+- `1080px`(본문 최소 폭), `1280px`, `1440px`
+- 사이드바 232px 고정, 본문 최소 1080px 유지
+- keyboard focus와 dialog(모달·드로어·팝오버) focus 이동
 - 44px touch target
 - loading, empty, error, long text, large amount
 - `prefers-reduced-motion`
 - browser console error
+
+아래는 **모바일 디자인 확정 후** 다시 적용할 검수 항목입니다. 지금은 검증하지 않습니다.
+
+- `375px`, `390px`, `768px`, `1024px`
+- 가로 스크롤과 fixed navigation 겹침

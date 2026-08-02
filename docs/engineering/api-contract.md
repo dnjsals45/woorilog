@@ -960,7 +960,7 @@
   "omittedCount": 2,
   "candidates": [
     {
-      "candidateId": "cand_1",
+      "candidateId": 1,
       "amount": 32400,
       "occurredOn": "2026-07-31",
       "merchant": "동네마트",
@@ -995,7 +995,7 @@
   "sessionId": "imp_opaque_id",
   "candidates": [
     {
-      "candidateId": "cand_1",
+      "candidateId": 1,
       "amount": 32400,
       "occurredOn": "2026-07-31",
       "merchant": "동네마트",
@@ -1009,7 +1009,7 @@
 ```
 
 - 선택한 후보 전체를 한 트랜잭션에서 저장합니다.
-- `201 Created`: `{ "created": [{ "candidateId": "cand_1", "transaction": TransactionSummary }] }`
+- `201 Created`: `{ "created": [{ "candidateId": 1, "transaction": TransactionSummary }] }`
 - 같은 session 재전송은 기존 성공 결과를 반환하고 중복 생성하지 않습니다.
 
 | status | code | 조건 |

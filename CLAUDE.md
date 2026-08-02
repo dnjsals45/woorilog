@@ -34,7 +34,10 @@ docs/      product · design · engineering · planning
 백엔드 패키지는 `com.woorilog` 아래 `controller / service / domain / security / config / exception`,
 프론트엔드는 `src/pages`, `src/features/<도메인>`, `src/shared/{api,lib,ui}`, `src/components/layout` 구조입니다.
 
-현재 코드는 이전 제품 범위를 구현한 기준선이며 새 V1의 완료 상태가 아닙니다.
+프론트엔드는 확정 디자인(Crisp Calm V1) 14화면 이식이 끝났고 V1 API에 배선되어 있습니다.
+백엔드는 legacy 계층과 V1 계층이 아직 함께 있어 목표 계약의 완료 상태는 아닙니다.
+API 공백을 판단할 때 프론트 클라이언트의 부재를 백엔드의 부재로 오인하지 않도록 컨트롤러와 응답 DTO를 직접 확인합니다.
+
 새 V1 구현 순서는 [`docs/planning/implementation-plan.md`](./docs/planning/implementation-plan.md)를 따릅니다.
 
 ## 주요 문서
@@ -51,6 +54,7 @@ docs/      product · design · engineering · planning
 - 거래 가져오기/예약 실행: `docs/engineering/transaction-import.md`, `docs/engineering/scheduled-transactions.md`
 - 테스트 전략: `docs/engineering/testing-strategy.md`
 - 구현 계획: `docs/planning/implementation-plan.md`
+- 확정 디자인 이식 결과: `docs/planning/design-v1-divergences.md`, `docs/planning/design-v1-api-gaps.md`
 
 ## Subproject 라우팅
 

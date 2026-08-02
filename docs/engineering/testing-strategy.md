@@ -140,6 +140,7 @@ npm run test:e2e
 - 날짜는 달력 월과 다른 10일 시작 기간, 말일 시작, 2월·윤년을 포함합니다.
 - OCR fixture는 정상, 저신뢰, 중복, 일부 실패를 분리하고 실제 카드번호·credential을 포함하지 않습니다.
 - API schema가 안정되면 OpenAPI 또는 contract fixture를 프론트 mock과 backend serialization test가 공유하도록 검토합니다.
+- 알려진 공백: import candidate 타입에서 `id`/`suggestedAllocation`으로 선언했던 필드가 실제 백엔드 응답 키인 `candidateId`/`defaultBudgetSource`와 달랐던 사례가 있었습니다. 프론트 타입과 mock이 서로 일치했고 실제 백엔드 응답을 태우는 테스트가 없어 `tsc`와 기존 unit test 모두 이 불일치를 잡지 못했습니다. 현재는 프론트 타입이 [API Contract](./api-contract.md)의 필드명과 일치하도록 고쳐졌지만, 같은 종류의 필드명 불일치를 자동으로 잡는 검증은 아직 없습니다.
 
 ## CI
 
