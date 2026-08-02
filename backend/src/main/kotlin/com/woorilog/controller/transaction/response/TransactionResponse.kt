@@ -43,6 +43,7 @@ data class InstallmentSummary(
     val planId: String,
     val sequence: Int,
     val totalCount: Int,
+    val monthlyInterest: Long? = null,
 )
 
 data class TransactionScheduleSummary(val kind: String, val planId: Long, val sequence: Int, val totalSequences: Int?)
@@ -81,7 +82,7 @@ data class BulkClassifyResponse(val transactionIds: List<Long>)
 fun CategorySummaryResult.toResponse() = CategorySummary(id, name, type, categoryId, groupCode, groupName, categoryName)
 fun PayerSummaryResult.toResponse() = PayerSummary(id, nickname)
 fun PaymentCardSummaryResult.toResponse() = PaymentCardSummary(id, name)
-fun InstallmentSummaryResult.toResponse() = InstallmentSummary(planId, sequence, totalCount)
+fun InstallmentSummaryResult.toResponse() = InstallmentSummary(planId, sequence, totalCount, monthlyInterest)
 fun TransactionScheduleSummaryResult.toResponse() = TransactionScheduleSummary(kind, planId, sequence, totalSequences)
 
 fun TransactionResult.toResponse() = TransactionResponse(

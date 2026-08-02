@@ -35,6 +35,7 @@ data class InstallmentSummaryResult(
     val planId: String,
     val sequence: Int,
     val totalCount: Int,
+    val monthlyInterest: Long? = null,
 )
 
 data class TransactionScheduleSummaryResult(val kind: String, val planId: Long, val sequence: Int, val totalSequences: Int?)
@@ -85,7 +86,7 @@ fun Transaction.toResult() = TransactionResult(
     legacyPaymentMethod = this.paymentMethod,
     card = this.card?.let { PaymentCardSummaryResult(it.id!!, it.name) },
     installment = this.installmentPlanId?.let {
-        InstallmentSummaryResult(it, this.installmentSequence, this.installmentTotalCount)
+        InstallmentSummaryResult(it, this.installmentSequence, this.installmentTotalCount, this.scheduledPlan?.monthlyInterestAmount)
     },
     merchant = this.merchant,
     transferType = this.transferType,
