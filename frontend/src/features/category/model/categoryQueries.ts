@@ -1,14 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createCategory,
-  createCategoryGroup,
   deleteCategory,
   getCategoryGroups,
-  type CreateCategoryGroupRequest,
   getCategories,
   type CreateCategoryRequest,
   type UpdateCategoryRequest,
   updateCategory,
+  updateCategoryGroupVisibility,
 } from '../api/categoryApi'
 
 export const categoryQueryKeys = {
@@ -35,11 +34,11 @@ export function useCategoriesQuery(ledgerId: number | undefined) {
   })
 }
 
-export function useCreateCategoryGroupMutation(ledgerId: number | undefined) {
+export function useUpdateCategoryGroupVisibilityMutation(ledgerId: number | undefined) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (request: CreateCategoryGroupRequest) => createCategoryGroup(ledgerId!, request),
+    mutationFn: ({ groupCode, hidden }: { groupCode: string; hidden: boolean }) => updateCategoryGroupVisibility(ledgerId!, groupCode, hidden),
     onSuccess: () => {
       if (ledgerId) {
         queryClient.invalidateQueries({ queryKey: categoryQueryKeys.groups(ledgerId) })

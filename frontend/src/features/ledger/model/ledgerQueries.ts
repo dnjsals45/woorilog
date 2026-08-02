@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authQueryKeys } from '../../auth/model/authQueries'
 import {
+  type BudgetCycle,
   createSharedLedger,
   getLedgerMembers,
   getLedgers,
@@ -10,6 +11,7 @@ import {
   switchLedger,
   transferLedgerOwnership,
   type CreateSharedLedgerRequest,
+  updateLedgerBudgetCycle,
 } from '../api/ledgerApi'
 
 export const ledgerQueryKeys = {
@@ -57,6 +59,14 @@ function invalidateLedgerState(queryClient: ReturnType<typeof useQueryClient>) {
 export function useRenameLedgerMutation(ledgerId: number | undefined) {
   const queryClient = useQueryClient()
   return useMutation({ mutationFn: (name: string) => renameLedger(ledgerId!, name), onSuccess: () => invalidateLedgerState(queryClient) })
+}
+
+export function useUpdateLedgerBudgetCycleMutation(ledgerId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (budgetCycle: BudgetCycle) => updateLedgerBudgetCycle(ledgerId!, budgetCycle),
+    onSuccess: () => invalidateLedgerState(queryClient),
+  })
 }
 
 export function useRemoveLedgerMemberMutation(ledgerId: number | undefined) {

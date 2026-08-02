@@ -1,6 +1,6 @@
 import { apiRequest } from '../../../shared/api/client'
 import type { CurrentUser } from '../../auth/api/authApi'
-import type { LedgerSummary, LedgerType } from '../../ledger/api/ledgerApi'
+import type { BudgetCycle, LedgerSummary, LedgerType } from '../../ledger/api/ledgerApi'
 
 export type InvitationType = 'DIRECT' | 'LINK'
 export type InvitationStatus =
@@ -38,6 +38,10 @@ export type LinkInvitationPreview = {
   status: InvitationStatus
   expiresAt: string
   authenticationRequired: boolean
+  currentMemberCount: number
+  /** 비로그인 조회면 null. */
+  viewerAlreadyMember: boolean | null
+  budgetCycle: BudgetCycle
 }
 
 export type InvitationLinkCreated = { invitationId: number; url: string; expiresAt: string }

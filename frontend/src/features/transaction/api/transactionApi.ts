@@ -38,6 +38,8 @@ export type TransactionSummary = {
     planId: string
     sequence: number
     totalCount: number
+    /* 예약 계획 없이 만들어진 예전 할부 거래에는 월 이자가 저장돼 있지 않아 null 이다. */
+    monthlyInterest: number | null
   } | null
   merchant?: string | null
   transferType?: 'OWN_ACCOUNTS' | 'OUTBOUND' | 'INBOUND' | null
@@ -59,10 +61,16 @@ export function deleteTransaction(transactionId: number) {
 }
 
 export type BudgetSource = { type: 'PERSONAL' | 'SHARED'; ownerUserId: number | null }
+export type BudgetScopeType = BudgetSource['type']
 export type V1TransactionRequest = { type: TransactionType; amount: number; occurredOn: string; merchant: string; categoryId: number | null; memo?: string | null; transferType?: 'OWN_ACCOUNTS' | 'OUTBOUND' | 'INBOUND' | null; scope?: BudgetSource | null; budgetSource?: BudgetSource | null; payerUserId?: number | null; sharedWithPartner?: boolean | null; paymentMethod?: PaymentMethod | { type: PaymentMethod; displayName?: string | null } | null; occurredAt?: string | null; installment?: { months: number; monthlyInterest: number } | null }
 export type V1TransactionList = { items: TransactionSummary[]; nextCursor: string | null; unclassifiedCount: number }
-export function listTransactions(ledgerId: number, params: { periodStart?: string; query?: string; types?: TransactionType[]; unclassified?: boolean; cursor?: string; limit?: number } = {}) { const q = new URLSearchParams(); Object.entries(params).forEach(([key, value]) => { if (value !== undefined) q.set(key, Array.isArray(value) ? value.join(',') : String(value)) }); return apiRequest<V1TransactionList>(`/api/ledgers/${ledgerId}/transactions${q.size ? `?${q}` : ''}`) }
+export function listTransactions(ledgerId: number, params: { periodStart?: string; query?: string; types?: TransactionType[]; unclassified?: boolean; categoryGroupCodes?: string[]; scopes?: BudgetScopeType[]; kinds?: string[]; shared?: boolean; cursor?: string; limit?: number } = {}) { const q = new URLSearchParams(); Object.entries(params).forEach(([key, value]) => { if (value !== undefined && !(Array.isArray(value) && value.length === 0)) q.set(key, Array.isArray(value) ? value.join(',') : String(value)) }); return apiRequest<V1TransactionList>(`/api/ledgers/${ledgerId}/transactions${q.size ? `?${q}` : ''}`) }
 export function createV1Transaction(ledgerId: number, request: V1TransactionRequest) { return apiRequest<TransactionSummary>(`/api/ledgers/${ledgerId}/transactions`, { method: 'POST', body: request }) }
 export function updateV1Transaction(transactionId: number, request: V1TransactionRequest) { return apiRequest<TransactionSummary>(`/api/transactions/${transactionId}`, { method: 'PUT', body: request }) }
 export function getTransactionEntryDefaults(ledgerId: number) { return apiRequest<{ budgetSource: BudgetSource; shareNewPersonalTransactions: boolean }>(`/api/ledgers/${ledgerId}/transaction-entry-defaults`) }
 export function bulkClassifyTransactions(ledgerId: number, transactionIds: number[], categoryId: number) { return apiRequest<{ transactionIds: number[] }>(`/api/ledgers/${ledgerId}/transactions/bulk-classify`, { method: 'POST', body: { transactionIds, categoryId } }) }
+
+export type MerchantSuggestion = { merchant: string; suggestedCategoryId: number | null }
+export function getMerchantSuggestions(ledgerId: number, query: string) {
+  return apiRequest<{ items: MerchantSuggestion[] }>(`/api/ledgers/${ledgerId}/merchant-suggestions?query=${encodeURIComponent(query)}`)
+}

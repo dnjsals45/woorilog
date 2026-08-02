@@ -21,6 +21,8 @@ export type CreateCategoryRequest = {
 export type UpdateCategoryRequest = {
   name: string
   categoryGroupId: number
+  /** true면 이 소분류로 기록된 과거 거래의 카테고리 이름 스냅샷도 함께 바꿉니다. */
+  applyNameToPastTransactions?: boolean
 }
 
 export type CategoryGroupSummary = {
@@ -28,11 +30,8 @@ export type CategoryGroupSummary = {
   ledgerId: number
   name: string
   type: TransactionType
-}
-
-export type CreateCategoryGroupRequest = {
-  name: string
-  type: TransactionType
+  code: string
+  hidden: boolean
 }
 
 export function getCategories(ledgerId: number) {
@@ -61,9 +60,9 @@ export function getCategoryGroups(ledgerId: number) {
   return apiRequest<CategoryGroupSummary[]>(`/api/ledgers/${ledgerId}/category-groups`)
 }
 
-export function createCategoryGroup(ledgerId: number, request: CreateCategoryGroupRequest) {
-  return apiRequest<CategoryGroupSummary>(`/api/ledgers/${ledgerId}/category-groups`, {
-    method: 'POST',
-    body: request,
+export function updateCategoryGroupVisibility(ledgerId: number, groupCode: string, hidden: boolean) {
+  return apiRequest<CategoryGroupSummary>(`/api/ledgers/${ledgerId}/category-groups/${groupCode}`, {
+    method: 'PATCH',
+    body: { hidden },
   })
 }

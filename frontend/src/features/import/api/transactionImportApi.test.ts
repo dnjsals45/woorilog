@@ -4,18 +4,21 @@ import { previewImportSession, saveImportSession } from './transactionImportApi'
 afterEach(() => vi.unstubAllGlobals())
 
 describe('V1 transaction import API', () => {
-  it('sends multiple images and their source as multipart form data', async () => {
+  it('sends one sourceType per image as multipart form data', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ sessionId: 1, candidates: [], omittedCount: 0 }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
     const firstImage = new File(['image-1'], 'receipt-1.png', { type: 'image/png' })
-    const secondImage = new File(['image-2'], 'receipt-2.png', { type: 'image/png' })
+    const secondImage = new File(['image-2'], 'card-1.png', { type: 'image/png' })
 
-    await previewImportSession(1, 'RECEIPT', [firstImage, secondImage])
+    await previewImportSession(1, [
+      { image: firstImage, sourceType: 'RECEIPT' },
+      { image: secondImage, sourceType: 'CARD_APP_SCREENSHOT' },
+    ])
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('http://localhost:8080/api/ledgers/1/transaction-imports/previews')
     expect(options.headers).not.toHaveProperty('Content-Type')
-    expect((options.body as FormData).get('sourceType')).toBe('RECEIPT')
+    expect((options.body as FormData).getAll('sourceTypes')).toEqual(['RECEIPT', 'CARD_APP_SCREENSHOT'])
     expect((options.body as FormData).getAll('images')).toEqual([firstImage, secondImage])
   })
 

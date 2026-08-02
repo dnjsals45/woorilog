@@ -6,6 +6,7 @@ import {
   createV1Transaction,
   updateV1Transaction,
   bulkClassifyTransactions,
+  getMerchantSuggestions,
   type V1TransactionRequest,
 } from '../api/transactionApi'
 
@@ -31,6 +32,18 @@ export function useUpdateV1TransactionMutation(transactionId: number | undefined
 export function useBulkClassifyTransactionsMutation(ledgerId: number | undefined) {
   const client = useQueryClient()
   return useMutation({ mutationFn: ({ transactionIds, categoryId }: { transactionIds: number[]; categoryId: number }) => bulkClassifyTransactions(ledgerId!, transactionIds, categoryId), onSuccess: () => client.invalidateQueries({ queryKey: transactionQueryKeys.all }) })
+}
+
+/** 사용처 입력 자동완성 — 최소 1글자부터 본인 확정 거래 기준으로 추천합니다 (백엔드가 빈 검색어를 거부). */
+export function useMerchantSuggestionsQuery(ledgerId: number | undefined, query: string) {
+  const trimmed = query.trim()
+  return useQuery({
+    queryKey: [...transactionQueryKeys.all, ledgerId, 'merchant-suggestions', trimmed],
+    queryFn: () => getMerchantSuggestions(ledgerId!, trimmed),
+    enabled: Boolean(ledgerId) && trimmed.length > 0,
+    retry: false,
+    staleTime: 30_000,
+  })
 }
 
 export function useTransactionQuery(transactionId: number | undefined) {
