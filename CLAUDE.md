@@ -54,7 +54,6 @@ API 공백을 판단할 때 프론트 클라이언트의 부재를 백엔드의 
 - 거래 가져오기/예약 실행: `docs/engineering/transaction-import.md`, `docs/engineering/scheduled-transactions.md`
 - 테스트 전략: `docs/engineering/testing-strategy.md`
 - 구현 계획: `docs/planning/implementation-plan.md`
-- 확정 디자인 이식 결과: `docs/planning/design-v1-divergences.md`, `docs/planning/design-v1-api-gaps.md`
 
 ## Subproject 라우팅
 
