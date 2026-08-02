@@ -411,6 +411,67 @@ class TransactionIntegrationTest {
     }
 
     @Test
+    fun should_LinkCardOnV1TransactionAndCountItInCardPaymentSummary() {
+        val login = devLogin("v1-card@example.com", "V1 카드")
+        val token = login.accessToken
+        val ledgerId = login.currentLedger.id
+        val today = LocalDate.now()
+        val categories: List<CategoryResponse> = objectMapper.readValue(
+            mockMvc.perform(get("/api/ledgers/$ledgerId/categories").header("Authorization", "Bearer $token"))
+                .andExpect(status().isOk).andReturn().response.contentAsString,
+            objectMapper.typeFactory.constructCollectionType(List::class.java, CategoryResponse::class.java),
+        )
+        val cardId = objectMapper.readTree(
+            mockMvc.perform(post("/api/ledgers/$ledgerId/cards")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("name" to "V1 카드", "statementClosingDay" to today.dayOfMonth))))
+                .andExpect(status().isOk).andReturn().response.contentAsString,
+        )["id"].asLong()
+
+        val source = mapOf("type" to "PERSONAL", "ownerUserId" to login.user.id)
+        // occurredOn·merchant·budgetSource 가 있으면 V1 경로로 처리됩니다.
+        val transactionId = objectMapper.readTree(
+            mockMvc.perform(post("/api/ledgers/$ledgerId/transactions")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf(
+                    "type" to "EXPENSE", "amount" to 30_000, "occurredOn" to today.toString(), "merchant" to "마트",
+                    "categoryId" to categories.first { it.name == "장보기" }.id,
+                    "scope" to source, "budgetSource" to source,
+                    "paymentMethod" to mapOf("type" to "CARD", "displayName" to "V1 카드"),
+                    "cardId" to cardId,
+                ))))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.card.id").value(cardId))
+                .andReturn().response.contentAsString,
+        )["id"].asLong()
+
+        mockMvc.perform(get("/api/dashboard/current").header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.cardPaymentSummaries[0].cardId").value(cardId))
+            .andExpect(jsonPath("$.cardPaymentSummaries[0].totalAmount").value(30_000))
+
+        // 수정해도 카드 연결이 유지되어야 합니다. 이전에는 update 가 card 를 무조건 null 로 지웠습니다.
+        mockMvc.perform(put("/api/transactions/$transactionId")
+            .header("Authorization", "Bearer $token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "EXPENSE", "amount" to 45_000, "occurredOn" to today.toString(), "merchant" to "마트",
+                "categoryId" to categories.first { it.name == "장보기" }.id,
+                "scope" to source, "budgetSource" to source,
+                "paymentMethod" to mapOf("type" to "CARD", "displayName" to "V1 카드"),
+                "cardId" to cardId,
+            ))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.card.id").value(cardId))
+
+        mockMvc.perform(get("/api/dashboard/current").header("Authorization", "Bearer $token"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.cardPaymentSummaries[0].totalAmount").value(45_000))
+    }
+
+    @Test
     fun should_PreserveExistingPayer_When_UpdatingTransactionWithoutPayer() {
         val ownerLogin = devLogin("owner@example.com", "소유자")
         val memberLogin = devLogin("member@example.com", "멤버")

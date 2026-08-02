@@ -160,7 +160,7 @@ private fun JsonNode.toLegacyUpdateRequest(): UpdateTransactionApiRequest = Upda
 )
 private fun JsonNode.toV1Command(): V1TransactionCommand {
     val installment = get("installment")
-    return V1TransactionCommand(CategoryType.valueOf(requiredText("type")), requiredLong("amount"), LocalDate.parse(requiredText("occurredOn", "transactionDate")), requiredText("merchant"), longOrNull("categoryId"), textOrNull("memo"), textOrNull("transferType")?.let(TransferType::valueOf), source("scope"), source("budgetSource"), longOrNull("payerUserId"), booleanOrNull("sharedWithPartner"), paymentNode("paymentMethod"), textOrNull("occurredAt")?.let(java.time.Instant::parse), installment?.takeUnless { it.isNull }?.let { V1InstallmentCommand(it.path("months").asInt(), it.path("monthlyInterest").asLong(0)) })
+    return V1TransactionCommand(CategoryType.valueOf(requiredText("type")), requiredLong("amount"), LocalDate.parse(requiredText("occurredOn", "transactionDate")), requiredText("merchant"), longOrNull("categoryId"), textOrNull("memo"), textOrNull("transferType")?.let(TransferType::valueOf), source("scope"), source("budgetSource"), longOrNull("payerUserId"), booleanOrNull("sharedWithPartner"), paymentNode("paymentMethod"), textOrNull("occurredAt")?.let(java.time.Instant::parse), installment?.takeUnless { it.isNull }?.let { V1InstallmentCommand(it.path("months").asInt(), it.path("monthlyInterest").asLong(0)) }, longOrNull("cardId"))
 }
 private fun String?.toValues(): List<String> = this?.split(',')?.map(String::trim)?.filter(String::isNotBlank) ?: emptyList()
 private fun JsonNode.source(name: String): BudgetSource? = get(name)?.takeUnless { it.isNull }?.let { BudgetSource(BudgetScopeType.valueOf(it.requiredText("type")), it.longOrNull("ownerUserId")) }

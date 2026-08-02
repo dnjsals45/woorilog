@@ -55,6 +55,9 @@ data class V1TransactionCommand(
     val paymentMethod: V1PaymentMethod?,
     val occurredAt: Instant?,
     val installment: V1InstallmentCommand? = null,
+    /* 저장된 카드를 고른 경우에만 채운다. 카드 결제라도 자유 텍스트 카드명만 쓸 수 있어 선택값이다.
+     * 이 값이 있어야 대시보드의 카드 결제 예정 금액 집계에 잡힌다. */
+    val cardId: Long? = null,
 )
 
 data class V1TransactionListCommand(

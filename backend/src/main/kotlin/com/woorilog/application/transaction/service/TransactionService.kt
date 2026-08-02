@@ -135,7 +135,8 @@ class TransactionService(
         val shared = if (scope.type == BudgetScopeType.SHARED) null else request.sharedWithPartner
             ?: preferenceRepository.findByLedgerIdAndUserId(ledgerId, userId)?.shareNewPersonalTransactions ?: false
         val transaction = Transaction(ledger, category, payer, type, request.amount, request.occurredOn, request.memo,
-            payment.first, null, recorder = actor, budgetAllocation = allocation, transferType = request.transferType,
+            payment.first, resolveV1Card(ledgerId, type, payment.first, request.cardId),
+            recorder = actor, budgetAllocation = allocation, transferType = request.transferType,
             merchant = request.merchant.trim(), occurredAt = request.occurredAt, scopeType = scope.type,
             scopeOwnerUserId = scope.ownerUserId, sharedWithPartner = shared, lastModifiedBy = actor,
             categoryGroupCode = category.categoryGroup.code, categoryGroupName = category.categoryGroup.name,
@@ -230,7 +231,7 @@ class TransactionService(
         transaction.paymentMethod = payment.first
         transaction.paymentMethodType = payment.first
         transaction.paymentMethodDisplayName = payment.second
-        transaction.card = null
+        transaction.card = resolveV1Card(ledger.id!!, request.type, payment.first, request.cardId)
         transaction.lastModifiedBy = actor
         val saved = transactionRepository.save(transaction)
         setOfNotNull(oldPeriodId, period.id).forEach(budgetAutomationService::evaluatePeriod)
@@ -531,6 +532,17 @@ class TransactionService(
     private fun resolveV1Payment(payment: V1PaymentMethod?): Pair<PaymentMethod, String?> {
         val type = payment?.type ?: PaymentMethod.CASH
         return type to payment?.displayName?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    /* V1 은 저장된 카드 없이 자유 텍스트 카드명만으로도 카드 결제를 기록할 수 있어 cardId 는 선택값이다.
+     * 값이 있으면 카드 지출 거래인지와 같은 장부의 카드인지만 확인한다. */
+    private fun resolveV1Card(ledgerId: Long, type: CategoryType, method: PaymentMethod, cardId: Long?): Card? {
+        if (cardId == null) return null
+        if (method != PaymentMethod.CARD) invalid("카드는 카드 결제 거래에만 지정할 수 있습니다.")
+        if (type != CategoryType.EXPENSE) invalid("카드는 지출 거래에만 지정할 수 있습니다.")
+        val card = cardRepository.findByIdOrNull(cardId) ?: throw NotFoundException("카드를 찾을 수 없습니다.")
+        if (card.ledger.id != ledgerId) throw NotFoundException("카드를 찾을 수 없습니다.")
+        return card
     }
     private fun CategoryType.toLedgerType() = when (this) { CategoryType.EXPENSE -> LedgerTransactionType.EXPENSE; CategoryType.INCOME -> LedgerTransactionType.INCOME; CategoryType.TRANSFER -> LedgerTransactionType.TRANSFER }
     private fun BudgetScopeType.toAllocationScope() = when (this) { BudgetScopeType.PERSONAL -> BudgetAllocationScope.PERSONAL; BudgetScopeType.SHARED -> BudgetAllocationScope.SHARED }
