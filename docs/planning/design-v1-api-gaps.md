@@ -166,8 +166,11 @@ Claude Design **Crisp Calm V1** 디자인 14화면을 프론트엔드에 이식�
 조회 응답에 `currentMemberCount`, `viewerAlreadyMember`(비로그인 시 `null`), `budgetCycle` 을 추가해
 **참여 버튼을 누르기 전에** 정원 초과와 이미 멤버를 판별합니다.
 
-> `DIFFERENT_PARTNER_NOT_ALLOWED`(409) 는 디자인에 대응 화면이 없어 만료 화면으로 폴백합니다.
-> 미결 항목이며 [`design-v1-divergences.md`](./design-v1-divergences.md) 의 "남은 미결"에 있습니다.
+`DIFFERENT_PARTNER_NOT_ALLOWED`(409) 도 조회 단계로 끌어올렸습니다. 상대가 나간 장부는
+`currentMemberCount` 가 1 이라 정상 초대와 구분되지 않아, 참여를 누른 뒤에야 거부됐습니다.
+`viewerIsDifferentPartner` 를 추가해 미리 판별하고 전용 문구를 보여줍니다.
+정책 자체(한 번이라도 두 사람이 쓴 장부는 원래 상대방만 재참여)는 그대로입니다 —
+근거는 [`design-v1-divergences.md`](./design-v1-divergences.md) 13번에 있습니다.
 
 ## C-8. 이미지 가져오기 — 완료
 
@@ -193,6 +196,18 @@ Claude Design **Crisp Calm V1** 디자인 14화면을 프론트엔드에 이식�
 **알려진 한계**: `TransactionService` 의 legacy UUID 기반 할부 경로는 `ScheduledPlan` 을 만들지 않아
 그 경로로 생성된 거래는 `monthlyInterest` 가 `null` 입니다. 실제 스키마 추가 없이는 메울 수 없는 기존 데이터 공백입니다.
 
+## C-11. V1 거래 저장의 `cardId` 누락 (신규 발견) — 완료
+
+대시보드의 `nextCardPaymentSummaries` 는 `transaction.card` 로 집계하는데,
+V1 저장 경로(`toV1Command`)에 `cardId` 가 없어 거래의 `card` FK 가 **한 번도 채워지지 않았습니다.**
+그 결과 카드를 등록하고 거래에 골라도 **카드 결제 예정 금액이 항상 0원**이었습니다.
+legacy 요청(`CreateTransactionApiRequest`)에는 `cardId` 가 있고 서비스도 처리하는데 V1 만 빠져 있었습니다.
+
+`updateV1Transaction` 은 `transaction.card = null` 로 매번 지우고 있어, 어쩌다 연결돼도 수정 한 번이면 사라졌습니다.
+
+V1 은 저장된 카드 없이 자유 텍스트 카드명만으로도 카드 결제를 기록할 수 있으므로 `cardId` 는 선택값입니다.
+값이 있으면 카드 지출 거래인지와 같은 장부의 카드인지만 확인합니다.
+
 ## C-10. ~~거래 폼 부가 정보~~ — 항목 삭제
 
 `merchant-suggestions` 와 `cards` 엔드포인트가 처음부터 있었습니다. 프론트 배선만 하면 되는 A 류였습니다.
@@ -206,7 +221,6 @@ Claude Design **Crisp Calm V1** 디자인 14화면을 프론트엔드에 이식�
 | 항목 | 내용 | 영향 |
 | --- | --- | --- |
 | 기간별 고정비·할부 **항목 목록** | `scheduledRecurringExpenseAmount` / `nextPeriodScheduledAmount` 총액만 있음 | 대시보드 예산 상세와 기간 종료 요약의 해당 영역이 빈 상태. C-2 로 `ScheduledPlan` 필드는 생겼으므로 목록 엔드포인트나 요약 응답 확장으로 풀 수 있음 |
-| 거래 저장 시 `cardId` | 카드를 골라도 이름만 저장됨 | 대시보드 `cardPaymentSummaries` 와 이어지지 않음. 제품 판단 필요 |
 | 반복 거래 적용 범위 `ALL` | `updateFuture` 가 `FUTURE` 만 지원 | 화면에서 선택지를 제거해 지금은 문제가 드러나지 않음 |
 
 ---

@@ -14,6 +14,7 @@ data class V1LinkInvitationPreviewResponse(
     val authenticationRequired: Boolean,
     val currentMemberCount: Int,
     val viewerAlreadyMember: Boolean?,
+    val viewerIsDifferentPartner: Boolean?,
     val budgetCycle: BudgetCycleResponse,
 )
 
@@ -26,5 +27,6 @@ fun V1LinkInvitationPreviewResult.toResponse() = V1LinkInvitationPreviewResponse
     authenticationRequired = authenticationRequired,
     currentMemberCount = currentMemberCount,
     viewerAlreadyMember = viewerAlreadyMember,
+    viewerIsDifferentPartner = viewerIsDifferentPartner,
     budgetCycle = BudgetCycleResponse(budgetCycle.startType, budgetCycle.startDay),
 )

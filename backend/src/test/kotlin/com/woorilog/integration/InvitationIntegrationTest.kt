@@ -188,6 +188,7 @@ class InvitationIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.authenticationRequired").value(false))
             .andExpect(jsonPath("$.viewerAlreadyMember").value(false))
+            .andExpect(jsonPath("$.viewerIsDifferentPartner").value(false))
 
         // 3. Accept link invitation by token
         mockMvc.perform(post("/api/invitations/links/$token/accept")
@@ -195,6 +196,40 @@ class InvitationIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.ledger.id").value(ledgerId))
             .andExpect(jsonPath("$.ledger.accessState").value("ACTIVE"))
+    }
+
+    @Test
+    fun should_BlockDifferentPartner_AfterPreviousPartnerLeft() {
+        val owner = devLogin("pair-owner@example.com", "장부주인")
+        val partner = devLogin("pair-partner@example.com", "원래상대")
+        val stranger = devLogin("pair-stranger@example.com", "새로운사람")
+        val ledgerId = createGroupLedger(owner.accessToken, "페어링장부").id
+
+        fun link(): String = objectMapper.readTree(
+            mockMvc.perform(post("/api/ledgers/$ledgerId/invitations/links").header("Authorization", "Bearer ${owner.accessToken}"))
+                .andExpect(status().isCreated).andReturn().response.contentAsString,
+        )["url"].asText().substringAfterLast('/')
+
+        mockMvc.perform(post("/api/invitations/links/${link()}/accept").header("Authorization", "Bearer ${partner.accessToken}"))
+            .andExpect(status().isOk)
+        mockMvc.perform(delete("/api/ledgers/$ledgerId/members/me").header("Authorization", "Bearer ${partner.accessToken}"))
+            .andExpect(status().isNoContent)
+
+        // 한 번이라도 두 사람이 쓴 장부는 원래 상대방만 다시 들어올 수 있다.
+        val reopened = link()
+        mockMvc.perform(get("/api/invitations/links/$reopened").header("Authorization", "Bearer ${stranger.accessToken}"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.viewerIsDifferentPartner").value(true))
+        mockMvc.perform(post("/api/invitations/links/$reopened/accept").header("Authorization", "Bearer ${stranger.accessToken}"))
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.code").value("DIFFERENT_PARTNER_NOT_ALLOWED"))
+
+        // 원래 상대방은 막히지 않는다.
+        mockMvc.perform(get("/api/invitations/links/$reopened").header("Authorization", "Bearer ${partner.accessToken}"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.viewerIsDifferentPartner").value(false))
+        mockMvc.perform(post("/api/invitations/links/$reopened/accept").header("Authorization", "Bearer ${partner.accessToken}"))
+            .andExpect(status().isOk)
     }
 
     @Test

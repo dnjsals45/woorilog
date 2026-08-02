@@ -462,12 +462,14 @@
   "authenticationRequired": true,
   "currentMemberCount": 1,
   "viewerAlreadyMember": null,
+  "viewerIsDifferentPartner": null,
   "budgetCycle": { "startType": "DAY_OF_MONTH", "startDay": 1 }
 }
 ```
 
 - `currentMemberCount`: 링크가 걸린 장부의 현재 활성 멤버 수. 2명이면 참여 버튼을 누르기 전에 정원 초과를 안내할 수 있습니다.
 - `viewerAlreadyMember`: 비로그인 조회(`authenticationRequired: true`)에서는 판별 불가이므로 `null`입니다. 로그인 상태에서는 뷰어가 해당 장부의 활성 멤버인지 여부(`true`/`false`)입니다.
+- `viewerIsDifferentPartner`: 한 번이라도 두 사람이 쓴 장부에는 원래 상대방만 다시 참여할 수 있습니다. 그 제한에 걸리는 뷰어면 `true`이고, 수락을 시도하면 `409 DIFFERENT_PARTNER_NOT_ALLOWED`가 납니다. 비로그인 조회에서는 `null`입니다.
 - `budgetCycle`: 장부의 예산 기간 시작 규칙(`BudgetCycleResponse`, `ledger.budgetCycle`과 동일 형식).
 - 상태 판별은 조회 단계에서 세 가지로 구분합니다.
 
@@ -787,12 +789,14 @@
     "type": "CARD",
     "displayName": "생활비 카드"
   },
+  "cardId": 7,
   "sharedWithPartner": null,
   "installment": null
 }
 ```
 
 - `merchant`, `categoryId`는 빠른 기록에서 필수입니다.
+- `cardId`는 선택입니다. 저장된 카드를 고른 경우에만 보내며, 카드 결제 지출 거래에서만 허용합니다. 이 값이 있어야 대시보드의 `cardPaymentSummaries` 집계에 잡힙니다. 저장된 카드 없이 `paymentMethod.displayName`에 카드 이름만 적는 것도 가능합니다.
 - `EXPENSE`와 `TRANSFER/OUTBOUND`는 budget source가 필수입니다.
 - `INCOME`, `TRANSFER/OWN_ACCOUNTS`, `TRANSFER/INBOUND`는 budget source가 `null`입니다.
 - 공동 장부에서는 `scope`가 필수이고, 예산 차감 거래의 scope와 budget source는 같아야 합니다.

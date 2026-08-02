@@ -12,7 +12,7 @@ import {
 import { Icon } from '../shared/ui/Icon'
 import { Skeleton } from '../shared/ui/Skeleton'
 
-type ErrorVariant = 'expired' | 'full' | 'member'
+type ErrorVariant = 'expired' | 'full' | 'member' | 'differentPartner'
 
 const ERROR_CONTENT: Record<ErrorVariant, { title: string; body: string; cta: string; href: string }> = {
   expired: {
@@ -32,6 +32,15 @@ const ERROR_CONTENT: Record<ErrorVariant, { title: string; body: string; cta: st
     body: '초대를 다시 수락하지 않아도 돼요. 바로 장부로 이동해 계속 기록할 수 있어요.',
     cta: '장부로 이동',
     href: '/dashboard',
+  },
+  /* 한 번이라도 두 사람이 쓴 장부는 원래 상대방만 다시 들어올 수 있습니다.
+   * 남은 거래 기록이 처음부터 함께하지 않은 사람에게 넘어가지 않게 하기 위한 제한입니다.
+   * 링크는 멀쩡하므로 "만료" 문구로 뭉뚱그리면 사용자가 링크를 다시 받으러 갑니다. */
+  differentPartner: {
+    title: '이 장부는 다른 분과 함께 쓰던 장부예요',
+    body: '이미 기록된 거래가 남아 있어서 처음 함께 쓰던 분만 다시 들어올 수 있어요. 새로 시작하려면 공동 장부를 새로 만들어 주세요.',
+    cta: '공동 장부 만들기',
+    href: '/ledgers/new',
   },
 }
 
@@ -88,8 +97,7 @@ export function InvitationLinkPage() {
   if (acceptMutation.isError && acceptMutation.error instanceof ApiClientError) {
     if (acceptMutation.error.code === 'LEDGER_MEMBER_LIMIT_REACHED') acceptErrorVariant = 'full'
     else if (acceptMutation.error.code === 'ALREADY_LEDGER_MEMBER') acceptErrorVariant = 'member'
-    // DIFFERENT_PARTNER_NOT_ALLOWED(409)는 디자인에 정의된 5개 상태에 없다.
-    // 현재는 "링크 만료" 카드 문구로 대체 표시한다. 전용 문구가 필요하면 디자인에 추가해야 한다.
+    else if (acceptMutation.error.code === 'DIFFERENT_PARTNER_NOT_ALLOWED') acceptErrorVariant = 'differentPartner'
     else acceptErrorVariant = 'expired'
   }
 
@@ -104,6 +112,7 @@ export function InvitationLinkPage() {
   if (previewQuery.data) {
     if (previewQuery.data.viewerAlreadyMember === true) previewStateVariant = 'member'
     else if (previewQuery.data.currentMemberCount >= MAX_LEDGER_MEMBERS) previewStateVariant = 'full'
+    else if (previewQuery.data.viewerIsDifferentPartner === true) previewStateVariant = 'differentPartner'
   }
 
   const errorVariant = acceptErrorVariant ?? previewErrorVariant ?? previewStateVariant

@@ -80,6 +80,12 @@ class InvitationService(
         requireUsableLink(invitation)
         val ledger = invitation.ledger
         val activeMembers = ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledger.id!!)
+        /* acceptV1Link 의 페어링 제한을 조회 단계에서 미리 알려준다. 이게 없으면 상대가 나간 장부가
+         * 정상 초대처럼 보이고, 참여를 누른 뒤에야 거부된다. */
+        val previousPartnerIds = ledgerMemberRepository.findByLedgerId(ledger.id!!)
+            .mapNotNull { it.user.id }
+            .filter { it != ledger.ownerId }
+            .toSet()
         return V1LinkInvitationPreviewResult(
             invitationId = invitation.id!!,
             ledgerName = ledger.name,
@@ -89,6 +95,7 @@ class InvitationService(
             authenticationRequired = currentUserId == null,
             currentMemberCount = activeMembers.size,
             viewerAlreadyMember = currentUserId?.let { uid -> activeMembers.any { it.user.id == uid } },
+            viewerIsDifferentPartner = currentUserId?.let { uid -> previousPartnerIds.isNotEmpty() && uid !in previousPartnerIds },
             budgetCycle = BudgetCycleResult(ledger.budgetStartType.name, ledger.budgetStartDay),
         )
     }
