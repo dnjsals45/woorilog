@@ -327,25 +327,14 @@ export function UserSettingsPage() {
     <>
       <AppHeader description={`프로필과 ${savedName || '내 장부'}의 장부, 멤버, 카테고리, 알림을 관리해요`} title="설정" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '196px minmax(0,1fr)', gap: 32, alignItems: 'start', padding: '28px 32px 140px' }}>
-        <nav style={{ position: 'sticky', top: 100, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div className="settings-layout">
+        <nav className="settings-tabs">
           {TABS.map((item) => (
             <button
               aria-current={tab === item.id ? 'page' : undefined}
+              className="settings-tab"
               key={item.id}
               onClick={() => setTab(item.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                minHeight: 44,
-                padding: '0 12px',
-                borderRadius: 12,
-                fontSize: 14,
-                textAlign: 'left',
-                background: tab === item.id ? 'var(--wl-brand-100)' : 'transparent',
-                color: tab === item.id ? 'var(--wl-color-primary-dark)' : 'var(--wl-color-text-body)',
-                fontWeight: tab === item.id ? 700 : 600,
-              }}
               type="button"
             >
               {item.label}
@@ -353,7 +342,7 @@ export function UserSettingsPage() {
           ))}
         </nav>
 
-        <div style={{ minWidth: 0 }}>
+        <div className="settings-content">
           {isLoading ? <Skeleton height={220} radius={18} /> : null}
           {hasError && !isLoading ? <ErrorState description="설정 정보를 다시 불러와주세요." onRetry={() => { me.refetch(); ledgers.refetch() }} /> : null}
 
@@ -635,7 +624,7 @@ export function UserSettingsPage() {
               {categoriesQuery.isLoading || groupsQuery.isLoading ? <div style={{ marginTop: 20 }}><Skeleton height={320} radius={18} /></div> : null}
 
               {categoriesQuery.isSuccess && groupsQuery.isSuccess ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '280px minmax(0,1fr)', gap: 20, marginTop: 20, alignItems: 'start' }}>
+                <div className="settings-category-grid">
                   <ul style={{ display: 'grid', gap: 2, margin: 0, padding: 0, listStyle: 'none', maxHeight: 520, overflowY: 'auto' }}>
                     {groups.map((group) => {
                       const count = categories.filter((category) => category.categoryGroupId === group.id).length
@@ -690,8 +679,8 @@ export function UserSettingsPage() {
                       <ul style={{ display: 'grid', gap: 2, margin: '16px 0 0', padding: 0, listStyle: 'none' }}>
                         {subs.map((category) => (
                           <li
+                            className="settings-sub-row"
                             key={category.id}
-                            style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto auto', alignItems: 'center', gap: 8, minHeight: 48, padding: '0 8px', borderRadius: 'var(--wl-radius-md)' }}
                           >
                             <input
                               aria-label="소분류 이름"

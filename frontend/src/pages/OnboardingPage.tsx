@@ -88,13 +88,13 @@ export function OnboardingPage({
 
   return (
     <main className="auth-surface flex min-h-dvh flex-col">
-      <header className="flex h-[72px] items-center px-6 sm:px-8">
+      <header className="flex h-[72px] items-center px-4 sm:px-8">
         <Link className="flex items-center" to="/">
           <img alt="우리로그" className="h-auto w-[118px]" src={logo} />
         </Link>
       </header>
 
-      <div className="flex flex-1 justify-center px-5 pt-8 pb-16 sm:px-8">
+      <div className="flex flex-1 justify-center px-4 pt-8 pb-10 sm:px-8 sm:pb-16">
         <div className="w-full max-w-[560px]">
           <div className="mb-6 flex items-center gap-2.5">
             {([0, 1] as const).map((index) => (

@@ -228,21 +228,12 @@ function FormStep({
         </p>
       ) : null}
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          gap: 10,
-          marginTop: 28,
-          paddingTop: 20,
-          borderTop: '1px solid var(--wl-color-border)',
-        }}
-      >
+      <div className="ledger-create-footer">
         <Link
           style={{
             display: 'inline-flex',
             alignItems: 'center',
+            justifyContent: 'center',
             minHeight: 44,
             padding: '0 14px',
             borderRadius: 12,
@@ -396,17 +387,7 @@ function DoneStep({
         <li>예산 배분은 두 사람이 모두 참여한 뒤에 함께 정해요.</li>
       </ul>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
-          marginTop: 26,
-          paddingTop: 20,
-          borderTop: '1px solid var(--wl-color-border)',
-        }}
-      >
+      <div className="ledger-create-footer ledger-create-footer--between">
         <button
           disabled={isCreatingInvitation}
           onClick={onRegenerate}
@@ -498,11 +479,11 @@ export function SharedLedgerCreatePage({
         }
         title="공동 장부 만들기"
       />
-      <div style={{ padding: '28px 32px', display: 'flex', justifyContent: 'center' }}>
+      <div className="ledger-create-shell">
         <div
+          className="ledger-create-card"
           style={{
             width: 'min(560px, 100%)',
-            padding: '30px 32px 32px',
             border: '1px solid var(--wl-color-border)',
             borderRadius: 'var(--wl-radius-lg)',
             background: 'var(--wl-color-surface)',

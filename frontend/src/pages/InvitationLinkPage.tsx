@@ -132,7 +132,7 @@ export function InvitationLinkPage() {
   const errorVariant = acceptErrorVariant ?? previewErrorVariant ?? previewStateVariant
 
   return (
-    <main className="auth-surface flex min-h-dvh flex-col items-center px-5 py-12 sm:px-8">
+    <main className="auth-surface flex min-h-dvh flex-col items-center px-4 py-12 sm:px-8">
       <img alt="우리로그" src={woorilogLogo} style={{ display: 'block', width: 'auto', height: 40 }} />
 
       {accepted && previewQuery.data ? (
@@ -160,7 +160,7 @@ export function InvitationLinkPage() {
 
 function InvitationLoadingCard() {
   return (
-    <div className="auth-card" style={{ width: 'min(520px,100%)', marginTop: 22, padding: '30px 32px 32px' }}>
+    <div className="auth-card public-card">
       <Skeleton height={24} radius={999} width={88} />
       <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
         <Skeleton height={28} />
@@ -200,7 +200,7 @@ function InvitationValidCard({
   returnPath: string
 }) {
   return (
-    <div className="auth-card" data-anim style={{ width: 'min(520px,100%)', marginTop: 22, padding: '30px 32px 32px' }}>
+    <div className="auth-card public-card" data-anim>
       <span
         className="wl-label"
         style={{
@@ -269,6 +269,7 @@ function InvitationValidCard({
       </ul>
 
       <div
+        className="invitation-actions"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -316,7 +317,7 @@ function InvitationValidCard({
 
 function InvitationAcceptedCard({ ledgerName }: { ledgerName: string }) {
   return (
-    <div className="auth-card" data-anim style={{ width: 'min(520px,100%)', marginTop: 22, padding: '30px 32px 32px' }}>
+    <div className="auth-card public-card" data-anim>
       <span
         style={{
           display: 'grid',
@@ -354,7 +355,7 @@ function InvitationAcceptedCard({ ledgerName }: { ledgerName: string }) {
 function InvitationErrorCard({ variant }: { variant: ErrorVariant }) {
   const content = ERROR_CONTENT[variant]
   return (
-    <div className="auth-card" data-anim style={{ width: 'min(520px,100%)', marginTop: 22, padding: '30px 32px 32px' }}>
+    <div className="auth-card public-card" data-anim>
       <span
         style={{
           display: 'grid',

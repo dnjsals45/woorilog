@@ -216,10 +216,10 @@ export function LandingPage() {
               <p className="mt-5 max-w-[47ch] text-[17.5px] leading-[1.68] text-[var(--wl-color-text-body)]">
                 공동 생활비와 각자 예산을 나눠 운영하고, 이번 기간에 남은 돈을 두 사람이 같은 화면에서 봅니다.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                {renderCta('lg')}
+              <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                {renderCta('lg', 'w-full sm:w-auto')}
                 <a
-                  className="wl-landing-cta inline-flex min-h-13 items-center gap-1.5 rounded-full border border-[var(--wl-color-border-strong)] bg-[color-mix(in_srgb,var(--wl-color-surface-subtle)_92%,transparent)] px-4.5 text-[15px] font-semibold text-[var(--wl-color-text-body)]"
+                  className="wl-landing-cta inline-flex min-h-13 w-full items-center justify-center gap-1.5 rounded-full border border-[var(--wl-color-border-strong)] bg-[color-mix(in_srgb,var(--wl-color-surface-subtle)_92%,transparent)] px-4.5 text-[15px] font-semibold text-[var(--wl-color-text-body)] sm:w-auto"
                   href="#budget"
                 >
                   어떻게 나누는지 보기
@@ -374,7 +374,7 @@ export function LandingPage() {
 
         <section className="border-t border-[var(--wl-color-border)]" id="faq">
           <Reveal className="mx-auto max-w-[820px] px-6 py-21">
-            <h2 className="m-0 mb-7 text-[34px] font-extrabold tracking-[-0.03em]">자주 묻는 질문</h2>
+            <h2 className="m-0 mb-7 font-extrabold tracking-[-0.03em]" style={{ fontSize: 'clamp(26px, 2.8vw, 34px)' }}>자주 묻는 질문</h2>
             {FAQ_ROWS.map((row, index) => {
               const open = openFaqIndex === index
               return (
@@ -403,11 +403,11 @@ export function LandingPage() {
 
         <section className="border-t border-[var(--wl-color-border)] bg-[var(--wl-brand-50)]">
           <Reveal className="mx-auto grid max-w-[720px] justify-items-center gap-5.5 px-6 py-22 text-center">
-            <h2 className="m-0 text-[36px] font-extrabold leading-[1.26] tracking-[-0.03em]">이번 기간부터 같이 기록해요</h2>
+            <h2 className="m-0 font-extrabold leading-[1.26] tracking-[-0.03em]" style={{ fontSize: 'clamp(27px, 3.2vw, 36px)' }}>이번 기간부터 같이 기록해요</h2>
             <p className="m-0 max-w-[44ch] text-[16.5px] leading-[1.7] text-[var(--wl-color-text-body)]">
               카카오로 로그인하면 개인 장부가 먼저 생기고, 링크 하나로 상대방을 공동 장부에 초대할 수 있습니다.
             </p>
-            {renderCta('lg')}
+            {renderCta('lg', 'w-full sm:w-auto')}
           </Reveal>
         </section>
       </main>

@@ -37,7 +37,7 @@ export function LoginPage() {
   }
 
   return (
-    <main className="auth-surface flex min-h-dvh items-center px-5 py-10 sm:px-8">
+    <main className="auth-surface flex min-h-dvh items-center px-4 py-10 sm:px-8">
       <section className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div className="max-w-md">
           <Link className="inline-flex items-center gap-2 text-sm font-bold text-[var(--wl-color-primary-dark)]" to="/"><ArrowLeft size={18} aria-hidden="true" />처음으로</Link>
