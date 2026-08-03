@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useMeQuery, useUpdateProfileMutation } from '../features/auth/model/authQueries'
 import { clearAuthReturnPath, getAuthReturnPath } from '../features/auth/model/authReturnPath'
+import { copyText } from '../shared/lib/clipboard'
 import { createInvitationLink } from '../features/invitation/api/invitationApi'
 import {
   useCreateInvitationLinkMutation,
@@ -53,7 +54,7 @@ export function SharedLedgerCreateRoute() {
     isCreating={createLedger.isPending}
     isCreatingInvitation={regenerateInvitation.isPending}
     ledger={ledger}
-    onCopyInvitation={(url) => void navigator.clipboard.writeText(url)}
+    onCopyInvitation={(url) => copyText(url)}
     onCreate={async (request) => {
       const created = await createLedger.mutateAsync(request)
       setLedger({ id: created.ledger.id, name: created.ledger.name })

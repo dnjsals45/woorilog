@@ -25,6 +25,7 @@ import {
 import { useNotificationPreferencesQuery, useUpdateNotificationPreferencesMutation } from '../features/notification/model/notificationQueries'
 import type { TransactionType } from '../features/transaction/api/transactionApi'
 import { ApiClientError } from '../shared/api/client'
+import { copyText } from '../shared/lib/clipboard'
 import { AppHeader } from '../shared/ui/AppHeader'
 import { Badge } from '../shared/ui/Badge'
 import { Button } from '../shared/ui/Button'
@@ -244,7 +245,7 @@ export function UserSettingsPage() {
 
   function copyInvite() {
     if (!invitation) return
-    void navigator.clipboard.writeText(invitation.url)
+    void copyText(invitation.url)
     showToast('링크를 복사했어요')
   }
 

@@ -35,6 +35,10 @@ const MOBILE_TABS: MobileTab[] = [
   { id: 'more', label: '더보기', icon: 'ellipsis' },
 ]
 
+/* FAB 은 "거래 추가"입니다. 거래를 적을 맥락이 아닌 화면에서는 쓸모가 없고,
+ * 화면 아래쪽 버튼과 겹쳐 그걸 누르지 못하게 만듭니다(장부 만들기의 '링크 다시 만들기'). */
+const FAB_HIDDEN_PREFIXES = ['/ledgers', '/settings', '/help']
+
 /* 탭 하나에 여러 경로가 걸립니다. 시트에서만 갈 수 있는 화면도 어떤 탭을 밝힐지 정해둡니다. */
 const MOBILE_TAB_ROUTES: { prefix: string; tab: string }[] = [
   { prefix: '/dashboard', tab: 'dashboard' },
@@ -108,6 +112,7 @@ export function AppShell() {
 
   const activeId = NAVIGATION.find((item) => location.pathname.startsWith(item.to))?.id
   const activeTabId = MOBILE_TAB_ROUTES.find((entry) => location.pathname.startsWith(entry.prefix))?.tab
+  const showFab = !FAB_HIDDEN_PREFIXES.some((prefix) => location.pathname.startsWith(prefix))
 
   function selectLedger(selected: LedgerRef) {
     const match = ledgersQuery.data?.ledgers?.find((ledger) => ledger.name === selected.name)
@@ -197,17 +202,19 @@ export function AppShell() {
               tabs={MOBILE_TABS}
             />
             {/* 거래 추가는 데스크톱에서 헤더 버튼입니다. 모바일에서는 엄지가 닿는 자리에 둡니다. */}
-            <button
-              aria-label="거래 추가"
-              className="wl-fab"
-              onClick={() => {
-                setTransactionEntryKey((value) => value + 1)
-                setTransactionEntryOpen(true)
-              }}
-              type="button"
-            >
-              <Icon name="plus" size="xl" />
-            </button>
+            {showFab ? (
+              <button
+                aria-label="거래 추가"
+                className="wl-fab"
+                onClick={() => {
+                  setTransactionEntryKey((value) => value + 1)
+                  setTransactionEntryOpen(true)
+                }}
+                type="button"
+              >
+                <Icon name="plus" size="xl" />
+              </button>
+            ) : null}
           </>
         ) : null}
 

@@ -23,7 +23,8 @@ export type SharedLedgerCreatePageProps = {
   isCreatingInvitation?: boolean
   invitationError?: string | null
   onRegenerateInvitation?: () => void | Promise<void>
-  onCopyInvitation?: (url: string) => void
+  /** 복사 성공 여부를 돌려줍니다. false면 "길게 눌러 복사하세요" 안내를 띄웁니다. */
+  onCopyInvitation?: (url: string) => boolean | Promise<boolean>
   /** '장부로 이동' 클릭 시 호출합니다. */
   onDone?: () => void
 }
@@ -258,7 +259,7 @@ function DoneStep({
   invitation,
   isCreatingInvitation,
   invitationError,
-  copied,
+  copyState,
   onCopy,
   onRegenerate,
   onDone,
@@ -267,7 +268,7 @@ function DoneStep({
   invitation: SharedLedgerInvitation | null
   isCreatingInvitation: boolean
   invitationError?: string | null
-  copied: boolean
+  copyState: 'idle' | 'copied' | 'failed'
   onCopy: () => void
   onRegenerate: () => void
   onDone: () => void
@@ -299,48 +300,20 @@ function DoneStep({
       <div style={{ display: 'grid', gap: 12, marginTop: 24 }}>
         {invitation ? (
           <>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '14px 16px',
-                border: '1px solid var(--wl-color-border)',
-                borderRadius: 'var(--wl-radius-md)',
-                background: 'var(--wl-color-surface-subtle)',
-              }}
-            >
-              <span
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: 13,
-                  color: 'var(--wl-color-text-body)',
-                }}
-              >
-                {invitation.url}
-              </span>
-              <button
-                onClick={onCopy}
-                style={{
-                  flex: 'none',
-                  minHeight: 40,
-                  padding: '0 14px',
-                  border: '1px solid var(--wl-color-border)',
-                  borderRadius: 12,
-                  background: 'var(--wl-color-surface)',
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  color: 'var(--wl-color-text-main)',
-                }}
-                type="button"
-              >
-                {copied ? '복사했어요' : '링크 복사'}
+            {/* min-width:0 이 없으면 이 행이 그리드 아이템의 자동 최소 크기(min-content) 아래로
+                줄어들지 못해 트랙을 밀어냅니다. 카드는 overflow:visible 이라 그대로 새어나가고,
+                오른쪽에 있는 복사 버튼이 화면 밖으로 사라집니다. */}
+            <div className="invite-link-row">
+              <span className="invite-link-url">{invitation.url}</span>
+              <button className="invite-link-copy" onClick={onCopy} type="button">
+                {copyState === 'copied' ? '복사했어요' : copyState === 'failed' ? '복사 실패' : '링크 복사'}
               </button>
             </div>
+            {copyState === 'failed' ? (
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: 'var(--wl-color-text-secondary)' }}>
+                자동 복사가 막혔어요. 위 주소를 길게 눌러 직접 복사해 주세요.
+              </p>
+            ) : null}
             <div
               style={{
                 display: 'flex',
@@ -427,7 +400,7 @@ export function SharedLedgerCreatePage({
   const [name, setName] = useState('')
   const [totalBudgetDigits, setTotalBudgetDigits] = useState('1000000')
   const [day, setDay] = useState<number | 'LAST'>(1)
-  const [copied, setCopied] = useState(false)
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [toast, setToast] = useState('')
   const copyTimerRef = useRef<number | undefined>(undefined)
   const toastTimerRef = useRef<number | undefined>(undefined)
@@ -455,12 +428,14 @@ export function SharedLedgerCreatePage({
     })
   }
 
-  function handleCopy() {
+  async function handleCopy() {
     if (!invitation) return
-    onCopyInvitation?.(invitation.url)
-    setCopied(true)
+    // http 로 여는 홈 배포에서는 클립보드 API 가 없어 폴백도 실패할 수 있습니다.
+    // 실패했는데 "복사했어요"라고 말하면 링크가 없는 채로 넘어가게 됩니다.
+    const ok = (await onCopyInvitation?.(invitation.url)) ?? false
+    setCopyState(ok ? 'copied' : 'failed')
     window.clearTimeout(copyTimerRef.current)
-    copyTimerRef.current = window.setTimeout(() => setCopied(false), 2000)
+    copyTimerRef.current = window.setTimeout(() => setCopyState('idle'), ok ? 2000 : 6000)
   }
 
   async function handleRegenerate() {
@@ -492,7 +467,7 @@ export function SharedLedgerCreatePage({
         >
           {isDone ? (
             <DoneStep
-              copied={copied}
+              copyState={copyState}
               invitation={invitation}
               invitationError={invitationError}
               isCreatingInvitation={isCreatingInvitation}
