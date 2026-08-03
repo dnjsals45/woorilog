@@ -17,7 +17,7 @@ iPhone ─ 같은 와이파이 ─→ http://woorilog.local
 
 ## 개발용 구성과의 차이
 
-| | `docker-compose.yml` (개발) | `docker-compose.prod.yml` (홈) |
+| | `docker-compose.yml` (개발) | `docker-compose.home.yml` (홈) |
 | --- | --- | --- |
 | 프론트 | Vite dev server :5173 | nginx 가 정적 파일 서빙 |
 | 백엔드 | `bootRun` + 소스 마운트 | `bootJar` 를 구운 이미지 |
@@ -53,10 +53,10 @@ http://woorilog.local/auth/kakao/callback
 ### 3. 환경 파일
 
 ```bash
-cp .env.prod.example .env.prod
+cp .env.home.example .env.home
 ```
 
-`.env.prod` 는 커밋되지 않습니다. 아래 값을 직접 만들어 채웁니다.
+`.env.home` 는 커밋되지 않습니다. 아래 값을 직접 만들어 채웁니다.
 
 ```bash
 openssl rand -base64 48   # JWT_SECRET
@@ -72,7 +72,7 @@ redirect URI 는 `PUBLIC_ORIGIN` 에서 파생되므로 따로 적지 않습니�
 ## 실행
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.home.yml --env-file .env.home up -d --build
 ```
 
 첫 실행은 백엔드 이미지 빌드(Gradle + Tesseract 모델 내려받기) 때문에 몇 분 걸립니다.
@@ -81,20 +81,20 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 상태 확인:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+docker compose -f docker-compose.home.yml --env-file .env.home ps
 curl -sS http://woorilog.local/health
 ```
 
 로그:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend
+docker compose -f docker-compose.home.yml --env-file .env.home logs -f backend
 ```
 
 내리기:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod down
+docker compose -f docker-compose.home.yml --env-file .env.home down
 ```
 
 `down -v` 는 쓰지 마세요. **데이터 볼륨까지 지웁니다.**
@@ -105,7 +105,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod down
 
 ```bash
 git pull
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.home.yml --env-file .env.home up -d --build
 ```
 
 프론트는 `VITE_API_BASE_URL` 을 **빌드 시점에** 굽습니다. 주소(`PUBLIC_ORIGIN`)를 바꿨다면
@@ -130,7 +130,7 @@ MySQL 볼륨만 믿으면 안 됩니다. 실수로 `down -v` 한 번, 디스크 
 ./scripts/backup-db.sh
 ```
 
-`.env.prod` 의 `BACKUP_DIR` 아래에 `woorilog-<시각>.sql.gz` 로 쌓이고,
+`.env.home` 의 `BACKUP_DIR` 아래에 `woorilog-<시각>.sql.gz` 로 쌓이고,
 `RETENTION_DAYS`(기본 14) 가 지난 것은 지웁니다.
 `--single-transaction` 이라 백업 중에도 앱은 그대로 돕니다.
 
@@ -164,7 +164,7 @@ launchctl load ~/Library/LaunchAgents/local.woorilog.backup.plist
 
 ```bash
 gunzip -c backups/woorilog-<시각>.sql.gz | \
-  docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T mysql \
+  docker compose -f docker-compose.home.yml --env-file .env.home exec -T mysql \
     sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"'
 ```
 
@@ -179,7 +179,7 @@ mkcert -install
 mkcert woorilog.local <맥 IP>     # 이름과 IP 를 한 인증서에 같이 넣습니다
 ```
 
-그 다음 nginx 에 443 서버 블록을 추가하고 인증서를 마운트한 뒤, `.env.prod` 에서 두 줄만 바꿉니다.
+그 다음 nginx 에 443 서버 블록을 추가하고 인증서를 마운트한 뒤, `.env.home` 에서 두 줄만 바꿉니다.
 
 ```dotenv
 PUBLIC_ORIGIN=https://woorilog.local

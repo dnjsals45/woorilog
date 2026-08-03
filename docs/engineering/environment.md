@@ -22,7 +22,7 @@
 
 - `.env.example`: backend, MySQL, Kakao OAuth, JWT, CORS, local/test developer login 예시
 - `frontend/.env.example`: frontend runtime config 예시
-- `.env.prod.example`: 홈 배포 예시. 절차는 [`home-deployment.md`](./home-deployment.md)를 봅니다.
+- `.env.home.example`: 홈 배포 예시. 절차는 [`home-deployment.md`](./home-deployment.md)를 봅니다.
 
 ## Docker Development
 
@@ -73,7 +73,7 @@ Docker 밖에서 `cd backend && ./gradlew bootRun`으로 이미지 OCR까지 확
 
 ## Home Deployment Keys
 
-홈 배포는 `.env.prod`(커밋하지 않음)를 씁니다. 절차는 [`home-deployment.md`](./home-deployment.md)를 봅니다.
+홈 배포는 `.env.home`(커밋하지 않음)를 씁니다. 절차는 [`home-deployment.md`](./home-deployment.md)를 봅니다.
 
 개발용 `.env`와 이름이 겹치는 키는 의미가 같고, 아래는 홈 배포에만 있거나 값이 달라지는 키입니다.
 
@@ -87,8 +87,8 @@ Docker 밖에서 `cd backend && ./gradlew bootRun`으로 이미지 OCR까지 확
 | `DEV_LOGIN_ENABLED` | yes | `false` | 홈 배포에서는 끕니다. 프로덕션 프론트 빌드에는 버튼 자체가 없습니다 |
 | `REFRESH_COOKIE_SECURE` | yes | http `false`, https `true` | http에서 `true`면 브라우저가 refresh cookie를 버려 로그인 직후 로그아웃된 것처럼 보입니다 |
 
-`KAKAO_REDIRECT_URI`와 `CORS_ALLOWED_ORIGINS`는 `.env.prod`에 직접 적지 않습니다.
-`docker-compose.prod.yml`이 `PUBLIC_ORIGIN`에서 만들어 넘깁니다. 주소가 한 곳에만 있어야 어긋나지 않습니다.
+`KAKAO_REDIRECT_URI`와 `CORS_ALLOWED_ORIGINS`는 `.env.home`에 직접 적지 않습니다.
+`docker-compose.home.yml`이 `PUBLIC_ORIGIN`에서 만들어 넘깁니다. 주소가 한 곳에만 있어야 어긋나지 않습니다.
 
 `VITE_API_BASE_URL`은 홈 배포에서 **빈 값**으로 빌드합니다. 프론트와 API가 같은 nginx 뒤에 있어
 `/api` 상대 경로로 부르면 되고, 그래야 CORS와 `SameSite=Lax` refresh cookie가 그대로 동작합니다.
