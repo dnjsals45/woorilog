@@ -182,44 +182,30 @@ export function TransactionsPage() {
           </>
         }
         description="달력에서 날짜를 고르면 그날의 거래만 볼 수 있어요"
+        mobileActions={
+          <button
+            aria-label="이미지로 거래 가져오기"
+            className="wl-icon-button wl-icon-button--subtle"
+            onClick={() => setImportOpen(true)}
+            type="button"
+          >
+            <Icon name="camera" size="lg" />
+          </button>
+        }
         title="가계부"
       />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 10,
-          padding: '16px 32px',
-          borderBottom: '1px solid var(--wl-color-border)',
-          background: 'var(--wl-color-surface)',
-        }}
-      >
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 9,
-            flex: 1,
-            minWidth: 280,
-            maxWidth: 520,
-            height: 44,
-            padding: '0 14px',
-            border: '1px solid var(--wl-color-border)',
-            borderRadius: 'var(--wl-radius-pill)',
-            background: 'var(--wl-color-surface)',
-          }}
-        >
+      <div className="tx-filter-bar">
+        <label className="tx-search">
           <Icon name="search" size="sm" />
           <input
             aria-label="거래 검색"
+            className="tx-search-input"
             onChange={(event) => {
               setQuery(event.target.value)
               resetPage()
             }}
             placeholder="사용처나 카테고리로 찾기"
-            style={{ flex: 1, minWidth: 0, height: '100%', border: 0, background: 'transparent', fontSize: 14, outline: 'none' }}
             type="text"
             value={query}
           />
@@ -247,7 +233,7 @@ export function TransactionsPage() {
           ) : null}
         </label>
 
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="tx-chip-group">
           {TYPE_FILTERS.map((filter) => (
             <button
               key={filter.value}
@@ -263,9 +249,9 @@ export function TransactionsPage() {
           ))}
         </div>
 
-        <span style={{ width: 1, height: 24, background: 'var(--wl-color-border)' }} />
+        <span className="tx-divider" />
 
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="tx-chip-group">
           {BUDGET_FILTERS.map((filter) => (
             <button
               key={filter.value}
@@ -281,7 +267,7 @@ export function TransactionsPage() {
           ))}
         </div>
 
-        <span style={{ width: 1, height: 24, background: 'var(--wl-color-border)' }} />
+        <span className="tx-divider" />
 
         <button
           aria-pressed={unclassifiedOnly}
@@ -301,15 +287,7 @@ export function TransactionsPage() {
           <ErrorState onRetry={() => { dashboardQuery.refetch(); transactionsQuery.refetch() }} />
         </div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(520px,0.95fr) minmax(460px,1fr)',
-            gap: 24,
-            alignItems: 'start',
-            padding: '24px 32px 40px',
-          }}
-        >
+        <div className="tx-main-grid">
           <section
             className="dashboard-panel"
             ref={calendarBoxRef}

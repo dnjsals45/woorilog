@@ -440,7 +440,7 @@ export function TransactionForm({
           ) : null}
         </fieldset>
 
-        <div style={{ display: 'grid', gridTemplateColumns: deductsBudget && isSharedLedger ? '1fr 1fr' : '1fr', gap: 16 }}>
+        <div className={`tx-form-date-budget${deductsBudget && isSharedLedger ? ' tx-form-date-budget--split' : ''}`}>
           <div>
             <span style={sectionLabelStyle}>날짜</span>
             <DatePicker ariaLabel="거래 날짜" onChange={setOccurredOn} value={occurredOn} />
@@ -548,7 +548,7 @@ export function TransactionForm({
               </div>
               {isInstallment ? (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
+                  <div className="tx-form-installment-grid">
                     <label>
                       <span style={{ display: 'block', marginBottom: 7, fontSize: 12.5, fontWeight: 600, color: 'var(--wl-color-text-body)' }}>
                         할부 개월
