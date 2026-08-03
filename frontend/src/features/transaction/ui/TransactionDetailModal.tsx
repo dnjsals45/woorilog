@@ -4,7 +4,10 @@ import { useCategoriesQuery } from '../../category/model/categoryQueries'
 import type { BudgetSource } from '../api/transactionApi'
 import { useDeleteTransactionMutation, useTransactionQuery, useUpdateV1TransactionMutation } from '../model/transactionQueries'
 import { ApiClientError } from '../../../shared/api/client'
+import { useIsMobileShell } from '../../../shared/lib/useIsMobileShell'
 import { Icon } from '../../../shared/ui/Icon'
+import { useBodyScrollLock } from '../../../shared/ui/useBodyScrollLock'
+import { useSheetDrag } from '../../../shared/ui/useSheetDrag'
 import { TransactionForm, type TransactionFormInitialValues, type TransactionFormValues } from './TransactionForm'
 
 export interface TransactionDetailModalProps {
@@ -34,6 +37,11 @@ export function TransactionDetailModal({ transactionId, onClose, onSaved, onDele
   const updateMutation = useUpdateV1TransactionMutation(transactionId)
   const deleteMutation = useDeleteTransactionMutation(transactionId)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  /* 모바일에서 이 패널은 바텀시트가 됩니다(patterns/mobile-shell.css).
+   * 손잡이로 끌어 닫는 제스처와 뒤 화면 스크롤 잠금은 공유 시트와 같은 것을 씁니다. */
+  const isMobile = useIsMobileShell()
+  const { panelRef, stateClass, gripProps } = useSheetDrag(isMobile ? onClose : undefined)
+  useBodyScrollLock(true)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -138,18 +146,20 @@ export function TransactionDetailModal({ transactionId, onClose, onSaved, onDele
       <div
         aria-label="거래 상세"
         aria-modal="true"
-        className="wl-modal-panel"
+        className={`wl-modal-panel${stateClass}`}
         onClick={(event) => event.stopPropagation()}
+        ref={panelRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         style={{
           display: 'flex',
           flexDirection: 'column',
           width: 'min(560px,100%)',
-          maxHeight: 'calc(100vh - 48px)',
+          maxHeight: isMobile ? '88dvh' : 'calc(100vh - 48px)',
           padding: 0,
           overflow: 'hidden',
         }}
       >
+        {isMobile ? <div aria-hidden="true" className="wl-sheet-grip" {...gripProps} /> : null}
         <header
           style={{
             flex: 'none',
@@ -157,7 +167,7 @@ export function TransactionDetailModal({ transactionId, onClose, onSaved, onDele
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 16,
-            padding: '18px 22px',
+            padding: isMobile ? '4px 16px 14px 22px' : '18px 22px',
             borderBottom: '1px solid var(--wl-color-border)',
           }}
         >
@@ -169,7 +179,7 @@ export function TransactionDetailModal({ transactionId, onClose, onSaved, onDele
             aria-label="닫기"
             className="wl-icon-button wl-icon-button--subtle"
             onClick={onClose}
-            style={{ width: 34, height: 34, flex: 'none' }}
+            style={{ width: isMobile ? 40 : 34, height: isMobile ? 40 : 34, flex: 'none' }}
             type="button"
           >
             <Icon name="x" size="md" />
@@ -271,7 +281,8 @@ export function TransactionDetailModal({ transactionId, onClose, onSaved, onDele
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 16,
-                      padding: '13px 22px',
+                      /* 모바일에서는 시트 아래쪽이 홈 인디케이터에 닿습니다. */
+                      padding: isMobile ? '13px 16px calc(13px + env(safe-area-inset-bottom, 0px))' : '13px 22px',
                       borderTop: '1px solid var(--wl-color-border)',
                       background: 'var(--wl-color-surface)',
                       boxShadow: '0 -10px 26px -20px rgb(24 32 29 / 40%)',

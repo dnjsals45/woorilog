@@ -6,6 +6,9 @@ import { EmptyState } from '../../../shared/ui/EmptyState'
 import { ErrorState } from '../../../shared/ui/ErrorState'
 import { IconButton } from '../../../shared/ui/IconButton'
 import { Skeleton } from '../../../shared/ui/Skeleton'
+import { useBodyScrollLock } from '../../../shared/ui/useBodyScrollLock'
+import { useSheetDrag } from '../../../shared/ui/useSheetDrag'
+import { useIsMobileShell } from '../../../shared/lib/useIsMobileShell'
 import { groupNotifications } from '../model/notificationGrouping'
 import { useMarkAllNotificationsReadMutation, useMarkNotificationReadMutation, useNotificationsQuery } from '../model/notificationQueries'
 import { NotificationRow } from './NotificationRow'
@@ -19,12 +22,16 @@ export interface NotificationInboxProps {
  * 대시보드 헤더의 종 아이콘이 여는 알림함 팝오버.
  * 디자인 원본은 전체 페이지가 아니라 `position: fixed; top:78px; right:36px; width:436px` 플로팅 카드다.
  * 내용(그룹 헤더·행·빈 상태)은 `NotificationsPage`와 같은 컴포넌트를 재사용한다.
+ * 모바일에서는 트리거 위치가 의미를 잃어 바텀시트로 올라온다(patterns/mobile-shell.css).
  */
 export function NotificationInbox({ open, onClose }: NotificationInboxProps) {
   const navigate = useNavigate()
   const query = useNotificationsQuery()
   const markRead = useMarkNotificationReadMutation()
   const markAll = useMarkAllNotificationsReadMutation()
+  const isMobile = useIsMobileShell()
+  const { panelRef, stateClass, gripProps } = useSheetDrag(isMobile ? onClose : undefined)
+  useBodyScrollLock(open)
 
   useEffect(() => {
     if (!open) return undefined
@@ -44,7 +51,13 @@ export function NotificationInbox({ open, onClose }: NotificationInboxProps) {
   return (
     <>
       <div aria-hidden="true" className="wl-notification-scrim" onClick={onClose} />
-      <section aria-label="알림함" className="wl-notification-inbox" role="dialog">
+      <section
+        aria-label="알림함"
+        className={`wl-notification-inbox${stateClass}`}
+        ref={panelRef as React.RefObject<HTMLElement>}
+        role="dialog"
+      >
+        {isMobile ? <div aria-hidden="true" className="wl-sheet-grip" {...gripProps} /> : null}
         <header
           style={{
             alignItems: 'center',
@@ -52,7 +65,7 @@ export function NotificationInbox({ open, onClose }: NotificationInboxProps) {
             display: 'flex',
             gap: 12,
             justifyContent: 'space-between',
-            padding: '16px 18px',
+            padding: isMobile ? '2px 12px 12px 18px' : '16px 18px',
           }}
         >
           <div style={{ alignItems: 'center', display: 'flex', gap: 8, minWidth: 0 }}>

@@ -5,8 +5,11 @@ import { useCreateRecurringExpensePlanMutation, useScheduledPlanActionMutation }
 import type { BudgetSource } from '../api/transactionApi'
 import { useCreateV1TransactionMutation, useDeleteTransactionMutation } from '../model/transactionQueries'
 import { formatDateInput } from '../../../shared/lib/date'
+import { useIsMobileShell } from '../../../shared/lib/useIsMobileShell'
 import { IconButton } from '../../../shared/ui/IconButton'
 import { Toast } from '../../../shared/ui/Toast'
+import { useBodyScrollLock } from '../../../shared/ui/useBodyScrollLock'
+import { useSheetDrag } from '../../../shared/ui/useSheetDrag'
 import { TransactionForm, type TransactionFormValues } from './TransactionForm'
 
 const TOAST_DURATION_MS = 3500
@@ -39,7 +42,11 @@ export function TransactionAddDrawer({ open, onClose }: TransactionAddDrawerProp
   const [toast, setToast] = useState('')
   const [lastSaved, setLastSaved] = useState<LastSaved | null>(null)
   const toastTimerRef = useRef<number | undefined>(undefined)
-  const panelRef = useRef<HTMLElement>(null)
+  const isMobile = useIsMobileShell()
+  /* 모바일에서 이 드로어는 바텀시트가 됩니다(patterns/mobile-shell.css).
+   * 손잡이를 잡아 끌어 닫는 제스처와 뒤 화면 스크롤 잠금도 시트와 같은 것을 씁니다. */
+  const { panelRef, stateClass, gripProps } = useSheetDrag(isMobile ? onClose : undefined)
+  useBodyScrollLock(open)
 
   // 열릴 때마다 폼을 새로 마운트해서 지난 세션의 입력이 남지 않게 합니다.
   // (effect 대신 렌더 중 이전 값을 비교하는 방식 — React가 권장하는 "필요하지 않은 effect 피하기" 패턴.)
@@ -174,18 +181,19 @@ export function TransactionAddDrawer({ open, onClose }: TransactionAddDrawerProp
       <section
         aria-label="거래 추가"
         aria-modal="true"
-        className="wl-transaction-drawer-panel"
+        className={`wl-transaction-drawer-panel${stateClass}`}
         onKeyDown={trapFocus}
-        ref={panelRef}
+        ref={panelRef as React.RefObject<HTMLElement>}
         role="dialog"
       >
+        {isMobile ? <div aria-hidden="true" className="wl-sheet-grip" {...gripProps} /> : null}
         <header
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 12,
-            padding: '18px 20px',
+            padding: isMobile ? '4px 16px 14px 20px' : '18px 20px',
             borderBottom: '1px solid var(--wl-color-border)',
           }}
         >
