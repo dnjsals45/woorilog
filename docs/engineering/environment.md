@@ -22,6 +22,7 @@
 
 - `.env.example`: backend, MySQL, Kakao OAuth, JWT, CORS, local/test developer login 예시
 - `frontend/.env.example`: frontend runtime config 예시
+- `.env.prod.example`: 홈 배포 예시. 절차는 [`home-deployment.md`](./home-deployment.md)를 봅니다.
 
 ## Docker Development
 
@@ -69,3 +70,29 @@ Docker 밖에서 `cd backend && ./gradlew bootRun`으로 이미지 OCR까지 확
 | `VITE_API_BASE_URL` | yes | `http://localhost:8080` | browser에서 호출할 backend API base URL |
 | `VITE_KAKAO_REDIRECT_URI` | auth | `http://localhost:5173/auth/kakao/callback` | frontend OAuth callback URL |
 | `VITE_DEV_LOGIN_ENABLED` | local/test | `true` | local/test-only developer login UI toggle |
+
+## Home Deployment Keys
+
+홈 배포는 `.env.prod`(커밋하지 않음)를 씁니다. 절차는 [`home-deployment.md`](./home-deployment.md)를 봅니다.
+
+개발용 `.env`와 이름이 겹치는 키는 의미가 같고, 아래는 홈 배포에만 있거나 값이 달라지는 키입니다.
+
+| Key | Required | Example | Description |
+| --- | --- | --- | --- |
+| `PUBLIC_ORIGIN` | yes | `http://woorilog.local` | 브라우저가 실제로 여는 주소. Kakao redirect URI와 CORS가 여기서 파생됩니다. 프로토콜과 포트까지 정확히 맞춥니다 |
+| `WEB_PORT` | yes | `80` | nginx를 내보낼 호스트 포트. 80이 아니면 `PUBLIC_ORIGIN`에도 포트를 적습니다 |
+| `BACKUP_DIR` | yes | `./backups` | `scripts/backup-db.sh`가 MySQL 덤프를 떨어뜨릴 호스트 폴더 |
+| `RETENTION_DAYS` | no | `14` | 덤프 보관 일수 |
+| `SPRING_PROFILES_ACTIVE` | yes | (빈 값) | 기본 profile. `local`로 두면 개발자 로그인이 켜집니다 |
+| `DEV_LOGIN_ENABLED` | yes | `false` | 홈 배포에서는 끕니다. 프로덕션 프론트 빌드에는 버튼 자체가 없습니다 |
+| `REFRESH_COOKIE_SECURE` | yes | http `false`, https `true` | http에서 `true`면 브라우저가 refresh cookie를 버려 로그인 직후 로그아웃된 것처럼 보입니다 |
+
+`KAKAO_REDIRECT_URI`와 `CORS_ALLOWED_ORIGINS`는 `.env.prod`에 직접 적지 않습니다.
+`docker-compose.prod.yml`이 `PUBLIC_ORIGIN`에서 만들어 넘깁니다. 주소가 한 곳에만 있어야 어긋나지 않습니다.
+
+`VITE_API_BASE_URL`은 홈 배포에서 **빈 값**으로 빌드합니다. 프론트와 API가 같은 nginx 뒤에 있어
+`/api` 상대 경로로 부르면 되고, 그래야 CORS와 `SameSite=Lax` refresh cookie가 그대로 동작합니다.
+
+`VITE_KAKAO_REDIRECT_URI`는 현재 프론트엔드 코드에서 **사용하지 않습니다**.
+프론트는 `GET /api/auth/kakao/login-url`로 백엔드가 만든 주소를 받아 이동합니다.
+redirect URI의 단일 원본은 백엔드의 `KAKAO_REDIRECT_URI`입니다.
