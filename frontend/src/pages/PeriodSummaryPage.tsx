@@ -120,7 +120,7 @@ export function PeriodSummaryPage() {
         <AppHeader title="기간 종료 요약" />
         <div className="dashboard-page">
           <Skeleton height={90} radius={18} />
-          <div style={{ display: 'grid', gap: 20, gridTemplateColumns: '1fr 1fr', marginTop: 20 }}>
+          <div className="period-summary-metric-grid" style={{ marginTop: 20 }}>
             <Skeleton height={220} radius={18} />
             <Skeleton height={220} radius={18} />
           </div>
@@ -205,16 +205,14 @@ export function PeriodSummaryPage() {
           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--wl-color-primary-dark)' }}>
             {formatKoreanFullDate(period.startDate)} ~ {formatKoreanFullDate(period.endDate)}
           </p>
-          <h2 style={{ margin: '10px 0 0', fontSize: 30, fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.3, wordBreak: 'keep-all' }}>
-            {headline}
-          </h2>
+          <h2 className="period-summary-headline">{headline}</h2>
           <p style={{ margin: '10px 0 0', maxWidth: '62ch', fontSize: 14, lineHeight: 1.65, color: 'var(--wl-color-text-body)', wordBreak: 'keep-all' }}>
             남은 금액과 초과액은 다음 기간으로 넘기지 않아요. 끝난 기간의 결과로만 남습니다.
           </p>
         </section>
 
         {budgetCards.length ? (
-          <section className="wl-period-summary-rise" style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(2,minmax(0,1fr))' }}>
+          <section className="wl-period-summary-rise period-summary-metric-grid">
             {budgetCards.map((card) => (
               <article className="dashboard-card" key={card.key}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
@@ -257,7 +255,7 @@ export function PeriodSummaryPage() {
               <Skeleton height={40} />
             </div>
           ) : categoryRows.length ? (
-            <ul style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '14px 32px', margin: '18px 0 0', padding: 0, listStyle: 'none' }}>
+            <ul className="period-summary-category-grid">
               {categoryRows.map((row) => (
                 <li key={row.groupCode}>
                   <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, fontSize: 13.5, color: 'var(--wl-color-text-body)' }}>
@@ -288,7 +286,7 @@ export function PeriodSummaryPage() {
           <p style={{ margin: '18px 0 0', fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>{scopeNote}</p>
         </section>
 
-        <section className="wl-period-summary-rise" style={{ display: 'grid', gap: 20, gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr)', alignItems: 'start' }}>
+        <section className="wl-period-summary-rise period-summary-support-grid">
           <div className="dashboard-card">
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>아직 분류하지 않은 거래</h3>
             <p className="wl-tabular" style={{ margin: '14px 0 0', fontSize: 30, fontWeight: 800, letterSpacing: '-.035em' }}>
@@ -351,10 +349,7 @@ export function PeriodSummaryPage() {
         </section>
 
         {showCopyCard ? (
-          <section
-            className="wl-period-summary-rise dashboard-card"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, background: 'var(--wl-color-surface-subtle)' }}
-          >
+          <section className="wl-period-summary-rise dashboard-card period-summary-copy-row">
             <div>
               <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>다음 기간 예산은 아직 정하지 않았어요</h3>
               <p style={{ margin: '6px 0 0', maxWidth: '52ch', fontSize: 12.5, lineHeight: 1.6, color: 'var(--wl-color-text-secondary)', wordBreak: 'keep-all' }}>

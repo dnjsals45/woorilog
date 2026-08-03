@@ -127,22 +127,13 @@ export function BudgetDetailModal({
 
   return (
     <Modal onClose={onClose} subtitle={periodLabel} title={scope === 'shared' ? '공동 예산 상세' : '내 할당 예산 상세'} width={760}>
-      <div
-        style={{
-          borderBottom: '1px solid var(--wl-color-border)',
-          display: 'grid',
-          gap: 20,
-          gridTemplateColumns: 'repeat(3,minmax(0,1fr))',
-          marginTop: 22,
-          paddingBottom: 20,
-        }}
-      >
+      <div className="budget-detail-stats">
         <StatBlock amount={formatWon(budget.availableAmount)} label="남은 금액" size="lg" />
         <StatBlock amount={formatWon(budget.spentAmount)} label="사용 금액" size="sm" />
         <StatBlock amount={formatWon(budget.amount)} label="전체 예산" size="sm" />
       </div>
 
-      <div style={{ display: 'grid', gap: 26, gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', marginTop: 22 }}>
+      <div className="budget-detail-columns">
         <div>
           <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>카테고리별 사용액</h3>
           <div style={{ marginTop: 14 }}>

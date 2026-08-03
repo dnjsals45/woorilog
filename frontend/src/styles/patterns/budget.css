@@ -1,0 +1,234 @@
+/* budget 화면 레이아웃. 모바일 앱 뷰 규칙은 docs/design/mobile-app-view.md 를 따릅니다.
+ * 화면 컴포넌트가 인라인 style 로 들고 있던 반응형 레이아웃을 여기로 옮깁니다 —
+ * 인라인 style 은 미디어 쿼리로 덮을 수 없기 때문입니다. */
+
+/* ── BudgetPage ─────────────────────────────────────────────────── */
+
+.budget-page-body {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 28px 32px 140px;
+}
+
+/* 배분 입력 카드들 — 데스크톱은 인원 수 + (공동/예비비)만큼 한 줄, 모바일은 1단으로 쌓습니다. */
+.budget-allocation-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--budget-allocation-cols, 1), minmax(0, 1fr));
+  gap: 14px;
+}
+
+/* 대분류 예산 목록 — 데스크톱 2열, 모바일 1열. 항목 하나(배지 + 이름 + 금액 입력)도
+ * 모바일에서는 입력이 넓어야 해서 둘째 줄로 내려갑니다. */
+.budget-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 4px 24px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.budget-category-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 170px;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 10px;
+  margin-inline: -10px;
+  border-radius: var(--wl-radius-md);
+}
+
+/* 예비비 옮기기 카드 — 데스크톱은 좌(요약) + 우(입력) 2단, 모바일은 위아래로. */
+.budget-reserve-grid {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  gap: 28px;
+  padding: 20px 22px;
+  border: 1px solid var(--wl-color-border);
+  border-radius: var(--wl-radius-lg);
+  background: var(--wl-color-surface);
+  box-shadow: var(--wl-shadow-card);
+}
+.budget-reserve-left {
+  min-width: 0;
+  padding-right: 28px;
+  border-right: 1px solid var(--wl-color-border);
+}
+
+/* 옮길 금액 입력 + 전액/옮기기 버튼 — 모바일에서는 입력이 폭 100%가 되도록 세로로 쌓습니다. */
+.budget-move-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+.budget-move-amount {
+  flex: 1;
+  min-width: 0;
+}
+.budget-move-actions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+}
+
+/* 저장 바 안의 적용 범위 · 되돌리기 · 저장 버튼 — 좁은 화면에서 줄바꿈으로 넘침을 막습니다. */
+.budget-savebar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.budget-savebar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (width < 1024px) {
+  .budget-page-body {
+    gap: 22px;
+    padding: 18px 16px calc(112px + var(--wl-safe-bottom));
+  }
+  .budget-allocation-grid {
+    grid-template-columns: 1fr;
+  }
+  .budget-category-grid {
+    grid-template-columns: 1fr;
+  }
+  .budget-category-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .budget-category-row .wl-field {
+    grid-column: 1 / -1;
+  }
+  .budget-reserve-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 18px 16px;
+  }
+  .budget-reserve-left {
+    padding-right: 0;
+    padding-bottom: 18px;
+    border-right: 0;
+    border-bottom: 1px solid var(--wl-color-border);
+  }
+  .budget-move-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .budget-move-actions {
+    justify-content: stretch;
+  }
+  .budget-move-actions > * {
+    flex: 1;
+  }
+  .budget-savebar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* ── PeriodSummaryPage ──────────────────────────────────────────── */
+
+.period-summary-headline {
+  margin: 10px 0 0;
+  font-size: clamp(21px, 4.5vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.3;
+  word-break: keep-all;
+}
+
+/* 공동/내 예산 결과 카드 — 최대 2장이라 데스크톱부터 이미 2열입니다. 3번째가 생기면 전체 폭으로. */
+.period-summary-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.period-summary-metric-grid > :nth-child(3):last-child {
+  grid-column: 1 / -1;
+}
+
+/* 카테고리별 결과 — 이름+금액이 첫 줄, 진행 막대가 둘째 줄인 카드 목록. 모바일은 1열로 쌓습니다. */
+.period-summary-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 32px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 미분류 거래 / 다음 기간 고정비 카드 2단 → 모바일 1단. */
+.period-summary-support-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+/* 다음 기간 복사 안내 카드 — 모바일에서 버튼이 폭 100%가 되도록 세로로. */
+.period-summary-copy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--wl-color-surface-subtle);
+}
+
+@media (width < 1024px) {
+  .period-summary-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .period-summary-category-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .period-summary-support-grid {
+    grid-template-columns: 1fr;
+  }
+  .period-summary-copy-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .period-summary-copy-row button {
+    width: 100%;
+  }
+}
+
+/* ── BudgetDetailModal ──────────────────────────────────────────── */
+
+/* 남은 금액 · 사용 금액 · 전체 예산 — 데스크톱 3열, 모바일 2열 + 3번째는 전체 폭. */
+.budget-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 22px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--wl-color-border);
+}
+
+/* 카테고리별 사용액·소비 흐름 | 남은 고정비·거래 목록 — 데스크톱 2열, 모바일 1열. */
+.budget-detail-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 26px;
+  margin-top: 22px;
+}
+
+@media (width < 1024px) {
+  .budget-detail-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .budget-detail-stats > :nth-child(3):last-child {
+    grid-column: 1 / -1;
+  }
+  .budget-detail-columns {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}

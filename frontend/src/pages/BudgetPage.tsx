@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useMeQuery } from '../features/auth/model/authQueries'
 import type { BudgetPeriodDetail } from '../features/budget/api/budgetPeriodApi'
 import {
@@ -353,7 +354,7 @@ function BudgetConfigurationBody({
   const recentTransfers = [...(transfersQuery.data?.items ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3)
 
   return (
-    <div style={{ padding: '28px 32px 140px', display: 'flex', flexDirection: 'column', gap: 32 }}>
+    <div className="budget-page-body">
       {/* 기간 전체 예산 */}
       <section>
         <p className="wl-label" style={{ margin: 0 }}>
@@ -532,7 +533,10 @@ function BudgetConfigurationBody({
           {isSharedLedger ? <span className="wl-meta">상대방 할당액도 함께 정할 수 있어요</span> : null}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${members.length + (isSharedLedger ? 2 : 0)}, minmax(0,1fr))`, gap: 14 }}>
+        <div
+          className="budget-allocation-grid"
+          style={{ '--budget-allocation-cols': members.length + (isSharedLedger ? 2 : 0) } as CSSProperties}
+        >
           {members.map((member, index) => {
             const value = toNumber(state.personalDigits[member.userId] ?? '0')
             const share = base ? Math.round((value / base) * 100) : 0
@@ -684,12 +688,9 @@ function BudgetConfigurationBody({
           </div>
 
           {categoryEntries.length ? (
-            <ul style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(320px,1fr))', gap: '4px 24px', margin: '12px 0 0', padding: 0, listStyle: 'none' }}>
+            <ul className="budget-category-grid">
               {categoryEntries.map((item) => (
-                <li
-                  key={item.groupCode}
-                  style={{ display: 'grid', gridTemplateColumns: '34px minmax(0,1fr) 170px', alignItems: 'center', gap: 14, padding: '9px 10px', marginInline: -10, borderRadius: 'var(--wl-radius-md)' }}
-                >
+                <li className="budget-category-row" key={item.groupCode}>
                   <CategoryBadge name={item.groupName} size="sm" />
                   <span style={{ minWidth: 0 }}>
                     <strong style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>{item.groupName}</strong>
@@ -716,19 +717,8 @@ function BudgetConfigurationBody({
         </div>
 
         {isSharedLedger ? (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '264px minmax(0,1fr)',
-              gap: 28,
-              padding: '20px 22px',
-              border: '1px solid var(--wl-color-border)',
-              borderRadius: 'var(--wl-radius-lg)',
-              background: 'var(--wl-color-surface)',
-              boxShadow: 'var(--wl-shadow-card)',
-            }}
-          >
-            <div style={{ minWidth: 0, paddingRight: 28, borderRight: '1px solid var(--wl-color-border)' }}>
+          <div className="budget-reserve-grid">
+            <div className="budget-reserve-left">
               <h2 className="wl-list-title" style={{ margin: 0 }}>
                 예비비 옮기기
               </h2>
@@ -779,30 +769,32 @@ function BudgetConfigurationBody({
               </div>
 
               <span style={{ display: 'block', marginTop: 18, fontSize: 12.5, fontWeight: 700, color: 'var(--wl-color-text-body)' }}>얼마나 옮길까요?</span>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginTop: 10 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="budget-move-row">
+                <div className="budget-move-amount">
                   <AmountInput id="move-amount" label="옮길 금액" onChange={setMoveAmountDigits} value={moveAmountDigits} />
                 </div>
-                <button
-                  onClick={() => setMoveAmountDigits(String(availableReserve))}
-                  style={{
-                    minHeight: 46,
-                    padding: '0 14px',
-                    border: '1px solid var(--wl-color-border)',
-                    borderRadius: 'var(--wl-radius-md)',
-                    background: 'var(--wl-color-surface)',
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    color: 'var(--wl-color-text-body)',
-                    whiteSpace: 'nowrap',
-                  }}
-                  type="button"
-                >
-                  전액
-                </button>
-                <Button disabled={moveDisabled} loading={transferMutation.isPending} onClick={handleTransfer} size="lg">
-                  옮기기
-                </Button>
+                <div className="budget-move-actions">
+                  <button
+                    onClick={() => setMoveAmountDigits(String(availableReserve))}
+                    style={{
+                      minHeight: 46,
+                      padding: '0 14px',
+                      border: '1px solid var(--wl-color-border)',
+                      borderRadius: 'var(--wl-radius-md)',
+                      background: 'var(--wl-color-surface)',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      color: 'var(--wl-color-text-body)',
+                      whiteSpace: 'nowrap',
+                    }}
+                    type="button"
+                  >
+                    전액
+                  </button>
+                  <Button disabled={moveDisabled} loading={transferMutation.isPending} onClick={handleTransfer} size="lg">
+                    옮기기
+                  </Button>
+                </div>
               </div>
               <p style={{ margin: '9px 0 0', fontSize: 12, color: 'var(--wl-color-text-secondary)' }}>{moveHint}</p>
             </div>
@@ -811,25 +803,29 @@ function BudgetConfigurationBody({
       </section>
 
       <SaveBar note={saveNote} open={dirty}>
-        <SegmentedControl
-          label="적용 범위"
-          onChange={(value) => setScope(value as 'once' | 'forward')}
-          options={[
-            { value: 'once', label: '이번 기간만' },
-            { value: 'forward', label: '이후 기본값도' },
-          ]}
-          value={scope}
-        />
-        <button
-          onClick={handleReset}
-          style={{ minHeight: 44, padding: '0 14px', borderRadius: 12, fontSize: 13, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}
-          type="button"
-        >
-          되돌리기
-        </button>
-        <Button disabled={saveDisabled} loading={mutation.isPending} onClick={handleSave} size="md">
-          예산 저장
-        </Button>
+        <div className="budget-savebar-actions">
+          <SegmentedControl
+            label="적용 범위"
+            onChange={(value) => setScope(value as 'once' | 'forward')}
+            options={[
+              { value: 'once', label: '이번 기간만' },
+              { value: 'forward', label: '이후 기본값도' },
+            ]}
+            value={scope}
+          />
+          <div className="budget-savebar-buttons">
+            <button
+              onClick={handleReset}
+              style={{ minHeight: 44, padding: '0 14px', borderRadius: 12, fontSize: 13, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}
+              type="button"
+            >
+              되돌리기
+            </button>
+            <Button disabled={saveDisabled} loading={mutation.isPending} onClick={handleSave} size="md">
+              예산 저장
+            </Button>
+          </div>
+        </div>
       </SaveBar>
 
       {toast ? (
