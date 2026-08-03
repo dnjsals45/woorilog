@@ -1,0 +1,5 @@
+# 빌드 컨텍스트에서 뺄 것. build/ 와 .gradle/ 은 호스트 산출물이라 이미지 안에서 다시 만듭니다.
+build/
+.gradle/
+*.log
+.DS_Store
