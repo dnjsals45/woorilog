@@ -181,7 +181,7 @@ export function LandingPage() {
 
   return (
     <div className="bg-[var(--wl-color-surface)] text-[var(--wl-color-text-main)]" style={{ wordBreak: 'keep-all' }}>
-      <header className="sticky top-0 z-20 flex h-18 items-center justify-between gap-6 border-b border-[var(--wl-color-border)] bg-white/88 px-6 backdrop-blur-md">
+      <header className="wl-landing-header sticky top-0 z-20 flex h-18 items-center justify-between gap-6 border-b border-[var(--wl-color-border)] bg-white/88 px-6 backdrop-blur-md">
         <a className="flex flex-none items-center" href="#top">
           <img alt="우리로그" className="block h-auto w-33" src={logo} />
         </a>
