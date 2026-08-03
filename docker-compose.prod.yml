@@ -1,0 +1,78 @@
+# 홈 배포용 구성. 개발용은 docker-compose.yml 입니다(소스 마운트 + dev server).
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# 밖으로 여는 포트는 web 하나뿐입니다. MySQL 과 백엔드는 컨테이너 네트워크 안에만 있습니다 —
+# 같은 와이파이에 있는 아무 기기나 DB 에 붙을 수 있으면 안 됩니다.
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: woorilog-prod-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - prod-mysql-data:/var/lib/mysql
+      # 백업 스크립트가 덤프를 떨어뜨리는 자리. 호스트의 ~/woorilog-backups 로 연결됩니다.
+      - ${BACKUP_DIR:-./backups}:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: woorilog-backend:home
+    container_name: woorilog-prod-backend
+    restart: unless-stopped
+    environment:
+      # 기본 profile 입니다. local profile 로 두면 개발자 로그인이 켜집니다.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      KAKAO_REDIRECT_URI: ${PUBLIC_ORIGIN}/auth/kakao/callback
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL_SECONDS: ${JWT_ACCESS_TOKEN_TTL_SECONDS:-1800}
+      JWT_REFRESH_TOKEN_TTL_SECONDS: ${JWT_REFRESH_TOKEN_TTL_SECONDS:-1209600}
+      # http 로 서비스하는 동안은 false 여야 합니다. true 면 브라우저가 쿠키를 버려서
+      # 로그인 직후 바로 로그아웃된 것처럼 보입니다.
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      DEV_LOGIN_ENABLED: ${DEV_LOGIN_ENABLED:-false}
+      # 프론트와 같은 출처라 실제로는 쓰이지 않지만, 값이 비면 기동에 실패합니다.
+      CORS_ALLOWED_ORIGINS: ${PUBLIC_ORIGIN}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    init: true
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # 빈 값이면 프론트가 /api 상대 경로로 부릅니다. 아래 nginx 가 백엔드로 넘깁니다.
+        # 카카오 redirect URI 는 백엔드만 갖습니다(프론트는 login-url 을 물어봅니다).
+        VITE_API_BASE_URL: ""
+    image: woorilog-web:home
+    container_name: woorilog-prod-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      - backend
+
+volumes:
+  prod-mysql-data:
