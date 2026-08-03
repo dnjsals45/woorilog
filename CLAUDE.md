@@ -45,6 +45,7 @@ API 공백을 판단할 때 프론트 클라이언트의 부재를 백엔드의 
 - 제품 범위: `docs/product/v1-scope.md`
 - 사용자 흐름: `docs/product/user-flows.md`
 - 화면 구조: `docs/design/information-architecture.md`
+- 모바일 앱 뷰: `docs/design/mobile-app-view.md`
 - API 계약: `docs/engineering/api-contract.md`
 - 인증/세션: `docs/engineering/auth-session.md`
 - 환경 변수: `docs/engineering/environment.md`

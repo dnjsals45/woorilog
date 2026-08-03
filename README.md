@@ -25,6 +25,7 @@
 - [Landing Page Direction](./docs/design/landing-page.md)
 - [Frontend Design Implementation](./docs/design/frontend-implementation.md)
 - [Screen Specs](./docs/design/screen-specs.md)
+- [Mobile App View](./docs/design/mobile-app-view.md)
 - [Tech Stack](./docs/engineering/tech-stack.md)
 - [Domain Model](./docs/engineering/domain-model.md)
 - [API Contract](./docs/engineering/api-contract.md)
