@@ -119,7 +119,7 @@ export function AnalysisPage() {
         <AppHeader title="분석" />
         <div className="dashboard-page">
           <Skeleton height={140} radius={18} />
-          <div style={{ display: 'grid', gap: 20, gridTemplateColumns: '1fr 1fr', marginTop: 20 }}>
+          <div className="analysis-skeleton-grid">
             <Skeleton height={280} radius={18} />
             <Skeleton height={280} radius={18} />
           </div>
@@ -208,17 +208,7 @@ export function AnalysisPage() {
         title="분석"
       />
 
-      <div
-        style={{
-          alignItems: 'center',
-          background: 'var(--wl-color-surface)',
-          borderBottom: '1px solid var(--wl-color-border)',
-          display: 'flex',
-          gap: 16,
-          justifyContent: 'space-between',
-          padding: '14px 32px',
-        }}
-      >
+      <div className="analysis-scope-bar">
         <SegmentedControl
           label="분석 범위"
           onChange={(value) => changeScope(value as AnalyticsScope)}
@@ -233,16 +223,7 @@ export function AnalysisPage() {
           <EmptyState description="거래를 기록하면 이곳에 소비 흐름이 표시됩니다." title="이 기간에는 지출이 없습니다." />
         ) : (
           <>
-            <section
-              style={{
-                alignItems: 'center',
-                borderBottom: '1px solid var(--wl-color-border)',
-                display: 'grid',
-                gap: 32,
-                gridTemplateColumns: 'minmax(320px,1fr) 1px minmax(0,1.35fr)',
-                paddingBottom: 26,
-              }}
-            >
+            <section className="analysis-hero">
               <StatBlock amount={formatWon(data.totalExpenseAmount)} label="이 기간 총지출" size="hero">
                 <div style={{ alignItems: 'center', display: 'flex', gap: 8, marginTop: 12 }}>
                   {delta !== null ? (
@@ -268,8 +249,8 @@ export function AnalysisPage() {
                   </span>
                 </div>
               </StatBlock>
-              <div style={{ alignSelf: 'stretch', background: 'var(--wl-color-border)' }} />
-              <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(3,minmax(0,1fr))' }}>
+              <div className="analysis-hero-divider" />
+              <div className="analysis-hero-stats">
                 <StatBlock amount={formatWon(Math.round(data.totalExpenseAmount / daysInPeriod))} label="하루 평균" />
                 <StatBlock
                   amount={peakEntry && peakEntry.amount > 0 ? formatKoreanMonthDay(peakEntry.date) : '없어요'}
@@ -280,7 +261,7 @@ export function AnalysisPage() {
               </div>
             </section>
 
-            <section style={{ display: 'grid', gap: 20, gridTemplateColumns: 'minmax(420px,0.95fr) minmax(0,1.05fr)', marginTop: 26 }}>
+            <section className="analysis-category-detail">
               <SurfaceCard labelledBy="analysis-category-title">
                 <CardHeading eyebrow="" id="analysis-category-title" title="대분류별 지출" />
                 <div style={{ marginTop: 16 }}>
@@ -323,7 +304,7 @@ export function AnalysisPage() {
               </SurfaceCard>
             </section>
 
-            <section style={{ display: 'grid', gap: 20, gridTemplateColumns: 'minmax(0,1.25fr) minmax(340px,0.75fr)', marginTop: 20 }}>
+            <section className="analysis-daily-compare">
               <SurfaceCard labelledBy="analysis-daily-title">
                 <div style={{ alignItems: 'baseline', display: 'flex', gap: 16, justifyContent: 'space-between' }}>
                   <h2 className="wl-section-title" id="analysis-daily-title" style={{ margin: 0 }}>
@@ -431,28 +412,18 @@ export function AnalysisPage() {
                   />
                 ) : null}
               </div>
-              <div style={{ marginTop: 18 }}>
-                {trendEntries.length ? (
+              {trendEntries.length ? (
+                <div className="analysis-trend-scroll">
                   <TrendChart avg={trendAvg} entries={trendEntries} max={trendMax} />
-                ) : (
+                </div>
+              ) : (
+                <div style={{ marginTop: 18 }}>
                   <EmptyState description="기간별 추세를 계산할 데이터가 아직 없어요." title="추세 데이터가 없습니다." />
-                )}
-              </div>
+                </div>
+              )}
             </SurfaceCard>
 
-            <section
-              style={{
-                alignItems: 'center',
-                background: 'var(--wl-color-surface-subtle)',
-                border: '1px solid var(--wl-color-border)',
-                borderRadius: 'var(--wl-radius-lg)',
-                display: 'grid',
-                gap: 24,
-                gridTemplateColumns: 'minmax(320px,1fr) minmax(0,1.4fr)',
-                marginTop: 20,
-                padding: 22,
-              }}
-            >
+            <section className="analysis-income">
               <div>
                 <h2 className="wl-section-title" style={{ margin: 0 }}>
                   수입은 따로 봐요
@@ -572,7 +543,9 @@ function TrendChart({
   max: number
   avg: number
 }) {
-  const width = 960
+  /* 컨테이너 폭 대신 항목당 최소 폭(80px)을 확보합니다. 기간이 많아지면 svg 자체가
+   * 넓어지고, 감싼 .analysis-trend-scroll 래퍼가 넘치는 부분을 가로 스크롤합니다. */
+  const width = Math.max(560, entries.length * 80)
   const height = 190
   const baseline = height - 34
   const step = width / Math.max(entries.length, 1)
@@ -580,7 +553,7 @@ function TrendChart({
   const avgY = baseline - (avg / max) * (baseline - 40)
 
   return (
-    <svg aria-label="기간별 총지출 추세" role="img" style={{ height: 190, width: '100%' }} viewBox={`0 0 ${width} ${height}`}>
+    <svg aria-label="기간별 총지출 추세" role="img" style={{ height: 190, width }} viewBox={`0 0 ${width} ${height}`}>
       <line stroke="var(--wl-color-text-secondary)" opacity={0.7} strokeDasharray="4 5" x1={0} x2={width} y1={avgY} y2={avgY} />
       <text fill="var(--wl-color-text-secondary)" fontSize={11} textAnchor="end" x={width - 2} y={avgY - 6}>
         평균 {formatCompactWon(avg)}

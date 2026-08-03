@@ -26,6 +26,7 @@
 @import './styles/patterns/dashboard.css';
 @import './styles/patterns/transactions.css';
 @import './styles/patterns/budget.css';
+@import './styles/patterns/recurring-analysis.css';
 @import './styles/patterns/overlay.css';
 @import './styles/patterns/onboarding.css';
 @import './styles/patterns/landing.css';

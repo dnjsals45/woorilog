@@ -261,6 +261,16 @@ export function RecurringTransactionPage() {
           </button>
         }
         description="예정일이 되면 자동으로 기록되는 지출이에요"
+        mobileActions={
+          <button
+            aria-label="반복 거래 추가"
+            className="wl-icon-button wl-icon-button--subtle"
+            onClick={() => setCreateOpen(true)}
+            type="button"
+          >
+            <Icon name="plus" size="lg" />
+          </button>
+        }
         title="반복 거래"
       />
 
@@ -268,16 +278,7 @@ export function RecurringTransactionPage() {
         {plans.isLoading ? (
           <Skeleton height={92} radius={18} />
         ) : (
-          <section
-            style={{
-              alignItems: 'center',
-              display: 'grid',
-              gap: 32,
-              gridTemplateColumns: 'minmax(280px,1fr) 1px minmax(0,1.4fr)',
-              paddingBottom: 24,
-              borderBottom: '1px solid var(--wl-color-border)',
-            }}
-          >
+          <section className="recur-summary">
             <div>
               <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--wl-color-text-secondary)' }}>
                 이번 달 고정비 합계
@@ -289,8 +290,8 @@ export function RecurringTransactionPage() {
                 {formatWon(monthlyFixedTotal)}
               </p>
             </div>
-            <div style={{ alignSelf: 'stretch', background: 'var(--wl-color-border)' }} />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 24 }}>
+            <div className="recur-summary-divider" />
+            <div className="recur-summary-stats">
               <div>
                 <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--wl-color-text-secondary)' }}>고정비</p>
                 <p className="wl-tabular" style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 700, letterSpacing: '-.03em' }}>
@@ -315,9 +316,9 @@ export function RecurringTransactionPage() {
           </section>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(420px,1fr) minmax(400px,0.85fr)', gap: 20, alignItems: 'start' }}>
+        <div className="recur-main">
           <section style={{ minWidth: 0 }}>
-            <div style={{ marginBottom: 14 }}>
+            <div className="recur-filter-row" style={{ marginBottom: 14 }}>
               <SegmentedControl
                 label="반복 거래 필터"
                 onChange={(value) => setFilter(value as Filter)}
@@ -392,6 +393,7 @@ export function RecurringTransactionPage() {
                           </span>
                           <span style={{ display: 'block', marginTop: 5, fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>
                             {scheduleText(plan)}
+                            {plan.categoryName ? ` · ${plan.categoryName}` : ''}
                           </span>
                         </span>
                         <strong
@@ -455,10 +457,8 @@ export function RecurringTransactionPage() {
                 <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
                   {selected.type === 'INSTALLMENT' ? (
                     <div
+                      className="recur-installment-grid"
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2,minmax(0,1fr))',
-                        gap: 14,
                         padding: 16,
                         border: '1px solid var(--wl-color-border)',
                         borderRadius: 'var(--wl-radius-md)',
@@ -494,7 +494,7 @@ export function RecurringTransactionPage() {
                     </p>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div className="recur-fields-grid">
                     <div>
                       <span style={{ display: 'block', marginBottom: 9, fontSize: 12.5, fontWeight: 700, color: 'var(--wl-color-text-body)' }}>
                         다음 예정일
@@ -820,7 +820,7 @@ function CreateRecurringPlanModal({ open, onClose, onCreated, categories, period
             ))}
           </select>
         </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div className="recur-fields-grid">
           <div>
             <span className="wl-field-label" style={{ display: 'block', marginBottom: 9 }}>
               시작일

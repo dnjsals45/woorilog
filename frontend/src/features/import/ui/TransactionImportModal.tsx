@@ -363,30 +363,9 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
         ) : null}
 
         {stage === 'review' ? (
-          <div
-            style={{
-              flex: 1,
-              minHeight: 0,
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0,1fr) 316px',
-              gridTemplateRows: 'minmax(0,1fr)',
-              gap: 20,
-              padding: '18px 22px 22px',
-            }}
-          >
-            <div
-              style={{
-                minWidth: 0,
-                minHeight: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                border: '1px solid var(--wl-color-border)',
-                borderRadius: 'var(--wl-radius-lg)',
-                background: 'var(--wl-color-surface)',
-                overflow: 'hidden',
-              }}
-            >
-              <div aria-label="후보 필터" role="tablist" style={{ flex: 'none', display: 'flex', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--wl-color-border)' }}>
+          <div className="wl-import-review-layout">
+            <div className="wl-import-review-list-panel">
+              <div aria-label="후보 필터" className="wl-import-filter-row" role="tablist">
                 {filters.map((f) => (
                   <button
                     aria-selected={filter === f.id}
@@ -402,13 +381,9 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
               </div>
 
               <div
+                className="wl-import-row-fields"
                 style={{
                   flex: 'none',
-                  display: 'grid',
-                  gridTemplateColumns: '40px 92px minmax(120px,1fr) 136px 116px 112px',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '0 16px',
                   minHeight: 48,
                   borderBottom: '1px solid var(--wl-color-border)',
                   background: 'var(--wl-color-surface-subtle)',
@@ -416,17 +391,17 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
               >
                 <button
                   aria-label="모두 선택"
-                  className={`wl-import-check ${allSelected ? 'wl-import-check--on' : ''}`}
+                  className={`wl-import-check wl-import-field-check ${allSelected ? 'wl-import-check--on' : ''}`}
                   onClick={toggleAll}
                   type="button"
                 >
                   {allSelected ? <Icon name="check" size="sm" /> : null}
                 </button>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>날짜</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>사용처</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>카테고리</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>차감 예산</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)', textAlign: 'right' }}>금액</span>
+                <span className="wl-import-field-date wl-desktop-only" style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>날짜</span>
+                <span className="wl-import-field-merchant wl-desktop-only" style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>사용처</span>
+                <span className="wl-import-field-category wl-desktop-only" style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>카테고리</span>
+                <span className="wl-import-field-budget wl-desktop-only" style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>차감 예산</span>
+                <span className="wl-import-field-amount wl-desktop-only" style={{ fontSize: 12, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}>금액</span>
               </div>
 
               {rows.length === 0 ? (
@@ -434,23 +409,14 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
                   확인할 수 있는 거래 후보가 없어요.
                 </p>
               ) : (
-                <ul style={{ flex: 1, minHeight: 0, overflowY: 'auto', margin: 0, padding: 0, listStyle: 'none' }}>
+                <ul className="wl-import-list">
                   {visibleRows.map((row) => (
                     <li className={`wl-import-row ${row.duplicateSuspected ? 'wl-import-row--dup' : ''}`} key={row.id}>
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '40px 92px minmax(120px,1fr) 136px 116px 112px',
-                          alignItems: 'center',
-                          gap: 10,
-                          padding: '0 16px',
-                          minHeight: 62,
-                        }}
-                      >
+                      <div className="wl-import-row-fields">
                         <button
                           aria-label="이 거래 선택"
                           aria-pressed={row.selected}
-                          className={`wl-import-check ${row.selected ? 'wl-import-check--on' : ''}`}
+                          className={`wl-import-check wl-import-field-check ${row.selected ? 'wl-import-check--on' : ''}`}
                           onClick={() => patchRow(row.id, { selected: !row.selected })}
                           type="button"
                         >
@@ -458,14 +424,14 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
                         </button>
                         <input
                           aria-label="거래 날짜"
-                          className="wl-import-cell-input wl-tabular"
+                          className="wl-import-cell-input wl-import-field-date wl-tabular"
                           onChange={(event) => patchRow(row.id, { occurredOn: event.target.value })}
                           type="date"
                           value={row.occurredOn}
                         />
                         <input
                           aria-label="사용처"
-                          className="wl-import-cell-input"
+                          className="wl-import-cell-input wl-import-field-merchant"
                           onChange={(event) => patchRow(row.id, { merchant: event.target.value })}
                           style={{ fontWeight: 600, fontSize: 14 }}
                           type="text"
@@ -473,7 +439,7 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
                         />
                         <select
                           aria-label="카테고리"
-                          className={`wl-import-select ${row.categoryId == null ? 'wl-import-select--uncat' : ''}`}
+                          className={`wl-import-select wl-import-field-category ${row.categoryId == null ? 'wl-import-select--uncat' : ''}`}
                           onChange={(event) => patchRow(row.id, { categoryId: event.target.value ? Number(event.target.value) : null })}
                           value={row.categoryId ?? ''}
                         >
@@ -486,7 +452,7 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
                         </select>
                         <select
                           aria-label="차감 예산"
-                          className="wl-import-select"
+                          className="wl-import-select wl-import-field-budget"
                           onChange={(event) =>
                             patchRow(row.id, {
                               budgetSource:
@@ -500,9 +466,10 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
                           <option value="SHARED">공동</option>
                           <option value="PERSONAL">내 예산</option>
                         </select>
-                        <strong className="wl-tabular" style={{ textAlign: 'right', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        <strong className="wl-tabular wl-import-field-amount" style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>
                           {formatWon(-Math.abs(row.amount))}
                         </strong>
+                        <span className="wl-import-row-break" />
                       </div>
                       {row.duplicateTransactionId != null ? (
                         <p style={{ margin: 0, padding: '0 16px 12px 66px', fontSize: 12, lineHeight: 1.5, color: 'var(--wl-color-danger)' }}>
@@ -532,7 +499,7 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
               ) : null}
             </div>
 
-            <aside style={{ minHeight: 0, display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+            <aside className="wl-import-aside">
               <section style={{ flex: 'none', padding: 18, border: '1px solid var(--wl-color-border)', borderRadius: 'var(--wl-radius-lg)', background: 'var(--wl-color-surface)' }}>
                 <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: '-.015em' }}>저장할 거래</h3>
                 <strong className="wl-tabular" style={{ display: 'block', marginTop: 10, fontSize: 28, fontWeight: 800, letterSpacing: '-.03em' }}>

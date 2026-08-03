@@ -1,0 +1,338 @@
+/* recurring-analysis 화면 레이아웃. 모바일 앱 뷰 규칙은 docs/design/mobile-app-view.md 를 따릅니다.
+ * 화면 컴포넌트가 인라인 style 로 들고 있던 반응형 레이아웃을 여기로 옮깁니다 —
+ * 인라인 style 은 미디어 쿼리로 덮을 수 없기 때문입니다. */
+
+/* ── RecurringTransactionPage ─────────────────────────────────────── */
+
+.recur-summary {
+  align-items: center;
+  border-bottom: 1px solid var(--wl-color-border);
+  display: grid;
+  gap: 32px;
+  grid-template-columns: minmax(280px, 1fr) 1px minmax(0, 1.4fr);
+  padding-bottom: 24px;
+}
+.recur-summary-divider {
+  align-self: stretch;
+  background: var(--wl-color-border);
+}
+.recur-summary-stats {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 필터 세그먼트는 좁은 화면에서 줄바꿈 대신 가로 스크롤 한 줄로 흐릅니다. */
+.recur-filter-row {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+}
+.recur-filter-row .wl-segmented {
+  width: max-content;
+}
+
+.recur-main {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(420px, 1fr) minmax(400px, 0.85fr);
+}
+
+.recur-installment-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.recur-fields-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (width < 1024px) {
+  .recur-summary {
+    gap: 18px;
+    grid-template-columns: 1fr;
+    padding-bottom: 18px;
+  }
+  .recur-summary-divider {
+    display: none;
+  }
+  .recur-summary-stats {
+    border-top: 1px solid var(--wl-color-border);
+    gap: 16px 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-top: 18px;
+  }
+  .recur-summary-stats > :nth-child(3):last-child {
+    grid-column: 1 / -1;
+  }
+
+  .recur-main {
+    gap: 18px;
+    grid-template-columns: 1fr;
+  }
+
+  .recur-fields-grid {
+    gap: 14px;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (width <= 560px) {
+  .recur-installment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── AnalysisPage ──────────────────────────────────────────────────── */
+
+.analysis-scope-bar {
+  align-items: center;
+  background: var(--wl-color-surface);
+  border-bottom: 1px solid var(--wl-color-border);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 14px 32px;
+}
+
+.analysis-hero {
+  align-items: center;
+  border-bottom: 1px solid var(--wl-color-border);
+  display: grid;
+  gap: 32px;
+  grid-template-columns: minmax(320px, 1fr) 1px minmax(0, 1.35fr);
+  padding-bottom: 26px;
+}
+.analysis-hero-divider {
+  align-self: stretch;
+  background: var(--wl-color-border);
+}
+.analysis-hero-stats {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analysis-category-detail {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(420px, 0.95fr) minmax(0, 1.05fr);
+  margin-top: 26px;
+}
+
+.analysis-daily-compare {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr);
+  margin-top: 20px;
+}
+
+.analysis-income {
+  align-items: center;
+  background: var(--wl-color-surface-subtle);
+  border: 1px solid var(--wl-color-border);
+  border-radius: var(--wl-radius-lg);
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 1.4fr);
+  margin-top: 20px;
+  padding: 22px;
+}
+
+.analysis-skeleton-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 20px;
+}
+
+/* 기간별 추세는 기간 수가 많아지면 막대가 너무 얇아져 읽기 어려워집니다.
+ * 컨테이너 폭 대신 항목당 최소 폭을 주고, 넘치면 래퍼가 가로로 스크롤합니다. */
+.analysis-trend-scroll {
+  -webkit-overflow-scrolling: touch;
+  margin-top: 18px;
+  overflow-x: auto;
+}
+
+@media (width < 1024px) {
+  .analysis-scope-bar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .analysis-hero {
+    gap: 18px;
+    grid-template-columns: 1fr;
+    padding-bottom: 18px;
+  }
+  .analysis-hero-divider {
+    display: none;
+  }
+  .analysis-hero-stats {
+    border-top: 1px solid var(--wl-color-border);
+    gap: 16px 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-top: 18px;
+  }
+  .analysis-hero-stats > :nth-child(3):last-child {
+    grid-column: 1 / -1;
+  }
+
+  .analysis-category-detail,
+  .analysis-daily-compare,
+  .analysis-income,
+  .analysis-skeleton-grid {
+    gap: 18px;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── TransactionImportModal (검토 단계) ───────────────────────────── */
+
+.wl-import-review-layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 316px;
+  grid-template-rows: minmax(0, 1fr);
+  padding: 18px 22px 22px;
+}
+
+.wl-import-review-list-panel {
+  background: var(--wl-color-surface);
+  border: 1px solid var(--wl-color-border);
+  border-radius: var(--wl-radius-lg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wl-import-filter-row {
+  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--wl-color-border);
+  display: flex;
+  flex: none;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px 16px;
+}
+
+.wl-import-list {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.wl-import-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 표 형태 행 → 필드마다 order/flex-basis 를 배치해 데스크톱에선 표처럼,
+ * 모바일에선 두 줄 카드처럼 보이게 합니다. 헤더 행도 같은 클래스를 써서
+ * 데이터 열과 나란히 맞습니다. */
+.wl-import-row-fields {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 62px;
+  padding: 0 16px;
+}
+.wl-import-field-check {
+  flex: none;
+  order: 0;
+}
+.wl-import-field-date {
+  flex: 0 0 92px;
+  order: 1;
+}
+.wl-import-field-merchant {
+  flex: 1 1 120px;
+  min-width: 0;
+  order: 2;
+}
+.wl-import-field-category {
+  flex: 0 0 136px;
+  order: 3;
+}
+.wl-import-field-budget {
+  flex: 0 0 116px;
+  order: 4;
+}
+.wl-import-field-amount {
+  flex: 0 0 112px;
+  order: 5;
+  text-align: right;
+}
+.wl-import-row-break {
+  display: none;
+}
+
+@media (width < 1024px) {
+  .wl-import-review-layout {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .wl-import-review-list-panel {
+    min-height: auto;
+    overflow: visible;
+  }
+  .wl-import-list {
+    flex: none;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .wl-import-aside {
+    overflow-y: visible;
+  }
+
+  .wl-import-row-fields {
+    gap: 8px 10px;
+    min-height: 0;
+    padding: 12px 16px;
+  }
+  .wl-import-field-check {
+    order: 0;
+  }
+  .wl-import-field-merchant {
+    flex: 1 1 auto;
+    order: 1;
+  }
+  .wl-import-field-amount {
+    flex: 0 0 auto;
+    margin-left: auto;
+    order: 2;
+  }
+  .wl-import-row-break {
+    display: block;
+    flex-basis: 100%;
+    height: 0;
+    order: 3;
+  }
+  .wl-import-field-date {
+    flex: 0 0 auto;
+    order: 4;
+  }
+  .wl-import-field-category {
+    flex: 1 1 120px;
+    order: 5;
+  }
+  .wl-import-field-budget {
+    flex: 1 1 100px;
+    order: 6;
+  }
+}
