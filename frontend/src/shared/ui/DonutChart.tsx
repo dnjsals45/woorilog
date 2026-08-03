@@ -56,12 +56,8 @@ export function DonutChart({
 
   return (
     <div
-      style={{
-        display: legend ? 'grid' : 'block',
-        gridTemplateColumns: legend ? size + 'px minmax(0,1fr)' : undefined,
-        alignItems: 'center',
-        gap: 18,
-      }}
+      className={legend ? 'wl-donut wl-donut--with-legend' : 'wl-donut'}
+      style={legend ? ({ '--wl-donut-size': `${size}px` } as CSSProperties) : undefined}
     >
       <div className="dashboard-donut" style={{ width: size, height: size }}>
         <svg className="dashboard-donut-svg" viewBox="0 0 124 124">

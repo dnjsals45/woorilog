@@ -225,6 +225,42 @@
   background: var(--wl-brand-100);
   color: var(--wl-brand-700);
 }
+/* StatBlock 금액 — 크기 단계는 컴포넌트가 아니라 여기가 갖습니다.
+ * 좁은 화면에서는 자릿수가 늘어난 금액이 먼저 넘치므로 한 단계씩 낮춥니다. */
+.wl-stat-amount {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.wl-stat-amount--sm {
+  font-size: 20px;
+  font-weight: 700;
+}
+.wl-stat-amount--md {
+  font-size: 24px;
+  font-weight: 700;
+}
+.wl-stat-amount--lg {
+  font-size: 28px;
+  font-weight: 800;
+}
+.wl-stat-amount--hero {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+@media (width <= 420px) {
+  .wl-stat-amount--hero {
+    font-size: 34px;
+  }
+  .wl-stat-amount--lg {
+    font-size: 25px;
+  }
+  .wl-stat-amount--md {
+    font-size: 21px;
+  }
+}
+
 .wl-progress-track {
   border-radius: var(--wl-radius-pill);
   height: 8px;

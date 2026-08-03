@@ -4,13 +4,11 @@ import { Icon } from './Icon'
 import type { IconName } from './Icon'
 
 /* 라벨 + 큰 금액 + 보조 설명 + 상세 링크.
- * 금액 크기는 실제 화면에서 쓰이는 네 단계입니다 — 모달 보조 20 / 기본 지표 24 / 모달 주지표 28 / 히어로 44. */
-const SIZES = {
-  sm: { font: 20, weight: 700 },
-  md: { font: 24, weight: 700 },
-  lg: { font: 28, weight: 800 },
-  hero: { font: 44, weight: 800 },
-} as const
+ * 금액 크기는 실제 화면에서 쓰이는 네 단계입니다 — 모달 보조 20 / 기본 지표 24 / 모달 주지표 28 / 히어로 44.
+ * 실제 font-size 는 patterns/controls.css 의 .wl-stat-amount 가 갖습니다 —
+ * 좁은 화면에서 44px 금액은 자릿수가 늘면 바로 넘치기 때문에 미디어 쿼리로 줄여야 하고,
+ * 인라인 스타일은 미디어 쿼리로 덮을 수 없습니다. 여기서는 단계 이름만 넘깁니다. */
+type StatSize = 'sm' | 'md' | 'lg' | 'hero'
 
 export interface StatProgress {
   /** 0–100. 100을 넘겨도 막대는 100%에서 멈춥니다. */
@@ -37,7 +35,7 @@ export interface StatBlockProps {
   /** 금액 색. 수입은 var(--wl-data-blue-ink), 초과는 var(--wl-color-danger). */
   tone?: string
   /** 금액 크기 — sm 20px · md 24px(기본) · lg 28px · hero 44px. 모달 주지표는 lg, 보조는 sm입니다. */
-  size?: keyof typeof SIZES
+  size?: StatSize
   progress?: StatProgress
   action?: { label: string; onClick?: () => void }
   children?: ReactNode
@@ -55,9 +53,8 @@ export function StatBlock({
   children,
 }: StatBlockProps) {
   const hero = size === 'hero'
-  const step = SIZES[size] || SIZES.md
   return (
-    <div>
+    <div className="wl-stat">
       <p
         style={{
           display: 'flex',
@@ -73,14 +70,10 @@ export function StatBlock({
         {label}
       </p>
       <p
+        className={`wl-stat-amount wl-stat-amount--${size}`}
         style={{
           margin: hero ? '6px 0 0' : size === 'md' ? '8px 0 0' : '7px 0 0',
-          fontSize: step.font,
-          fontWeight: step.weight,
-          letterSpacing: hero ? '-.035em' : '-.03em',
-          lineHeight: hero ? 1.1 : undefined,
           color: tone || 'var(--wl-color-text-main)',
-          fontVariantNumeric: 'tabular-nums',
         }}
       >
         {amount}

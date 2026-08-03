@@ -217,6 +217,28 @@ export function DashboardPage() {
         }
         description="한 눈에 빠르게 현재 소비 현황을 파악해요"
         meta={periodLabel}
+        /* 모바일에서 "거래 추가"는 화면 우하단 FAB 이 맡습니다. 헤더에 또 두지 않습니다. */
+        mobileActions={
+          <>
+            <Link
+              aria-label="이미지로 거래 가져오기"
+              className="wl-icon-button wl-icon-button--subtle"
+              to="/transactions/import"
+            >
+              <Icon name="camera" size="lg" />
+            </Link>
+            <button
+              aria-label={`알림${unreadCount ? ` ${unreadCount}개` : ''}`}
+              className="wl-icon-button wl-icon-button--subtle"
+              onClick={() => setNotifOpen((current) => !current)}
+              style={{ position: 'relative' }}
+              type="button"
+            >
+              <Icon name="bell" size="lg" />
+              {unreadCount ? <span className="dashboard-notification-count">{Math.min(99, unreadCount)}</span> : null}
+            </button>
+          </>
+        }
         stepper={
           currentBudgetMonth
             ? {
@@ -235,19 +257,7 @@ export function DashboardPage() {
 
       <div className="dashboard-page">
         {guide ? (
-          <section
-            style={{
-              alignItems: 'center',
-              background: 'var(--wl-brand-50)',
-              border: '1px solid var(--wl-color-primary)',
-              borderRadius: 'var(--wl-radius-lg)',
-              display: 'flex',
-              gap: 24,
-              justifyContent: 'space-between',
-              marginBottom: 26,
-              padding: '22px 24px',
-            }}
-          >
+          <section className="dash-guide">
             <div style={{ minWidth: 0 }}>
               <h2 className="wl-section-title" style={{ color: 'var(--wl-color-primary-dark)', margin: 0 }}>
                 {guide.title}
@@ -274,15 +284,7 @@ export function DashboardPage() {
         ) : null}
 
         {heroBudget ? (
-          <section
-            style={{
-              alignItems: 'center',
-              display: 'grid',
-              gap: 32,
-              gridTemplateColumns: 'minmax(360px,1fr) 1px minmax(0,1.25fr)',
-              marginBottom: 32,
-            }}
-          >
+          <section className="dash-hero">
             <StatBlock
               action={{ label: `${data.sharedBudget ? '공동 예산' : '내 예산'} 상세 보기`, onClick: () => setBudgetDetailScope(heroScope) }}
               amount={formatWon(heroBudget.availableAmount)}
@@ -296,8 +298,8 @@ export function DashboardPage() {
               }}
               size="hero"
             />
-            <div style={{ alignSelf: 'stretch', background: 'var(--wl-color-border)' }} />
-            <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(3,minmax(0,1fr))' }}>
+            <div className="dash-hero-divider" />
+            <div className="dash-hero-stats">
               {data.myBudget ? (
                 <StatBlock
                   action={{ label: '상세 보기', onClick: () => setBudgetDetailScope('mine') }}
@@ -322,9 +324,7 @@ export function DashboardPage() {
           </section>
         ) : null}
 
-        <section
-          style={{ alignItems: 'start', display: 'grid', gap: 24, gridTemplateColumns: 'minmax(0,1.3fr) minmax(340px,.9fr)' }}
-        >
+        <section className="dash-main">
           <div>
             <div style={{ alignItems: 'baseline', display: 'flex', gap: 16, justifyContent: 'space-between', marginBottom: 6 }}>
               <h2 className="wl-section-title" style={{ margin: 0 }}>
@@ -354,7 +354,7 @@ export function DashboardPage() {
             )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="dash-side">
             <section className="dashboard-panel" style={{ padding: 20 }}>
               <h2 className="wl-section-title" style={{ margin: 0 }}>
                 이번달 소비 금액
