@@ -28,15 +28,14 @@ export function SaveBar({ open = true, title = '저장하지 않은 변경이 �
           : ({ '--wl-save-bar-offset': typeof offset === 'number' ? offset + 'px' : offset } as CSSProperties)
       }
     >
-      <div style={{ minWidth: 0 }}>
-        <strong style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>{title}</strong>
-        {note ? (
-          <span style={{ display: 'block', marginTop: 3, fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>
-            {note}
-          </span>
-        ) : null}
+      {/* 레이아웃은 patterns/overlay.css · patterns/mobile-shell.css 가 갖습니다.
+          인라인 style 로 두면 좁은 화면에서 미디어 쿼리로 덮을 수 없어,
+          문구가 한 글자씩 세로로 쌓이고 버튼이 화면 밖으로 밀립니다. */}
+      <div className="wl-save-bar-copy">
+        <strong>{title}</strong>
+        {note ? <span className="wl-save-bar-note">{note}</span> : null}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 'none' }}>{children}</div>
+      <div className="wl-save-bar-actions">{children}</div>
     </div>
   )
 }

@@ -450,12 +450,47 @@
     min-width: 0;
     padding-bottom: var(--wl-tabbar-total);
   }
-  /* 저장 바는 사이드바 자리를 비울 필요가 없고, 탭바 위에 놓입니다. */
+  /* 저장 바는 사이드바 자리를 비울 필요가 없고, 탭바 위에 놓입니다.
+   *
+   * 한 줄에 문구와 버튼을 같이 두면 문구가 한 글자씩 세로로 쌓이고 버튼이 화면 밖으로 나갑니다 —
+   * 액션 묶음이 flex:none 이라 안 줄어들고, 남는 폭을 문구가 다 떠안기 때문입니다.
+   * 위아래로 나누고, 액션이 폭을 다 쓰게 합니다. */
   .wl-save-bar {
     left: 0;
     bottom: var(--wl-tabbar-total);
-    gap: 12px;
-    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .wl-save-bar-copy > strong {
+    overflow: hidden;
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* 보조 설명은 접습니다. 키보드가 올라온 상태에서 저장 바가 화면을 반이나 먹으면
+   * 정작 고치던 입력이 안 보입니다. */
+  .wl-save-bar-note {
+    display: none;
+  }
+  .wl-save-bar-actions {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  /* 주 버튼(저장)은 남는 폭을 가져갑니다. 하단 바에서 가장 자주 누르는 것이고,
+   * 좁은 화면에서 작은 버튼을 정확히 누르게 하면 안 됩니다. */
+  .wl-save-bar-actions > :last-child {
+    flex: 1;
+  }
+
+  /* 저장 바가 떠 있는 동안에는 FAB 을 숨깁니다. 둘 다 화면 오른쪽 아래를 차지해서
+   * 저장 버튼을 누르려다 FAB 을 누르게 됩니다. 미저장 변경이 있는 상태에서
+   * "거래 추가"는 지금 하려는 일도 아닙니다.
+   * :has() 는 iOS Safari 15.4+ 부터 됩니다. 안 되는 브라우저에서는 예전처럼 둘 다 보일 뿐입니다. */
+  .wl-app-shell:has(.wl-save-bar) .wl-fab {
+    display: none;
   }
   /* 모바일에서는 시트가 화면 아래에서 올라오므로 토스트도 아래 중앙에 둡니다. */
   .wl-transaction-drawer-toast,

@@ -125,9 +125,24 @@
   .budget-move-actions > * {
     flex: 1;
   }
+  /* 좁은 화면에서는 두 줄이 됩니다 — 적용 범위 한 줄, 버튼 한 줄.
+   * 줄바꿈되면 각 줄에 항목이 하나씩만 남아 space-between 이 왼쪽 정렬처럼 보입니다.
+   * 각 줄이 폭을 다 쓰게 하고, 저장 버튼을 넓혀 엄지로 누르기 쉽게 합니다. */
   .budget-savebar-actions {
     width: 100%;
-    justify-content: space-between;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .budget-savebar-actions > * {
+    flex: 1 1 auto;
+  }
+  .budget-savebar-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .budget-savebar-buttons > :last-child {
+    flex: 1;
+    justify-content: center;
   }
 }
 

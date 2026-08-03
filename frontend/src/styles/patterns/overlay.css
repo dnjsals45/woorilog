@@ -74,6 +74,26 @@
   box-shadow: 0 -10px 30px -18px rgb(24 32 29 / 35%);
   animation: wl-bar-in 220ms var(--ease-out-strong) both;
 }
+.wl-save-bar-copy {
+  min-width: 0;
+}
+.wl-save-bar-copy > strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.wl-save-bar-note {
+  display: block;
+  margin-top: 3px;
+  color: var(--wl-color-text-secondary);
+  font-size: 12.5px;
+}
+.wl-save-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
 @keyframes wl-scrim-in {
   from {
     opacity: 0;
