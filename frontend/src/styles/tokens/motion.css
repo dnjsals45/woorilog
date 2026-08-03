@@ -7,12 +7,16 @@
   --wl-ease-exit: cubic-bezier(0.4, 0, 1, 1);
   /* 모달·하단 바 같은 오버레이 진입에 쓰는 강한 감속. 프로토타입 화면들이 쓰던 값입니다. */
   --wl-ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  /* 아래에서 올라오는 시트·드로어 전용. iOS 시트가 쓰는 곡선이라 손으로 끌던 것을
+   * 놓았을 때 이어지는 느낌이 납니다. patterns/overlay.css 가 --ease-drawer 로 참조합니다. */
+  --wl-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   --motion-fast: var(--wl-motion-fast);
   --motion-base: var(--wl-motion-base);
   --motion-slow: var(--wl-motion-slow);
   --ease-product: var(--wl-ease-product);
   --ease-out-strong: var(--wl-ease-out-strong);
+  --ease-drawer: var(--wl-ease-drawer);
 }
 
 @media (prefers-reduced-motion: reduce) {

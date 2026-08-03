@@ -5,7 +5,10 @@ import { useLedgerMembersQuery, useLedgersQuery, useSwitchLedgerMutation } from 
 import { TransactionAddDrawer } from '../../features/transaction/ui/TransactionAddDrawer'
 import { TransactionEntryContext } from '../../shared/ui/TransactionEntryContext'
 import { ApiClientError } from '../../shared/api/client'
+import { useIsMobileShell } from '../../shared/lib/useIsMobileShell'
 import { AppSidebar, type LedgerRef, type NavItem } from '../../shared/ui/AppSidebar'
+import { MobileTabBar, type MobileTab } from '../../shared/ui/MobileTabBar'
+import { Sheet } from '../../shared/ui/Sheet'
 import { ErrorState } from '../../shared/ui/ErrorState'
 import { Icon } from '../../shared/ui/Icon'
 
@@ -20,6 +23,31 @@ const NAVIGATION: (NavItem & { to: string })[] = [
   { id: 'analysis', label: '분석', icon: 'chart-pie', to: '/analysis', href: '/analysis' },
 ]
 
+/* 모바일 바텀 탭바는 5칸입니다. 데스크톱 사이드바 5종을 그대로 넣으면
+ * 설정·장부 전환·도움말이 갈 곳이 없어져서, 하루에 여러 번 오가는 네 화면만 탭으로 두고
+ * 나머지는 "더보기" 시트로 모읍니다. 반복 거래는 한 번 만들어두고 가끔 고치는 관리 화면이라
+ * 여기로 내렸습니다 — 사라진 게 아니라 시트 맨 위에 있습니다. */
+const MOBILE_TABS: MobileTab[] = [
+  { id: 'dashboard', label: '홈', icon: 'house', href: '/dashboard' },
+  { id: 'transactions', label: '가계부', icon: 'receipt', href: '/transactions' },
+  { id: 'budget', label: '예산', icon: 'wallet', href: '/budget' },
+  { id: 'analysis', label: '분석', icon: 'chart-pie', href: '/analysis' },
+  { id: 'more', label: '더보기', icon: 'ellipsis' },
+]
+
+/* 탭 하나에 여러 경로가 걸립니다. 시트에서만 갈 수 있는 화면도 어떤 탭을 밝힐지 정해둡니다. */
+const MOBILE_TAB_ROUTES: { prefix: string; tab: string }[] = [
+  { prefix: '/dashboard', tab: 'dashboard' },
+  { prefix: '/transactions', tab: 'transactions' },
+  { prefix: '/budget', tab: 'budget' },
+  { prefix: '/periods', tab: 'budget' },
+  { prefix: '/analysis', tab: 'analysis' },
+  { prefix: '/recurring', tab: 'more' },
+  { prefix: '/settings', tab: 'more' },
+  { prefix: '/help', tab: 'more' },
+  { prefix: '/ledgers', tab: 'more' },
+]
+
 function initialsOf(name: string | undefined): string {
   return (name ?? '').slice(0, 2)
 }
@@ -27,12 +55,15 @@ function initialsOf(name: string | undefined): string {
 export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
+  const isMobile = useIsMobileShell()
   const meQuery = useMeQuery()
   const ledgersQuery = useLedgersQuery()
   const switchLedgerMutation = useSwitchLedgerMutation()
   const logoutMutation = useLogoutMutation()
   const [transactionEntryOpen, setTransactionEntryOpen] = useState(false)
   const [transactionEntryKey, setTransactionEntryKey] = useState(0)
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false)
+  const [ledgerSheetOpen, setLedgerSheetOpen] = useState(false)
   const currentLedger =
     ledgersQuery.data?.ledgers?.find((ledger) => ledger.id === ledgersQuery.data?.currentLedgerId) ??
     meQuery.data?.currentLedger
@@ -76,6 +107,19 @@ export function AppShell() {
   }))
 
   const activeId = NAVIGATION.find((item) => location.pathname.startsWith(item.to))?.id
+  const activeTabId = MOBILE_TAB_ROUTES.find((entry) => location.pathname.startsWith(entry.prefix))?.tab
+
+  function selectLedger(selected: LedgerRef) {
+    const match = ledgersQuery.data?.ledgers?.find((ledger) => ledger.name === selected.name)
+    if (match) switchLedgerMutation.mutate(match.id)
+  }
+
+  function goto(to: string) {
+    setMoreSheetOpen(false)
+    navigate(to)
+  }
+
+  const logout = () => logoutMutation.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })
 
   return (
     <TransactionEntryContext.Provider
@@ -92,54 +136,206 @@ export function AppShell() {
         className="wl-app-shell"
         style={{ display: 'flex', minHeight: '100dvh', background: 'var(--wl-color-background)' }}
       >
-        <AppSidebar
-          ledger={ledgerChip}
-          ledgers={ledgerOptions}
-          onSelectLedger={(selected) => {
-            const match = ledgersQuery.data?.ledgers?.find((ledger) => ledger.name === selected.name)
-            if (match) switchLedgerMutation.mutate(match.id)
-          }}
-          onCreateLedger={() => navigate('/ledgers/new')}
-          nav={NAVIGATION}
-          activeId={activeId}
-          onNavigate={(id) => {
-            const item = NAVIGATION.find((entry) => entry.id === id)
-            if (item) navigate(item.to)
-          }}
-          onSettings={() => navigate('/settings')}
-          user={
-            meQuery.data
-              ? {
-                  name: meQuery.data.user.nickname,
-                  role: isShared(currentLedger?.type) ? '공동 장부' : '개인 장부',
-                  initials: initialsOf(meQuery.data.user.nickname),
-                }
-              : undefined
-          }
-          userAction={
-            <button
-              aria-label="로그아웃"
-              className="wl-icon-button wl-icon-button--subtle"
-              style={{ width: 36, height: 36 }}
-              disabled={logoutMutation.isPending}
-              onClick={() =>
-                logoutMutation.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })
-              }
-              type="button"
-            >
-              <Icon name="x" size="md" />
-            </button>
-          }
-        />
+        {isMobile ? null : (
+          <AppSidebar
+            activeId={activeId}
+            ledger={ledgerChip}
+            ledgers={ledgerOptions}
+            nav={NAVIGATION}
+            onCreateLedger={() => navigate('/ledgers/new')}
+            onNavigate={(id) => {
+              const item = NAVIGATION.find((entry) => entry.id === id)
+              if (item) navigate(item.to)
+            }}
+            onSelectLedger={selectLedger}
+            onSettings={() => navigate('/settings')}
+            user={
+              meQuery.data
+                ? {
+                    name: meQuery.data.user.nickname,
+                    role: isShared(currentLedger?.type) ? '공동 장부' : '개인 장부',
+                    initials: initialsOf(meQuery.data.user.nickname),
+                  }
+                : undefined
+            }
+            userAction={
+              <button
+                aria-label="로그아웃"
+                className="wl-icon-button wl-icon-button--subtle"
+                disabled={logoutMutation.isPending}
+                onClick={logout}
+                style={{ width: 36, height: 36 }}
+                type="button"
+              >
+                <Icon name="x" size="md" />
+              </button>
+            }
+          />
+        )}
 
-        {/* 본문. 디자인 기준 최소 폭 1080px (README '앱 셸' 절). 모바일 레이아웃은 별도 작업입니다. */}
+        {/* 본문. 데스크톱은 디자인 기준 최소 폭 1080px (README '앱 셸' 절).
+            모바일 앱 뷰에서는 화면 폭을 그대로 쓰고 하단 탭바만큼 여백을 둡니다
+            (styles/patterns/mobile-shell.css). */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="wl-app-content" style={{ minWidth: 1080 }}>
+          <div className="wl-app-content" style={isMobile ? undefined : { minWidth: 1080 }}>
             <Outlet />
           </div>
         </div>
 
-        {/* 디자인 `거래 추가.dc.html` 은 우측 560px 드로어다. 기존 TransactionEntrySheet 를 대체한다. */}
+        {isMobile ? (
+          <>
+            <MobileTabBar
+              activeId={activeTabId}
+              onSelect={(id) => {
+                if (id === 'more') {
+                  setMoreSheetOpen(true)
+                  return
+                }
+                const tab = MOBILE_TABS.find((entry) => entry.id === id)
+                if (tab?.href) navigate(tab.href)
+              }}
+              tabs={MOBILE_TABS}
+            />
+            {/* 거래 추가는 데스크톱에서 헤더 버튼입니다. 모바일에서는 엄지가 닿는 자리에 둡니다. */}
+            <button
+              aria-label="거래 추가"
+              className="wl-fab"
+              onClick={() => {
+                setTransactionEntryKey((value) => value + 1)
+                setTransactionEntryOpen(true)
+              }}
+              type="button"
+            >
+              <Icon name="plus" size="xl" />
+            </button>
+          </>
+        ) : null}
+
+        {isMobile && moreSheetOpen ? (
+          <Sheet onClose={() => setMoreSheetOpen(false)} title="더보기">
+            <ul className="wl-sheet-list">
+              <li>
+                <button className="wl-sheet-option" onClick={() => goto('/recurring')} type="button">
+                  <Icon name="rotate-ccw" size="lg" />
+                  <span>
+                    <strong>반복 거래</strong>
+                    <small>고정비와 할부를 한 곳에서 관리해요</small>
+                  </span>
+                </button>
+              </li>
+              <li>
+                <button
+                  className="wl-sheet-option"
+                  onClick={() => {
+                    setMoreSheetOpen(false)
+                    setLedgerSheetOpen(true)
+                  }}
+                  type="button"
+                >
+                  <Icon name="users" size="lg" />
+                  <span>
+                    <strong>장부 전환</strong>
+                    <small>{ledgerChip ? `${ledgerChip.name} · ${ledgerChip.members}` : '장부를 불러오는 중'}</small>
+                  </span>
+                  <Icon name="chevron-right" size="sm" />
+                </button>
+              </li>
+              <li>
+                <button className="wl-sheet-option" onClick={() => goto('/settings')} type="button">
+                  <Icon name="settings" size="lg" />
+                  <span>
+                    <strong>설정</strong>
+                    <small>프로필, 멤버, 카테고리, 알림</small>
+                  </span>
+                </button>
+              </li>
+              <li>
+                <button className="wl-sheet-option" onClick={() => goto('/help')} type="button">
+                  <Icon name="info" size="lg" />
+                  <span>
+                    <strong>도움말</strong>
+                  </span>
+                </button>
+              </li>
+            </ul>
+            <div className="wl-sheet-divider" />
+            <div style={{ alignItems: 'center', display: 'flex', gap: 12, padding: '4px 12px 12px' }}>
+              <span
+                style={{
+                  background: 'var(--wl-data-blue-soft)',
+                  borderRadius: '50%',
+                  color: 'var(--wl-data-blue-ink)',
+                  display: 'grid',
+                  flex: 'none',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  height: 36,
+                  placeItems: 'center',
+                  width: 36,
+                }}
+              >
+                {initialsOf(meQuery.data?.user.nickname)}
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <strong style={{ display: 'block', fontSize: 14, fontWeight: 650 }}>{meQuery.data?.user.nickname}</strong>
+                <small style={{ color: 'var(--wl-color-text-secondary)', fontSize: 11.5 }}>
+                  {isShared(currentLedger?.type) ? '공동 장부' : '개인 장부'}
+                </small>
+              </span>
+              <button
+                className="wl-button wl-button--secondary"
+                disabled={logoutMutation.isPending}
+                onClick={logout}
+                style={{ flex: 'none', minHeight: 40, padding: '0 14px' }}
+                type="button"
+              >
+                로그아웃
+              </button>
+            </div>
+          </Sheet>
+        ) : null}
+
+        {isMobile && ledgerSheetOpen ? (
+          <Sheet onClose={() => setLedgerSheetOpen(false)} title="장부 전환">
+            <ul className="wl-sheet-list">
+              {(ledgerOptions ?? []).map((ledger) => (
+                <li key={ledger.name}>
+                  <button
+                    aria-current={ledger.current ? 'true' : undefined}
+                    className="wl-sheet-option"
+                    onClick={() => {
+                      setLedgerSheetOpen(false)
+                      selectLedger(ledger)
+                    }}
+                    type="button"
+                  >
+                    <span>
+                      <strong>{ledger.name}</strong>
+                      <small>{ledger.meta}</small>
+                    </span>
+                    {ledger.current ? <Icon name="check" size="sm" /> : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="wl-sheet-divider" />
+            <button
+              className="wl-sheet-option"
+              onClick={() => {
+                setLedgerSheetOpen(false)
+                navigate('/ledgers/new')
+              }}
+              type="button"
+            >
+              <Icon name="plus" size="lg" />
+              <span>
+                <strong>새 공동 장부 만들기</strong>
+              </span>
+            </button>
+          </Sheet>
+        ) : null}
+
+        {/* 디자인 `거래 추가.dc.html` 은 우측 560px 드로어다. 모바일에서는 바텀시트로 올라온다. */}
         <TransactionAddDrawer
           key={transactionEntryKey}
           onClose={() => setTransactionEntryOpen(false)}

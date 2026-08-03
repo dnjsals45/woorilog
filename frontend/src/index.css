@@ -28,6 +28,10 @@
 @import './styles/patterns/onboarding.css';
 @import './styles/patterns/landing.css';
 
+/* 모바일 앱 뷰는 위 패턴들을 덮어씁니다 — 우측 드로어를 바텀시트로 바꾸는 식이라
+ * 선택자 특정도가 같습니다. 미디어 쿼리는 특정도를 올려주지 않으므로 **반드시 마지막**에 옵니다. */
+@import './styles/patterns/mobile-shell.css';
+
 /* Tailwind 유틸리티가 참조하는 테마 값 — 전부 wl 토큰을 가리킵니다. */
 @theme {
   --font-sans: var(--wl-font-sans);

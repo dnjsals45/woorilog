@@ -63,7 +63,7 @@
   left: var(--wl-save-bar-offset, 232px);
   right: 0;
   bottom: 0;
-  z-index: 20;
+  z-index: var(--wl-z-sticky);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -115,7 +115,7 @@
 .wl-transaction-drawer-scrim {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--wl-z-sheet);
   background: rgb(24 32 29 / 26%);
   animation: wl-scrim-in 240ms var(--ease-out-strong) both;
 }
@@ -124,7 +124,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 50;
+  z-index: calc(var(--wl-z-sheet) + 1);
   width: 560px;
   display: flex;
   flex-direction: column;
@@ -137,7 +137,7 @@
   position: fixed;
   right: calc(560px + 24px);
   bottom: 28px;
-  z-index: 60;
+  z-index: var(--wl-z-toast);
   animation: wl-toast-in 220ms var(--ease-out-strong) both;
 }
 @keyframes wl-transaction-drawer-in {
@@ -171,7 +171,7 @@
 .wl-import-scrim {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--wl-z-modal);
   display: grid;
   place-items: center;
   padding: 24px;
@@ -327,7 +327,7 @@
   position: fixed;
   right: 28px;
   bottom: 28px;
-  z-index: 60;
+  z-index: var(--wl-z-toast);
   animation: wl-toast-in 220ms var(--ease-out-strong) both;
 }
 @media (prefers-reduced-motion: reduce) {
