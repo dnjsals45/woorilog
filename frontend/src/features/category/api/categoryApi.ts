@@ -8,8 +8,11 @@ export type CategorySummary = {
   type: TransactionType
   categoryGroupId: number
   categoryGroupName: string
+  /** 기본 대분류의 안정된 식별자 (FOOD, HOUSING …). 사용자가 만든 그룹은 빈 문자열입니다. */
+  groupCode: string
   sortOrder: number
   defaultCategory: boolean
+  active: boolean
 }
 
 export type CreateCategoryRequest = {
