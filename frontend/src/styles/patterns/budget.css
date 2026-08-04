@@ -92,7 +92,7 @@
 @media (width < 1024px) {
   .budget-page-body {
     gap: 22px;
-    padding: 18px 16px calc(32px + var(--wl-safe-bottom));
+    padding: 18px 16px calc(96px + var(--wl-safe-bottom));
   }
   .budget-allocation-grid {
     grid-template-columns: 1fr;

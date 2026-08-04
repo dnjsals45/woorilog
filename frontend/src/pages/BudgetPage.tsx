@@ -362,10 +362,7 @@ function BudgetConfigurationBody({
     <div className="budget-page-body">
       {/* 기간 전체 예산 */}
       <section>
-        <p className="wl-label" style={{ margin: 0 }}>
-          기간 전체 예산
-        </p>
-        <div style={{ marginTop: 10, maxWidth: 320 }}>
+        <div style={{ maxWidth: 320 }}>
           <AmountInput
             id="budget-total"
             label="기간 전체 예산"
