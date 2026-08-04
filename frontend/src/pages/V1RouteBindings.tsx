@@ -65,7 +65,9 @@ export function SharedLedgerCreateRoute() {
         setInvitationFailed(true)
       }
     }}
-    onDone={() => ledger && navigate(`/ledgers/${ledger.id}/settings`, { replace: true })}
+    /* 새 공동 가계부는 예산이 아직 없습니다. 설정이 아니라 홈으로 보내면
+       *  '두 사람의 예산을 나눠주세요' 안내 카드가 다음 할 일을 바로 알려줍니다. */
+      onDone={() => ledger && navigate('/dashboard', { replace: true })}
     onRegenerateInvitation={async () => {
       setInvitationFailed(false)
       const created = await regenerateInvitation.mutateAsync()
