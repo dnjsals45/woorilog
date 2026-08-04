@@ -81,7 +81,7 @@ export function AppShell() {
     )
   }
   if (meQuery.isError && meQuery.error instanceof ApiClientError && meQuery.error.status === 401) {
-    return <Navigate replace to="/login" />
+    return <Navigate replace to="/" />
   }
   if (meQuery.isError) {
     return (
@@ -124,7 +124,7 @@ export function AppShell() {
     navigate(to)
   }
 
-  const logout = () => logoutMutation.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })
+  const logout = () => logoutMutation.mutate(undefined, { onSettled: () => navigate('/', { replace: true }) })
 
   return (
     <TransactionEntryContext.Provider
@@ -148,6 +148,7 @@ export function AppShell() {
             ledgers={ledgerOptions}
             nav={NAVIGATION}
             onCreateLedger={() => navigate('/ledgers/new')}
+            onHome={() => navigate('/dashboard')}
             onNavigate={(id) => {
               const item = NAVIGATION.find((entry) => entry.id === id)
               if (item) navigate(item.to)

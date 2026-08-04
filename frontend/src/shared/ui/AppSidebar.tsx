@@ -88,6 +88,9 @@ export interface AppSidebarProps {
   onCreateLedger?: () => void
   /** 사용자 영역 오른쪽에 놓을 액션(로그아웃 등). */
   userAction?: ReactNode
+  /** 넘기면 로고가 홈으로 가는 링크가 됩니다. */
+  onHome?: () => void
+  homeHref?: string
   /** 내비게이션 landmark 의 접근성 이름. */
   navLabel?: string
 }
@@ -106,6 +109,8 @@ export function AppSidebar({
   onSettings,
   onCreateLedger,
   userAction,
+  onHome,
+  homeHref = '/dashboard',
   navLabel = '주요 메뉴',
 }: AppSidebarProps) {
   const [open, setOpen] = useState(false)
@@ -154,11 +159,27 @@ export function AppSidebar({
         height: '100vh',
       }}
     >
-      <img
-        src={logoSrc}
-        alt="우리로그"
-        style={{ display: 'block', width: 'calc(100% - 12px)', height: 'auto', margin: '0 6px' }}
-      />
+      {/* 로고는 홈으로 가는 링크입니다. onHome 을 넘기면 SPA 이동, 아니면 일반 <a> 로 그립니다. */}
+      <a
+        href={homeHref}
+        aria-label="우리로그 홈"
+        onClick={
+          onHome
+            ? (event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
+                event.preventDefault()
+                onHome()
+              }
+            : undefined
+        }
+        style={{ display: 'block', borderRadius: 'var(--wl-radius-md)' }}
+      >
+        <img
+          src={logoSrc}
+          alt="우리로그"
+          style={{ display: 'block', width: 'calc(100% - 12px)', height: 'auto', margin: '0 6px' }}
+        />
+      </a>
 
       {ledger ? (
         <div style={{ position: 'relative', marginTop: 18 }}>
