@@ -22,12 +22,14 @@ import { EmptyState } from '../shared/ui/EmptyState'
 import { ErrorState } from '../shared/ui/ErrorState'
 import { Icon } from '../shared/ui/Icon'
 import { Progress } from '../shared/ui/Progress'
-import { SaveBar } from '../shared/ui/SaveBar'
+import { Modal } from '../shared/ui/Modal'
 import { SegmentedControl } from '../shared/ui/SegmentedControl'
 import { Skeleton } from '../shared/ui/Skeleton'
 import { Toast } from '../shared/ui/Toast'
 
-const STEP = 50_000
+/* 예산 조절 버튼의 단위. 화면에서 5만·10만 중에 고릅니다. */
+const STEP_OPTIONS = [50_000, 100_000] as const
+const DEFAULT_STEP = STEP_OPTIONS[0]
 const won = formatWon
 
 /** 카드·칩 색 팔레트 — 멤버 최대 2명(홍길동=파랑, 홍길순=보라) + 공동(브랜드) + 예비비(뉴트럴). */
@@ -216,6 +218,8 @@ function BudgetConfigurationBody({
   const [state, setState] = useState<InitialAllocation>(() => deriveInitial(period, members))
   const [savedSnapshot, setSavedSnapshot] = useState(() => snapshotOf(deriveInitial(period, members), members, categoryEntries))
   const [scope, setScope] = useState<'once' | 'forward'>('once')
+  const [step, setStep] = useState<(typeof STEP_OPTIONS)[number]>(DEFAULT_STEP)
+  const [saveOpen, setSaveOpen] = useState(false)
   const [raiseConfirmed, setRaiseConfirmed] = useState(false)
   const [serverConfirmRequired, setServerConfirmRequired] = useState(false)
   const [toast, setToast] = useState<{ text: string; tone: 'success' | 'danger' } | null>(null)
@@ -247,6 +251,7 @@ function BudgetConfigurationBody({
   const catSum = categoryEntries.reduce((sum, item) => sum + toNumber(state.categoryDigits[item.groupCode] ?? '0'), 0)
   const catBase = isSharedLedger ? sharedAmount : totalBudget
 
+  const stepLabel = `${step / 10_000}만`
   const dirty = snapshotOf(state, members, categoryEntries) !== savedSnapshot
   const needsRaiseConfirmation = localOver > 0 || serverConfirmRequired
   const saveDisabled = needsRaiseConfirmation && !raiseConfirmed
@@ -369,12 +374,25 @@ function BudgetConfigurationBody({
           />
         </div>
 
+        {/* 나눈 금액이 전체 예산에 못 미치면 남는 구간이 곧 예비비입니다.
+          * 이 구간이 트랙 색과 같으면 "전체 예산이 어디까지인지"가 안 보여서
+          * 트랙에 테두리를 주고 총액을 막대 위에 함께 적습니다. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 20 }}>
+          <span className="wl-meta">전체 예산 {won(totalBudget)}</span>
+          <span className="wl-tabular wl-meta">
+            {sumAllocated > totalBudget
+              ? `${won(sumAllocated - totalBudget)} 초과`
+              : `나눔 ${won(sumAllocated)} · 남음 ${won(Math.max(0, totalBudget - sumAllocated))}`}
+          </span>
+        </div>
+
         <div
           style={{
             display: 'flex',
-            height: 14,
-            marginTop: 20,
+            height: 18,
+            marginTop: 8,
             borderRadius: 'var(--wl-radius-pill)',
+            border: '1px solid var(--wl-color-border-strong)',
             background: 'var(--wl-color-surface-subtle)',
             overflow: 'hidden',
           }}
@@ -526,12 +544,41 @@ function BudgetConfigurationBody({
 
       {/* 예산 나누기 */}
       <section>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
-          <h2 className="wl-section-title" style={{ margin: 0 }}>
-            예산 나누기
-          </h2>
-          {isSharedLedger ? <span className="wl-meta">상대방 몫도 함께 정할 수 있어요</span> : null}
+        {/* 저장은 화면 맨 아래 바가 아니라 이 제목 오른쪽에 둡니다.
+          * 아래쪽 바는 카테고리 예산까지 스크롤해 내려가야 보여서 저장할 수 있다는 걸 놓치기 쉬웠습니다. */}
+        <div className="budget-allocation-header">
+          <div style={{ minWidth: 0 }}>
+            <h2 className="wl-section-title" style={{ margin: 0 }}>
+              예산 나누기
+            </h2>
+            {isSharedLedger ? <span className="wl-meta">상대방 몫도 함께 정할 수 있어요</span> : null}
+          </div>
+          <div className="budget-allocation-header-actions">
+            <SegmentedControl
+              label="조절 단위"
+              onChange={(value) => setStep(Number(value) as (typeof STEP_OPTIONS)[number])}
+              options={STEP_OPTIONS.map((option) => ({ value: String(option), label: `${option / 10_000}만` }))}
+              value={String(step)}
+            />
+            {dirty ? (
+              <button
+                onClick={handleReset}
+                style={{ minHeight: 44, padding: '0 14px', borderRadius: 12, fontSize: 13, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}
+                type="button"
+              >
+                되돌리기
+              </button>
+            ) : null}
+            <Button disabled={!dirty} onClick={() => setSaveOpen(true)} size="md">
+              예산 저장
+            </Button>
+          </div>
         </div>
+        {dirty && saveNote ? (
+          <p className="wl-meta" style={{ margin: '0 0 14px' }}>
+            {saveNote}
+          </p>
+        ) : null}
 
         <div
           className="budget-allocation-grid"
@@ -570,11 +617,11 @@ function BudgetConfigurationBody({
                     {share}%
                   </span>
                   <span style={{ display: 'flex', gap: 6 }}>
-                    <StepButton aria-label={`${member.nickname} 예산 5만원 줄이기`} onClick={() => stepPersonal(member.userId, -STEP)}>
-                      -5만
+                    <StepButton aria-label={`${member.nickname} 예산 ${stepLabel}원 줄이기`} onClick={() => stepPersonal(member.userId, -step)}>
+                      {`-${stepLabel}`}
                     </StepButton>
-                    <StepButton aria-label={`${member.nickname} 예산 5만원 늘리기`} onClick={() => stepPersonal(member.userId, STEP)}>
-                      +5만
+                    <StepButton aria-label={`${member.nickname} 예산 ${stepLabel}원 늘리기`} onClick={() => stepPersonal(member.userId, step)}>
+                      {`+${stepLabel}`}
                     </StepButton>
                   </span>
                 </div>
@@ -610,16 +657,16 @@ function BudgetConfigurationBody({
                 </span>
                 <span style={{ display: 'flex', gap: 6 }}>
                   <StepButton
-                    aria-label="공동 예산 5만원 줄이기"
-                    onClick={() => setState((current) => ({ ...current, sharedDigits: String(Math.max(0, toNumber(current.sharedDigits) - STEP)) }))}
+                    aria-label={`공동 예산 ${stepLabel}원 줄이기`}
+                    onClick={() => setState((current) => ({ ...current, sharedDigits: String(Math.max(0, toNumber(current.sharedDigits) - step)) }))}
                   >
-                    -5만
+                    {`-${stepLabel}`}
                   </StepButton>
                   <StepButton
-                    aria-label="공동 예산 5만원 늘리기"
-                    onClick={() => setState((current) => ({ ...current, sharedDigits: String(toNumber(current.sharedDigits) + STEP) }))}
+                    aria-label={`공동 예산 ${stepLabel}원 늘리기`}
+                    onClick={() => setState((current) => ({ ...current, sharedDigits: String(toNumber(current.sharedDigits) + step) }))}
                   >
-                    +5만
+                    {`+${stepLabel}`}
                   </StepButton>
                 </span>
               </div>
@@ -802,8 +849,13 @@ function BudgetConfigurationBody({
         ) : null}
       </section>
 
-      <SaveBar note={saveNote} open={dirty}>
-        <div className="budget-savebar-actions">
+      <Modal onClose={() => setSaveOpen(false)} open={saveOpen} title="예산을 저장할까요?" width={460}>
+        <p className="wl-body" style={{ margin: 0, color: 'var(--wl-color-text-body)' }}>
+          {scope === 'once'
+            ? '이번 기간 예산만 바꿉니다. 다음 기간은 지금 기본값을 그대로 씁니다.'
+            : '이번 기간과 함께 다음 기간이 복사해 갈 기본값도 바꿉니다.'}
+        </p>
+        <div style={{ marginTop: 16 }}>
           <SegmentedControl
             label="적용 범위"
             onChange={(value) => setScope(value as 'once' | 'forward')}
@@ -813,20 +865,32 @@ function BudgetConfigurationBody({
             ]}
             value={scope}
           />
-          <div className="budget-savebar-buttons">
-            <button
-              onClick={handleReset}
-              style={{ minHeight: 44, padding: '0 14px', borderRadius: 12, fontSize: 13, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}
-              type="button"
-            >
-              되돌리기
-            </button>
-            <Button disabled={saveDisabled} loading={mutation.isPending} onClick={handleSave} size="md">
-              예산 저장
-            </Button>
-          </div>
         </div>
-      </SaveBar>
+        {saveNote ? (
+          <p className="wl-meta" style={{ margin: '14px 0 0' }}>
+            {saveNote}
+          </p>
+        ) : null}
+        {saveDisabled ? (
+          /* 증액 확인 체크박스는 전체 예산 섹션 안에 이미 있습니다. 여기서 또 묻지 않고 그리로 안내합니다. */
+          <p className="wl-field-error" role="alert" style={{ marginTop: 14 }}>
+            <Icon name="circle-alert" size="sm" />
+            위쪽 &lsquo;기간 전체 예산&rsquo;에서 증액을 먼저 확인해주세요.
+          </p>
+        ) : null}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 22 }}>
+          <button
+            onClick={() => setSaveOpen(false)}
+            style={{ minHeight: 44, padding: '0 14px', borderRadius: 12, fontSize: 13, fontWeight: 700, color: 'var(--wl-color-text-secondary)' }}
+            type="button"
+          >
+            취소
+          </button>
+          <Button disabled={saveDisabled} loading={mutation.isPending} onClick={handleSave} size="md">
+            저장
+          </Button>
+        </div>
+      </Modal>
 
       {toast ? (
         <div

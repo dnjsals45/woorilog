@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
-  padding: 28px 32px 140px;
+  padding: 28px 32px 56px;
 }
 
 /* 배분 입력 카드들 — 데스크톱은 인원 수 + (공동/예비비)만큼 한 줄, 모바일은 1단으로 쌓습니다. */
@@ -72,24 +72,27 @@
   gap: 10px;
 }
 
-/* 저장 바 안의 적용 범위 · 되돌리기 · 저장 버튼 — 좁은 화면에서 줄바꿈으로 넘침을 막습니다. */
-.budget-savebar-actions {
+/* '예산 나누기' 제목 줄 — 왼쪽 제목, 오른쪽 조절 단위·되돌리기·저장. */
+.budget-allocation-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.budget-allocation-header-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
-}
-.budget-savebar-buttons {
-  display: flex;
-  align-items: center;
   gap: 8px;
 }
 
 @media (width < 1024px) {
   .budget-page-body {
     gap: 22px;
-    padding: 18px 16px calc(112px + var(--wl-safe-bottom));
+    padding: 18px 16px calc(32px + var(--wl-safe-bottom));
   }
   .budget-allocation-grid {
     grid-template-columns: 1fr;
@@ -125,22 +128,11 @@
   .budget-move-actions > * {
     flex: 1;
   }
-  /* 좁은 화면에서는 두 줄이 됩니다 — 적용 범위 한 줄, 버튼 한 줄.
-   * 줄바꿈되면 각 줄에 항목이 하나씩만 남아 space-between 이 왼쪽 정렬처럼 보입니다.
-   * 각 줄이 폭을 다 쓰게 하고, 저장 버튼을 넓혀 엄지로 누르기 쉽게 합니다. */
-  .budget-savebar-actions {
+  /* 좁은 화면에서는 제목 아래로 액션이 한 줄 내려옵니다. 저장 버튼을 넓혀 엄지로 누르기 쉽게 합니다. */
+  .budget-allocation-header-actions {
     width: 100%;
-    gap: 8px;
-    justify-content: flex-end;
   }
-  .budget-savebar-actions > * {
-    flex: 1 1 auto;
-  }
-  .budget-savebar-buttons {
-    width: 100%;
-    justify-content: flex-end;
-  }
-  .budget-savebar-buttons > :last-child {
+  .budget-allocation-header-actions > :last-child {
     flex: 1;
     justify-content: center;
   }
