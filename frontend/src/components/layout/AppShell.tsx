@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useLogoutMutation, useMeQuery } from '../../features/auth/model/authQueries'
 import { useLedgerMembersQuery, useLedgersQuery, useSwitchLedgerMutation } from '../../features/ledger/model/ledgerQueries'
 import { TransactionAddDrawer } from '../../features/transaction/ui/TransactionAddDrawer'
-import { TransactionEntryContext } from '../../shared/ui/TransactionEntryContext'
+import { TransactionEntryContext, type TransactionEntryPreset } from '../../shared/ui/TransactionEntryContext'
 import { ApiClientError } from '../../shared/api/client'
 import { useIsMobileShell } from '../../shared/lib/useIsMobileShell'
 import { AppSidebar, type LedgerRef, type NavItem } from '../../shared/ui/AppSidebar'
@@ -66,6 +66,7 @@ export function AppShell() {
   const logoutMutation = useLogoutMutation()
   const [transactionEntryOpen, setTransactionEntryOpen] = useState(false)
   const [transactionEntryKey, setTransactionEntryKey] = useState(0)
+  const [transactionEntryPreset, setTransactionEntryPreset] = useState<TransactionEntryPreset | undefined>(undefined)
   const [moreSheetOpen, setMoreSheetOpen] = useState(false)
   const [ledgerSheetOpen, setLedgerSheetOpen] = useState(false)
   const currentLedger =
@@ -130,9 +131,11 @@ export function AppShell() {
     <TransactionEntryContext.Provider
       value={{
         openTransactionEntry: (preset) => {
-          // TransactionAddDrawer 는 아직 preset(미리 채운 값)을 받지 않는다. 계약만 유지한다.
-          void preset
-          setTransactionEntryKey((value) => value + 1)
+          /* onClick={openTransactionEntry} 로 바로 붙은 호출은 MouseEvent 가 넘어옵니다.
+           * 실제 preset 객체일 때만 미리 채운 값으로 씁니다. */
+          const value = preset && !('nativeEvent' in preset) ? preset : undefined
+          setTransactionEntryPreset(value)
+          setTransactionEntryKey((key) => key + 1)
           setTransactionEntryOpen(true)
         },
       }}
@@ -346,6 +349,7 @@ export function AppShell() {
         {/* 디자인 `거래 추가.dc.html` 은 우측 560px 드로어다. 모바일에서는 바텀시트로 올라온다. */}
         <TransactionAddDrawer
           key={transactionEntryKey}
+          preset={transactionEntryPreset}
           onClose={() => setTransactionEntryOpen(false)}
           open={transactionEntryOpen}
         />

@@ -10,6 +10,7 @@ import { IconButton } from '../../../shared/ui/IconButton'
 import { Toast } from '../../../shared/ui/Toast'
 import { useBodyScrollLock } from '../../../shared/ui/useBodyScrollLock'
 import { useSheetDrag } from '../../../shared/ui/useSheetDrag'
+import type { TransactionEntryPreset } from '../../../shared/ui/TransactionEntryContext'
 import { TransactionForm, type TransactionFormValues } from './TransactionForm'
 
 const TOAST_DURATION_MS = 3500
@@ -19,6 +20,8 @@ type LastSaved = { kind: 'transaction'; id: number } | { kind: 'plan'; id: numbe
 export interface TransactionAddDrawerProps {
   open: boolean
   onClose: () => void
+  /** 드로어를 연 화면이 미리 채워둘 값. 지금은 날짜만 씁니다. */
+  preset?: TransactionEntryPreset
 }
 
 /**
@@ -27,7 +30,7 @@ export interface TransactionAddDrawerProps {
  * "저장 후 계속 입력하기"를 켜면 저장 뒤 금액·사용처·메모만 비우고 드로어를 유지하고,
  * 끄면 저장 뒤 드로어를 닫습니다.
  */
-export function TransactionAddDrawer({ open, onClose }: TransactionAddDrawerProps) {
+export function TransactionAddDrawer({ open, onClose, preset }: TransactionAddDrawerProps) {
   const me = useMeQuery()
   const ledgerId = me.data?.currentLedger.id
   const isSharedLedger = me.data?.currentLedger.type === 'GROUP' || me.data?.currentLedger.type === 'SHARED'
@@ -204,7 +207,12 @@ export function TransactionAddDrawer({ open, onClose }: TransactionAddDrawerProp
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <TransactionForm
             categories={categoriesQuery.data ?? []}
-            initialValues={{ occurredOn: formatDateInput(), budgetSourceType: 'SHARED' }}
+            /* 목록에서 특정 날짜를 보고 있었으면 그 날짜로 시작합니다(없으면 오늘).
+              * 개인 가계부에는 공동 예산이 없으므로 차감 예산 기본값도 본인 예산입니다. */
+            initialValues={{
+              occurredOn: preset?.transactionDate ?? formatDateInput(),
+              budgetSourceType: isSharedLedger ? 'SHARED' : 'PERSONAL',
+            }}
             isSharedLedger={Boolean(isSharedLedger)}
             key={formKey}
             ledgerId={ledgerId}

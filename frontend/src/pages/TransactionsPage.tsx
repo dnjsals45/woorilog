@@ -172,7 +172,7 @@ export function TransactionsPage() {
             </button>
             <button
               className="dashboard-primary-button"
-              onClick={() => openTransactionEntry()}
+              onClick={() => openTransactionEntry(selectedDate ? { transactionDate: selectedDate } : undefined)}
               style={{ minHeight: 40 }}
               type="button"
             >
