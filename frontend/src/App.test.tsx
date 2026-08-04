@@ -61,12 +61,17 @@ afterEach(() => {
 
 describe('App V1 routes', () => {
   it('renders the landing and login entry points', async () => {
+    const fetchSpy = installApiMock()
     const actor = userEvent.setup()
     renderApp('/')
     expect(screen.getByRole('heading', { level: 1, name: /함께 쓰는 돈을.*감시하지 않고 기록해요/i })).toBeInTheDocument()
-    // 디자인상 로그인은 별도 라우트가 아니라 랜딩 위의 모달이다.
+    // 로그인은 별도 라우트도 중간 모달도 없이 랜딩 CTA 가 바로 카카오로 넘긴다.
     await actor.click(screen.getAllByRole('button', { name: '카카오로 시작하기' })[0])
-    expect(await screen.findByRole('dialog', { name: '카카오로 시작하기' })).toBeInTheDocument()
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/kakao/login-url'),
+      expect.anything(),
+    ))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('redirects a protected V1 route to login without a session', async () => {
@@ -97,7 +102,7 @@ describe('App V1 routes', () => {
     }) : undefined)
     renderApp('/invitations/invite-token')
     expect(await screen.findByRole('heading', { level: 2, name: '우리 공동 가계부' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '로그인하고 확인하기' })).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: '로그인하고 확인하기' })).toHaveAttribute('href', '/')
   })
 
   it('sends users with an unfinished profile to onboarding', async () => {
@@ -133,7 +138,7 @@ describe('App V1 routes', () => {
   it('uses the selected development account', async () => {
     const fetchSpy = installApiMock()
     const actor = userEvent.setup()
-    renderApp('/login')
+    renderApp('/')
     await actor.click(screen.getByRole('button', { name: '개발자2' }))
     await actor.click(screen.getByRole('button', { name: '개발자 로그인' }))
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(

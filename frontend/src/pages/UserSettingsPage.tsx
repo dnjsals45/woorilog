@@ -167,7 +167,7 @@ export function UserSettingsPage() {
     return () => clearInterval(id)
   }, [invitation])
 
-  if (me.isError && me.error instanceof ApiClientError && me.error.status === 401) return <Navigate replace to="/login" />
+  if (me.isError && me.error instanceof ApiClientError && me.error.status === 401) return <Navigate replace to="/" />
 
   function showToast(text: string) {
     clearTimeout(toastTimer.current)

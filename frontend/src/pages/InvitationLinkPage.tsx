@@ -283,7 +283,7 @@ function InvitationValidCard({
           <Link
             className="wl-button wl-button--primary wl-button--lg wl-button--full"
             onClick={() => storeAuthReturnPath(returnPath)}
-            to="/login"
+            to="/"
           >
             로그인하고 확인하기
           </Link>

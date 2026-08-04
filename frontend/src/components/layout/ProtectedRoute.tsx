@@ -18,7 +18,7 @@ export function ProtectedRoute() {
   if (refreshQuery.isError) {
     const returnPath = `${location.pathname}${location.search}${location.hash}`
     storeAuthReturnPath(returnPath)
-    return <Navigate replace state={{ from: returnPath }} to="/login" />
+    return <Navigate replace state={{ from: returnPath }} to="/" />
   }
 
   return null

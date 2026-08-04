@@ -36,14 +36,14 @@ export function KakaoCallbackPage() {
   }
 
   if (error || !code) {
-    return <Navigate to="/login?error=kakao-cancelled" replace />
+    return <Navigate to="/?error=kakao-cancelled" replace />
   }
 
   return (
     <main className="auth-surface flex min-h-dvh items-center justify-center px-5 text-slate-700">
       <section className="auth-card px-6 py-5 text-center font-semibold">
         <p>{loginFailed ? '카카오 로그인에 실패했습니다. 로그인 화면에서 다시 시도해주세요.' : '카카오 로그인 처리 중입니다.'}</p>
-        {loginFailed ? <div className="mt-4"><Link className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" to="/login">로그인으로 돌아가기</Link></div> : null}
+        {loginFailed ? <div className="mt-4"><Link className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" to="/">처음으로 돌아가기</Link></div> : null}
       </section>
     </main>
   )

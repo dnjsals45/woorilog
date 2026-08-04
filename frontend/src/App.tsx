@@ -6,7 +6,6 @@ import { DashboardPage } from './pages/DashboardPage'
 import { InvitationLinkPage } from './pages/InvitationLinkPage'
 import { KakaoCallbackPage } from './pages/KakaoCallbackPage'
 import { LandingPage } from './pages/LandingPage'
-import { LoginPage } from './pages/LoginPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { RecurringTransactionPage } from './pages/RecurringTransactionPage'
 import { HelpPage } from './pages/HelpPage'
@@ -27,7 +26,8 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       {/* 디자인상 로그인은 랜딩 위 모달이다. 이 라우트는 초대 확인의 "로그인하고 확인하기",
           AuthReturnRedirect, 개발자 로그인 진입점으로 남는다. */}
-      <Route path="/login" element={<LoginPage />} />
+      {/* 로그인은 랜딩(/)에서 바로 시작합니다. 과거 링크와 북마크만 넘겨줍니다. */}
+      <Route path="/login" element={<Navigate replace to="/" />} />
       <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
       <Route path="/invitations/:token" element={<InvitationLinkPage />} />
       <Route path="/invitations/links/:token" element={<InvitationLinkPage />} />

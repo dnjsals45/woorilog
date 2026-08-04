@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import landingBackground from '../assets/landing/landing-desk-bg.jpg'
 import landingReceipts from '../assets/landing/landing-receipts.jpg'
 import logo from '../assets/logo/woorilog-logo.svg'
 import { getKakaoLoginUrl } from '../features/auth/api/authApi'
+import { useDevLoginMutation } from '../features/auth/model/authQueries'
+import { clearAuthReturnPath, getAuthReturnPath } from '../features/auth/model/authReturnPath'
 import { formatWon } from '../shared/lib/money'
 import { getAccessToken } from '../shared/api/client'
 import { Icon } from '../shared/ui/Icon'
@@ -109,73 +111,101 @@ function AuthedCta({ label, size = 'md', className = '' }: { label: string; size
   )
 }
 
-function LoginModal({ onClose }: { onClose: () => void }) {
+const developmentAccounts = [
+  { email: 'dev1@woorilog.com', nickname: '개발자1' },
+  { email: 'dev2@woorilog.com', nickname: '개발자2' },
+  { email: 'dev3@woorilog.com', nickname: '개발자3' },
+] as const
+
+/* 개발 빌드에서만 뜨는 로그인 패널입니다. `/login` 라우트를 없애면서 이리로 옮겼습니다 —
+ * 카카오 앱 없이 로컬에서 로그인할 방법이 여기 말고는 없습니다. */
+function DevLoginPanel() {
+  const navigate = useNavigate()
+  const loginMutation = useDevLoginMutation()
+  const [email, setEmail] = useState<(typeof developmentAccounts)[number]['email']>(developmentAccounts[0].email)
+  const account = developmentAccounts.find((entry) => entry.email === email) ?? developmentAccounts[0]
+
+  /* 보호된 화면에서 밀려온 경우 ProtectedRoute 가 돌아갈 경로를 저장해둡니다. 없으면 홈으로 갑니다. */
+  function goAfterLogin() {
+    const returnPath = getAuthReturnPath()
+    clearAuthReturnPath()
+    navigate(returnPath, { replace: true })
+  }
+
+  return (
+    <aside
+      aria-label="개발자 로그인"
+      className="fixed bottom-4 right-4 w-[248px] rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] p-4 shadow-[var(--wl-shadow-modal)]"
+      style={{ zIndex: 'var(--wl-z-sticky)' }}
+    >
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--wl-color-text-secondary)]">Local development</p>
+      <div aria-label="개발자 테스트 계정" className="mt-3 grid grid-cols-3 gap-1.5" role="group">
+        {developmentAccounts.map((entry) => (
+          <button
+            aria-pressed={account.email === entry.email}
+            className={`min-h-10 rounded-lg border px-1 text-xs font-bold transition ${
+              account.email === entry.email
+                ? 'border-[var(--wl-color-primary)] bg-[var(--wl-brand-50)] text-[var(--wl-color-primary-dark)]'
+                : 'border-[var(--wl-color-border)] text-[var(--wl-color-text-secondary)]'
+            }`}
+            key={entry.email}
+            onClick={() => setEmail(entry.email)}
+            type="button"
+          >
+            {entry.nickname}
+          </button>
+        ))}
+      </div>
+      {loginMutation.isError ? (
+        <p className="mt-3 rounded-lg bg-[var(--wl-danger-soft)] px-2.5 py-1.5 text-xs text-[var(--wl-color-danger)]">
+          로그인에 실패했어요. 백엔드가 켜져 있는지 확인해주세요.
+        </p>
+      ) : null}
+      <button
+        className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[var(--wl-color-primary)] text-xs font-bold text-white disabled:bg-[var(--wl-color-border-strong)]"
+        disabled={loginMutation.isPending}
+        onClick={() => loginMutation.mutate(account, { onSuccess: goAfterLogin })}
+        type="button"
+      >
+        {loginMutation.isPending ? '로그인 중' : '개발자 로그인'}
+      </button>
+    </aside>
+  )
+}
+
+export function LandingPage() {
+  /* 카카오 CTA 는 중간 모달 없이 바로 카카오 인증으로 넘깁니다.
+   * 로그인 URL 을 받아오는 동안만 pending 이고, 실패하면 CTA 아래에 문구를 띄웁니다. */
+  const [kakaoPending, setKakaoPending] = useState(false)
   const [kakaoError, setKakaoError] = useState(false)
+  const [openFaqIndex, setOpenFaqIndex] = useState(-1)
+  const isAuthenticated = Boolean(getAccessToken())
+  const devLoginEnabled =
+    !isAuthenticated && import.meta.env.DEV && import.meta.env.VITE_DEV_LOGIN_ENABLED !== 'false'
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
-  async function handleKakaoLogin() {
+  async function startKakaoLogin() {
+    if (kakaoPending) return
+    setKakaoPending(true)
     setKakaoError(false)
     try {
       const { loginUrl } = await getKakaoLoginUrl()
       window.location.assign(loginUrl)
     } catch {
       setKakaoError(true)
+      setKakaoPending(false)
     }
   }
-
-  return (
-    <div className="wl-modal-scrim" onClick={onClose} role="presentation">
-      <div
-        aria-label="카카오로 시작하기"
-        aria-modal="true"
-        className="wl-modal-panel"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        style={{ width: 'min(420px, 100%)' }}
-      >
-        <h2 className="text-xl font-extrabold tracking-[-0.025em] text-[var(--wl-color-text-main)]">카카오로 시작하기</h2>
-        <p className="mt-2.5 text-[14.5px] leading-relaxed text-[var(--wl-color-text-body)]">처음이면 닉네임을 정하고 개인 가계부가 만들어져요. 이미 계정이 있으면 바로 대시보드로 들어갑니다.</p>
-        <button
-          className="wl-landing-cta mt-5 inline-flex h-13 w-full items-center justify-center gap-2.5 rounded-[var(--wl-radius-md)] bg-[#FEE500] text-base font-bold text-[#191600]"
-          onClick={handleKakaoLogin}
-          type="button"
-        >
-          <Icon name="message-circle" size="lg" />
-          카카오 계정으로 계속
-        </button>
-        {kakaoError ? (
-          <p className="mt-3 rounded-[var(--wl-radius-md)] bg-[var(--wl-danger-soft)] px-3 py-2 text-sm text-[var(--wl-color-danger)]">카카오 로그인이 아직 설정되지 않았거나 연결에 실패했습니다.</p>
-        ) : null}
-        <p className="mt-4 text-[12.5px] leading-relaxed text-[var(--wl-color-text-secondary)]">초대 링크를 받았다면 로그인 후 초대 확인 화면으로 돌아옵니다.</p>
-        <button
-          className="mt-3.5 min-h-11 w-full rounded-xl text-[13.5px] font-semibold text-[var(--wl-color-text-secondary)] hover:bg-[var(--wl-color-surface-subtle)] hover:text-[var(--wl-color-text-main)]"
-          onClick={onClose}
-          type="button"
-        >
-          닫기
-        </button>
-      </div>
-    </div>
-  )
-}
-
-export function LandingPage() {
-  const [loginOpen, setLoginOpen] = useState(false)
-  const [openFaqIndex, setOpenFaqIndex] = useState(-1)
-  const isAuthenticated = Boolean(getAccessToken())
 
   function renderCta(size: 'md' | 'lg', className?: string) {
     return isAuthenticated ? (
       <AuthedCta className={className} label="내 가계부로 가기" size={size} />
     ) : (
-      <KakaoCta className={className} label="카카오로 시작하기" onClick={() => setLoginOpen(true)} size={size} />
+      <KakaoCta
+        className={className}
+        label={kakaoPending ? '카카오로 이동 중…' : '카카오로 시작하기'}
+        onClick={startKakaoLogin}
+        size={size}
+      />
     )
   }
 
@@ -423,7 +453,17 @@ export function LandingPage() {
         </div>
       </footer>
 
-      {loginOpen ? <LoginModal onClose={() => setLoginOpen(false)} /> : null}
+      {devLoginEnabled ? <DevLoginPanel /> : null}
+
+      {kakaoError ? (
+        <p
+          className="fixed inset-x-4 bottom-6 mx-auto max-w-[420px] rounded-[var(--wl-radius-md)] bg-[var(--wl-danger-soft)] px-4 py-3 text-center text-sm font-semibold text-[var(--wl-color-danger)] shadow-[var(--wl-shadow-card)]"
+          role="alert"
+          style={{ zIndex: 'var(--wl-z-toast)' }}
+        >
+          카카오 로그인에 연결하지 못했어요. 잠시 후 다시 눌러주세요.
+        </p>
+      ) : null}
     </div>
   )
 }
