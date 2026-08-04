@@ -702,7 +702,7 @@ interface CreateRecurringPlanModalProps {
   open: boolean
   onClose: () => void
   onCreated: (planId: number) => void
-  categories: Array<{ id: number; name: string; type: string }>
+  categories: Array<{ id: number; name: string; type: string; categoryGroupId: number; categoryGroupName: string }>
   period: { allocations: Array<{ id: number; source: { type: 'PERSONAL' | 'SHARED'; ownerUserId: number | null } }> } | undefined
   me: { user: { id: number } } | undefined
   pending: boolean
@@ -733,6 +733,14 @@ function CreateRecurringPlanModal({ open, onClose, onCreated, categories, period
   const [error, setError] = useState(false)
 
   const expenseCategories = categories.filter((item) => item.type === 'EXPENSE')
+  const groupedExpenseCategories = expenseCategories.reduce<
+    { id: number; name: string; items: typeof expenseCategories }[]
+  >((groups, item) => {
+    const group = groups.find((entry) => entry.id === item.categoryGroupId)
+    if (group) group.items.push(item)
+    else groups.push({ id: item.categoryGroupId, name: item.categoryGroupName, items: [item] })
+    return groups
+  }, [])
   const allocations =
     period?.allocations.filter((item) => item.source.type === 'SHARED' || item.source.ownerUserId === me?.user.id) ?? []
 
@@ -789,12 +797,18 @@ function CreateRecurringPlanModal({ open, onClose, onCreated, categories, period
         </div>
         <label className="wl-field">
           <span className="wl-field-label">카테고리</span>
+          {/* 좁은 모달이라 타일 그리드 대신 대분류로 묶은 목록을 씁니다.
+            * 40개가 넘는 항목을 한 줄로 늘어놓으면 훑기 어렵습니다. */}
           <select className="wl-input" onChange={(event) => setCategoryId(event.target.value)} required value={categoryId}>
             <option value="">선택</option>
-            {expenseCategories.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
+            {groupedExpenseCategories.map((group) => (
+              <optgroup key={group.id} label={group.name}>
+                {group.items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>

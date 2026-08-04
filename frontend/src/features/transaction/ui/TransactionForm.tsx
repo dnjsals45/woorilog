@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useCardsQuery } from '../../card/model/cardQueries'
 import { AmountInput } from '../../../shared/ui/AmountInput'
-import { CategoryBadge } from '../../../shared/ui/CategoryBadge'
+import { categoryMarkForGroup } from '../../../shared/ui/CategoryBadge'
 import { DatePicker } from '../../../shared/ui/DatePicker'
 import { Icon } from '../../../shared/ui/Icon'
 import { Input } from '../../../shared/ui/Input'
@@ -20,6 +20,11 @@ export interface TransactionFormCategory {
   id: number
   name: string
   type: TransactionType
+  /** 대분류. 선택 화면이 이 단위로 타일을 묶습니다. */
+  categoryGroupId: number
+  categoryGroupName: string
+  /** 기본 대분류의 안정된 식별자 (FOOD, HOUSING …). 사용자가 만든 그룹은 빈 문자열입니다. */
+  groupCode?: string
 }
 
 /** onSubmit으로 넘어가는 값. API 요청 형태(V1TransactionRequest)와 1:1은 아니고,
@@ -295,6 +300,34 @@ export function TransactionForm({
     () => categories.filter((category) => category.type === effectiveType),
     [categories, effectiveType],
   )
+  /* 세부 카테고리를 한 줄로 늘어놓으면 40개가 넘어 훑기 어렵습니다.
+   * 대분류 타일을 먼저 보여주고, 고른 타일 아래에만 그 안의 항목을 펼칩니다.
+   * 화면에 '세부 카테고리'라는 층 이름은 쓰지 않습니다(CONTEXT.md). */
+  const categoryGroups = useMemo(() => {
+    const groups = new Map<number, { id: number; name: string; code: string | null; items: TransactionFormCategory[] }>()
+    for (const category of selectableCategories) {
+      const group = groups.get(category.categoryGroupId)
+      if (group) group.items.push(category)
+      else
+        groups.set(category.categoryGroupId, {
+          id: category.categoryGroupId,
+          name: category.categoryGroupName,
+          code: category.groupCode || null,
+          items: [category],
+        })
+    }
+    return [...groups.values()]
+  }, [selectableCategories])
+
+  const selectedCategory = selectableCategories.find((category) => category.id === categoryId)
+  const [openGroupId, setOpenGroupId] = useState<number | null>(null)
+  /* 수정 모드로 열리거나 갈래를 바꿔 선택이 옮겨가면, 선택된 항목이 든 타일을 펼친 상태로 맞춥니다. */
+  const [lastSyncedCategoryId, setLastSyncedCategoryId] = useState<number | null>(categoryId)
+  if (categoryId !== lastSyncedCategoryId) {
+    setLastSyncedCategoryId(categoryId)
+    if (selectedCategory) setOpenGroupId(selectedCategory.categoryGroupId)
+  }
+
   const deferredMerchant = useDeferredValue(merchant.trim())
   const merchantSuggestionsQuery = useMerchantSuggestionsQuery(ledgerId, deferredMerchant)
   const suggestions = useMemo(() => {
@@ -413,25 +446,59 @@ export function TransactionForm({
 
         <fieldset>
           <legend style={sectionLabelStyle}>카테고리</legend>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {selectableCategories.map((category) => (
-              <button
-                aria-pressed={category.id === categoryId}
-                key={category.id}
-                onClick={() => setCategoryId(category.id)}
-                style={chipStyle(category.id === categoryId)}
-                type="button"
-              >
-                <CategoryBadge name={category.name} size="sm" />
-                {category.name}
-              </button>
-            ))}
-            {selectableCategories.length === 0 ? (
-              <p className="wl-body" style={{ margin: 0, color: 'var(--wl-color-text-secondary)' }}>
-                등록된 카테고리가 없어요. 설정에서 먼저 만들어 주세요.
-              </p>
-            ) : null}
-          </div>
+          {categoryGroups.length === 0 ? (
+            <p className="wl-body" style={{ margin: 0, color: 'var(--wl-color-text-secondary)' }}>
+              등록된 카테고리가 없어요. 설정에서 먼저 만들어 주세요.
+            </p>
+          ) : (
+            <div className="tx-category-picker">
+              {categoryGroups.map((group) => {
+                const mark = categoryMarkForGroup(group.code, group.name)
+                const expanded = openGroupId === group.id
+                const holdsSelection = group.items.some((item) => item.id === categoryId)
+                return (
+                  <div className="tx-category-group" key={group.id}>
+                    <button
+                      aria-expanded={expanded}
+                      aria-pressed={holdsSelection}
+                      className={`tx-category-tile${holdsSelection ? ' tx-category-tile--on' : ''}`}
+                      onClick={() => setOpenGroupId(expanded ? null : group.id)}
+                      type="button"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="tx-category-tile-mark"
+                        style={{ background: mark.background, color: mark.color }}
+                      >
+                        <Icon name={mark.icon} size="lg" />
+                      </span>
+                      <span className="tx-category-tile-name">{group.name}</span>
+                    </button>
+                    {expanded ? (
+                      <div className="tx-category-items" role="group" aria-label={`${group.name} 항목`}>
+                        {group.items.map((item) => (
+                          <button
+                            aria-pressed={item.id === categoryId}
+                            className={`tx-category-item${item.id === categoryId ? ' tx-category-item--on' : ''}`}
+                            key={item.id}
+                            onClick={() => setCategoryId(item.id)}
+                            type="button"
+                          >
+                            {item.name}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {selectedCategory ? (
+            <p className="wl-meta" style={{ margin: '10px 0 0' }}>
+              선택: {selectedCategory.categoryGroupName} · {selectedCategory.name}
+            </p>
+          ) : null}
           {categoryError ? (
             <p className="wl-field-error" role="alert" style={{ marginTop: 8 }}>
               <Icon name="circle-alert" size="sm" />
