@@ -4,6 +4,7 @@ import { useCategoriesQuery } from '../../category/model/categoryQueries'
 import type { BudgetSource } from '../../transaction/api/transactionApi'
 import type { ImportSessionCandidate, ImportSourceType, SaveImportSessionCandidate } from '../api/transactionImportApi'
 import { useImportSessionPreviewMutation, useSaveImportSessionMutation } from '../model/transactionImportQueries'
+import { ApiClientError } from '../../../shared/api/client'
 import { formatWon } from '../../../shared/lib/money'
 import { Button } from '../../../shared/ui/Button'
 import { Icon } from '../../../shared/ui/Icon'
@@ -126,6 +127,9 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
   const uncatCount = rows.filter((row) => row.categoryId == null).length
   const selectedRows = rows.filter((row) => row.selected)
   const noneSelected = selectedRows.length === 0
+  /* 백엔드는 선택한 후보 중 하나라도 카테고리·차감 예산이 비면 배치 전체를 거절합니다.
+   * 눌러 보고 나서야 실패하지 않도록 여기서 먼저 막고 어느 줄이 문제인지 알려줍니다. */
+  const incompleteRows = selectedRows.filter((row) => !row.categoryId || !row.budgetSource)
   const selectedSum = selectedRows.reduce((sum, row) => sum + Math.abs(row.amount), 0)
   const allSelected = rows.length > 0 && selectedRows.length === rows.length
   const visibleRows = rows.filter((row) => {
@@ -509,17 +513,31 @@ export function TransactionImportModal({ open, onClose }: TransactionImportModal
                   합계 {formatWon(selectedSum)}
                 </p>
                 <div style={{ display: 'grid', gap: 9, marginTop: 16 }}>
-                  <Button disabled={noneSelected || save.isPending} fullWidth loading={save.isPending} onClick={saveBatch} size="lg">
+                  <Button
+                    disabled={noneSelected || incompleteRows.length > 0 || save.isPending}
+                    fullWidth
+                    loading={save.isPending}
+                    onClick={saveBatch}
+                    size="lg"
+                  >
                     {noneSelected ? '저장' : `${selectedRows.length}건 저장`}
                   </Button>
                   <Button fullWidth onClick={resetToPick} size="lg" variant="secondary">
                     다시 올리기
                   </Button>
                 </div>
+                {incompleteRows.length > 0 ? (
+                  <p className="wl-field-error" role="alert" style={{ marginTop: 10 }}>
+                    <Icon name="circle-alert" size="sm" />
+                    {incompleteRows.length}건에 카테고리나 차감 예산이 비어 있어요. 채우거나 선택을 해제해 주세요.
+                  </p>
+                ) : null}
                 {save.isError ? (
                   <p className="wl-field-error" role="alert" style={{ marginTop: 10 }}>
                     <Icon name="circle-alert" size="sm" />
-                    저장하지 못했어요. 다시 시도해주세요.
+                    {save.error instanceof ApiClientError && save.error.message
+                      ? save.error.message
+                      : '저장하지 못했어요. 다시 시도해주세요.'}
                   </p>
                 ) : null}
               </section>
