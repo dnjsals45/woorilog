@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 우리로그 저장소의 **작업 원칙 단일 기준(single source of truth)** 입니다.
-Claude Code가 메인 에이전트이고, Codex를 비롯한 다른 에이전트는 서브 에이전트로 이 문서를 따릅니다.
+Claude Code가 메인 에이전트이고, subagent를 비롯한 다른 에이전트는 서브 에이전트로 이 문서를 따릅니다.
 
 `AGENTS.md`는 이 문서를 가리키는 포인터이며, 원칙을 중복 서술하지 않습니다.
 작업 원칙이 바뀌면 이 문서를 먼저 고칩니다.
@@ -27,7 +27,6 @@ backend/   Kotlin 2.1 / Spring Boot 3.5 / JPA / Flyway / MySQL (JDK 21)
 frontend/  React 19 / Vite / TypeScript / TanStack Query / React Router / Tailwind v4 / RHF + Zod
 docs/      product · design · engineering · planning
 .claude/   Claude Code skill 원본, git 미추적
-.codex/    .claude/skills 사본 (Codex 서브 에이전트용), git 미추적
 .agent/    개인 워크플로(Analysis → Implementation → QA), git 미추적
 ```
 
@@ -103,21 +102,13 @@ skill과 reference는 필요한 것만 읽습니다. 어떤 파일을 고를지�
 [`.agent/workflows/skill-routing.md`](./.agent/workflows/skill-routing.md)의 라우팅 표를 따릅니다.
 "모든 문서를 읽어라" 식의 컨텍스트 확장은 하지 않습니다.
 
-skill 내용을 고칠 때는 `.claude/skills/`를 원본으로 고친 뒤 `.codex/skills/`에 동기화합니다.
-
-```bash
-for s in git-workflow kotlin-spring-backend react-vite-frontend testing-strategy \
-         design-taste-frontend emil-design-eng pick-ui-library; do
-  rsync -a --delete --exclude '__pycache__' ".claude/skills/$s/" ".codex/skills/$s/"
-done
-```
+skill 내용을 고칠 때는 `.claude/skills/`를 직접 고칩니다.
 
 ## 서브 에이전트 위임
 
-Codex와 subagent는 서브 에이전트로 사용하고, 최종 QA와 커밋 판단은 메인 에이전트인 Claude Code가 합니다.
+subagent는 서브 에이전트로 사용하고, 최종 QA와 커밋 판단은 메인 에이전트인 Claude Code가 합니다.
 
 - 위임할 때 읽어야 할 skill·reference·프로젝트 파일 경로를 정확히 지정합니다.
-- Codex에게 넘길 때는 `.codex/skills/` 경로를 지정합니다. 사본이 최신인지 먼저 확인합니다.
 - 서브 에이전트는 기본적으로 커밋하지 않고 변경 결과와 검증 결과만 보고합니다.
 - 서브 에이전트 결과는 diff와 검증 명령으로 확인한 뒤 반영합니다.
 

@@ -26,7 +26,6 @@ assets/tmp/
 
 # AI/local workflow files
 .claude/
-.codex/
 .agent/
 .agents/
 .agents.local.md
