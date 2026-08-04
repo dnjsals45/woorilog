@@ -76,7 +76,9 @@ describe('App V1 routes', () => {
 
   it('redirects a protected V1 route to login without a session', async () => {
     installApiMock()
+    const actor = userEvent.setup()
     renderApp('/transactions')
+    await actor.click(await screen.findByRole('button', { name: '개발자 로그인 열기' }))
     expect(await screen.findByRole('button', { name: '개발자 로그인' })).toBeInTheDocument()
   })
 
@@ -84,6 +86,7 @@ describe('App V1 routes', () => {
     installApiMock()
     const actor = userEvent.setup()
     renderApp('/dashboard')
+    await actor.click(await screen.findByRole('button', { name: '개발자 로그인 열기' }))
     await actor.click(await screen.findByRole('button', { name: '개발자 로그인' }))
     expect(await screen.findByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
   })
@@ -139,6 +142,7 @@ describe('App V1 routes', () => {
     const fetchSpy = installApiMock()
     const actor = userEvent.setup()
     renderApp('/')
+    await actor.click(await screen.findByRole('button', { name: '개발자 로그인 열기' }))
     await actor.click(screen.getByRole('button', { name: '개발자2' }))
     await actor.click(screen.getByRole('button', { name: '개발자 로그인' }))
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(

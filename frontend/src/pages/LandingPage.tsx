@@ -122,6 +122,7 @@ const developmentAccounts = [
 function DevLoginPanel() {
   const navigate = useNavigate()
   const loginMutation = useDevLoginMutation()
+  const [open, setOpen] = useState(false)
   const [email, setEmail] = useState<(typeof developmentAccounts)[number]['email']>(developmentAccounts[0].email)
   const account = developmentAccounts.find((entry) => entry.email === email) ?? developmentAccounts[0]
 
@@ -132,13 +133,39 @@ function DevLoginPanel() {
     navigate(returnPath, { replace: true })
   }
 
+  /* 랜딩은 제품의 첫인상이라 평소엔 작은 버튼만 두고, 누를 때만 펼칩니다. */
+  if (!open) {
+    return (
+      <button
+        aria-expanded={false}
+        aria-label="개발자 로그인 열기"
+        className="fixed bottom-4 right-4 flex size-10 items-center justify-center rounded-full border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] text-[11px] font-bold text-[var(--wl-color-text-secondary)] shadow-[var(--wl-shadow-card)]"
+        onClick={() => setOpen(true)}
+        style={{ zIndex: 'var(--wl-z-sticky)' }}
+        type="button"
+      >
+        {'</>'}
+      </button>
+    )
+  }
+
   return (
     <aside
       aria-label="개발자 로그인"
       className="fixed bottom-4 right-4 w-[248px] rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] p-4 shadow-[var(--wl-shadow-modal)]"
       style={{ zIndex: 'var(--wl-z-sticky)' }}
     >
-      <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--wl-color-text-secondary)]">Local development</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--wl-color-text-secondary)]">Local development</p>
+        <button
+          aria-label="개발자 로그인 닫기"
+          className="-mr-1 -mt-1 flex size-7 items-center justify-center rounded-lg text-[var(--wl-color-text-secondary)]"
+          onClick={() => setOpen(false)}
+          type="button"
+        >
+          <Icon name="x" size="sm" />
+        </button>
+      </div>
       <div aria-label="개발자 테스트 계정" className="mt-3 grid grid-cols-3 gap-1.5" role="group">
         {developmentAccounts.map((entry) => (
           <button
