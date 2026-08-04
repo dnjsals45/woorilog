@@ -145,6 +145,9 @@ cd frontend && npm run lint && npm run test && npm run build
 프론트엔드 UI/화면 변경은 [`.agent/workflows/ui-qa-playwright.md`](./.agent/workflows/ui-qa-playwright.md)의 QA 체크리스트를 따르고,
 필요하면 `npm run test:e2e`를 실행합니다.
 
+명령이 통과한 뒤 변경을 수용할지는 [`.agent/workflows/qa-checklist.md`](./.agent/workflows/qa-checklist.md)로 판단합니다.
+범위 통제, 백엔드·프론트엔드 규칙, 디자인/UX 상태를 확인합니다.
+
 문서만 바꿨으면 링크와 참조 파일 존재 여부를 확인합니다.
 
 로컬 실행은 `docker compose up` (frontend :5173, backend :8080, MySQL :3306)입니다.
