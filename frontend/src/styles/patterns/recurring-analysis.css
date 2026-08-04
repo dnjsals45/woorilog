@@ -23,6 +23,13 @@
 }
 
 /* 필터 세그먼트는 좁은 화면에서 줄바꿈 대신 가로 스크롤 한 줄로 흐릅니다. */
+/* 목록 위 '반복 지출 추가' 줄. 헤더 우상단에서 내려온 자리입니다. */
+.recur-list-header {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
 .recur-filter-row {
   -webkit-overflow-scrolling: touch;
   overflow-x: auto;

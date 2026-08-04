@@ -248,31 +248,9 @@ export function RecurringTransactionPage() {
   return (
     <>
       <RecurringPageStyle />
-      <AppHeader
-        actions={
-          <button
-            className="dashboard-primary-button"
-            onClick={() => setCreateOpen(true)}
-            style={{ color: '#fff', minHeight: 40 }}
-            type="button"
-          >
-            <Icon name="plus" size="md" />
-            반복 지출 추가
-          </button>
-        }
-        description="예정일이 되면 자동으로 기록되는 지출이에요"
-        mobileActions={
-          <button
-            aria-label="반복 지출 추가"
-            className="wl-icon-button wl-icon-button--subtle"
-            onClick={() => setCreateOpen(true)}
-            type="button"
-          >
-            <Icon name="plus" size="lg" />
-          </button>
-        }
-        title="자동 기록"
-      />
+      {/* 추가 버튼은 헤더 우상단이 아니라 목록 바로 위에 둡니다.
+        * 우상단은 전역 '거래 추가' FAB 과 시선이 겹치고, 목록을 보다가 손이 닿는 곳이 아닙니다. */}
+      <AppHeader description="예정일이 되면 자동으로 기록되는 지출이에요" title="자동 기록" />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 26, padding: '28px 32px 140px' }}>
         {plans.isLoading ? (
@@ -318,6 +296,17 @@ export function RecurringTransactionPage() {
 
         <div className="recur-main">
           <section style={{ minWidth: 0 }}>
+            <div className="recur-list-header">
+              <button
+                className="dashboard-primary-button"
+                onClick={() => setCreateOpen(true)}
+                style={{ color: '#fff', minHeight: 40 }}
+                type="button"
+              >
+                <Icon name="plus" size="md" />
+                반복 지출 추가
+              </button>
+            </div>
             <div className="recur-filter-row" style={{ marginBottom: 14 }}>
               <SegmentedControl
                 label="자동 기록 필터"
@@ -548,9 +537,9 @@ export function RecurringTransactionPage() {
                     type="button"
                   >
                     <span style={{ minWidth: 0 }}>
-                      <strong style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>고정비로 관리해요</strong>
+                      <strong style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>고정비로 묶기</strong>
                       <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--wl-color-text-secondary)' }}>
-                        고정비끼리 따로 모아 합계를 볼 수 있어요
+                        월세·구독료처럼 매달 빠져나가는 돈만 따로 모아 합계를 봐요. 켜지 않아도 자동 기록은 그대로 됩니다.
                       </span>
                     </span>
                     <SwitchTrack on={edit?.fixedExpense ?? selected.isFixedExpense} />
@@ -849,7 +838,12 @@ function CreateRecurringPlanModal({ open, onClose, onCreated, categories, period
           }}
           type="button"
         >
-          <strong style={{ fontSize: 14, fontWeight: 600 }}>고정비로 관리해요</strong>
+          <span style={{ minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>고정비로 묶기</strong>
+            <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--wl-color-text-secondary)' }}>
+              월세·구독료처럼 매달 빠져나가는 돈만 따로 모아 합계를 봐요
+            </span>
+          </span>
           <SwitchTrack on={fixed} />
         </button>
         {error ? (
