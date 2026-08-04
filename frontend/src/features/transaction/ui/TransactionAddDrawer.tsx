@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useMeQuery } from '../../auth/model/authQueries'
+import { useCurrentBudgetPeriodQuery } from '../../budget/model/budgetPeriodQueries'
 import { useCategoriesQuery } from '../../category/model/categoryQueries'
 import { useCreateRecurringExpensePlanMutation, useScheduledPlanActionMutation } from '../../scheduled/model/scheduledPlanQueries'
 import type { BudgetSource } from '../api/transactionApi'
@@ -33,7 +34,11 @@ export interface TransactionAddDrawerProps {
 export function TransactionAddDrawer({ open, onClose, preset }: TransactionAddDrawerProps) {
   const me = useMeQuery()
   const ledgerId = me.data?.currentLedger.id
-  const isSharedLedger = me.data?.currentLedger.type === 'GROUP' || me.data?.currentLedger.type === 'SHARED'
+  /* 공동 예산을 고를 수 있는지는 가계부 타입이 아니라 '이번 기간에 공동 배분이 실제로 있는지'로 봅니다.
+   * 공동 가계부라도 상대가 참여하기 전에는 공동 배분이 없습니다(v1-scope.md '첫 예산 나누기').
+   * 타입으로 판정하면 없는 예산을 기본값으로 보내 저장이 어긋납니다. */
+  const currentPeriod = useCurrentBudgetPeriodQuery(me.data?.currentLedger.id)
+  const isSharedLedger = (currentPeriod.data?.allocations ?? []).some((item) => item.source.type === 'SHARED')
   const categoriesQuery = useCategoriesQuery(ledgerId)
   const createTransaction = useCreateV1TransactionMutation(ledgerId)
   const createRecurringPlan = useCreateRecurringExpensePlanMutation(ledgerId)
