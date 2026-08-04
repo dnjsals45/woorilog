@@ -28,7 +28,7 @@ data class LedgerDto(
     val type: LedgerType,
     val ownerId: Long,
     val recurringSummaryClosingDay: Int,
-    /* 장부 응답은 어느 엔드포인트에서든 같은 모양이어야 한다. LedgerDto 를 그대로 직렬화하는
+    /* 가계부 응답은 어느 엔드포인트에서든 같은 모양이어야 한다. LedgerDto 를 그대로 직렬화하는
      * /api/me·dev-login·refresh 와 LedgerResponse 로 변환하는 /api/ledgers 가 서로 다른 키를
      * 내보내면 프론트가 한쪽에서만 값을 읽게 된다. 기본값은 이 필드가 없는 페이로드를
      * 역직렬화할 때 생성자 파라미터 누락으로 실패하지 않게 하기 위함이다. */

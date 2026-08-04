@@ -55,9 +55,9 @@ class CardService(
     }
 
     private fun requireLedgerMember(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         return ledger
     }
 

@@ -239,9 +239,9 @@ class V1TransactionImportService(
     )
 
     private fun requireActiveLedger(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         if (ledgerMemberRepository.findFirstByLedgerIdAndUserIdAndLeftAtIsNullOrderByJoinedAtDesc(ledgerId, userId) == null) {
-            throw ForbiddenException("활성 장부 멤버만 사용할 수 있습니다.")
+            throw ForbiddenException("활성 가계부 멤버만 사용할 수 있습니다.")
         }
         return ledger
     }

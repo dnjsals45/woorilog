@@ -70,10 +70,10 @@ class DashboardService(
 
     fun getCurrentDashboardSummary(userId: Long, budgetMonth: String? = null, requestedLedgerId: Long? = null, periodStart: LocalDate? = null): DashboardSummaryResult {
         val user = userRepository.findByIdOrNull(userId) ?: throw NotFoundException("사용자를 찾을 수 없습니다.")
-        val currentLedger = requestedLedgerId?.let { ledgerRepository.findByIdOrNull(it) ?: throw NotFoundException("장부를 찾을 수 없습니다.") }
+        val currentLedger = requestedLedgerId?.let { ledgerRepository.findByIdOrNull(it) ?: throw NotFoundException("가계부를 찾을 수 없습니다.") }
             ?: authService.resolveCurrentLedger(user)
         val ledgerId = currentLedger.id!!
-        if (ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId) == null) throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+        if (ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId) == null) throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         val currentYearMonth = budgetMonth?.let(::validateBudgetMonth) ?: YearMonth.now(clock)
         val budgetMonthStr = currentYearMonth.toString()
@@ -167,9 +167,9 @@ class DashboardService(
         fromMonth: String,
         toMonth: String
     ): List<MonthlyStatisticsResult> {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         val fromYearMonth = validateBudgetMonth(fromMonth)
         val toYearMonth = validateBudgetMonth(toMonth)

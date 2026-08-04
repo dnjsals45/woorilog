@@ -225,7 +225,7 @@ class AuthService(
 
         // No ledger exists, create one
         val ledger = Ledger(
-            name = "${user.nickname}의 개인 장부",
+            name = "${user.nickname}의 개인 가계부",
             type = LedgerType.PERSONAL,
             ownerId = user.id!!
         )

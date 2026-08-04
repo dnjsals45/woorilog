@@ -120,7 +120,7 @@ class SettlementService(
     fun deletePayment(userId: Long, paymentId: Long) {
         val payment = settlementPaymentRepository.findByIdOrNull(paymentId) ?: throw NotFoundException("정산 기록을 찾을 수 없습니다.")
         val member = ledgerMemberRepository.findByLedgerIdAndUserId(payment.ledger.id!!, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         if (payment.recordedBy.id != userId && member.role != LedgerRole.OWNER) {
             throw ForbiddenException("정산 기록을 취소할 권한이 없습니다.")
         }
@@ -128,9 +128,9 @@ class SettlementService(
     }
 
     private fun requireMember(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         return ledger
     }
 

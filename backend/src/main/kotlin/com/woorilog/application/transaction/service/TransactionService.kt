@@ -108,7 +108,7 @@ class TransactionService(
             null
         }
         if (scope.type == BudgetScopeType.PERSONAL && scope.ownerUserId != userId) throw ForbiddenException("본인 개인 예산만 사용할 수 있습니다.")
-        if (scope.type == BudgetScopeType.SHARED && ledger.type != LedgerType.GROUP) invalid("개인 장부에는 공동 예산이 없습니다.")
+        if (scope.type == BudgetScopeType.SHARED && ledger.type != LedgerType.GROUP) invalid("개인 가계부에는 공동 예산이 없습니다.")
         val payment = resolveV1Payment(request.paymentMethod)
         request.installment?.let { installment ->
             if (type != CategoryType.EXPENSE || payment.first != PaymentMethod.CARD) {
@@ -172,7 +172,7 @@ class TransactionService(
     fun updateVisibility(userId: Long, transactionId: Long, shared: Boolean): TransactionResult {
         val transaction = transactionRepository.findByIdOrNull(transactionId) ?: throw NotFoundException("거래를 찾을 수 없습니다.")
         requireActiveLedger(userId, transaction.ledger.id!!)
-        if (transaction.scopeType != BudgetScopeType.PERSONAL || transaction.payer.id != userId) throw ForbiddenException("본인 개인 거래만 공개 설정을 바꿀 수 있습니다.")
+        if (transaction.scopeType != BudgetScopeType.PERSONAL || transaction.payer.id != userId) throw ForbiddenException("본인 개인 거래만 보임 설정을 바꿀 수 있습니다.")
         transaction.sharedWithPartner = shared; transaction.lastModifiedBy = transaction.payer
         return transactionRepository.save(transaction).toResult()
     }
@@ -181,7 +181,7 @@ class TransactionService(
         val transaction = transactionRepository.findByIdOrNull(transactionId) ?: throw NotFoundException("거래를 찾을 수 없습니다.")
         val ledger = requireActiveLedger(userId, transaction.ledger.id!!)
         if (!canModify(transaction, userId)) throw ForbiddenException("이 거래를 수정할 권한이 없습니다.")
-        if (transaction.scheduledPlan != null) invalid("자동 생성 거래는 예약 거래 설정에서 수정해주세요.")
+        if (transaction.scheduledPlan != null) invalid("자동 생성 거래는 자동 기록 설정에서 수정해주세요.")
         requirePositive(request.amount)
         if (request.merchant.isBlank() || request.categoryId == null) invalid("거래에는 사용처와 카테고리가 필요합니다.")
         if (request.installment != null) invalid("기존 거래를 할부 거래로 변경할 수 없습니다.")
@@ -199,7 +199,7 @@ class TransactionService(
         ) ?: throw WoorilogException("BUDGET_PERIOD_NOT_FOUND", "거래일의 예산 기간을 찾을 수 없습니다.", HttpStatus.CONFLICT)
         val scope = request.scope ?: BudgetSource(BudgetScopeType.PERSONAL, userId)
         if (scope.type == BudgetScopeType.PERSONAL && scope.ownerUserId != userId) throw ForbiddenException("본인 개인 예산만 사용할 수 있습니다.")
-        if (scope.type == BudgetScopeType.SHARED && ledger.type != LedgerType.GROUP) invalid("개인 장부에는 공동 예산이 없습니다.")
+        if (scope.type == BudgetScopeType.SHARED && ledger.type != LedgerType.GROUP) invalid("개인 가계부에는 공동 예산이 없습니다.")
         val allocation = if (effect == TransactionAggregationEffect.EXPENSE) {
             val source = request.budgetSource ?: invalid("지출 거래에는 차감 예산이 필요합니다.")
             if (source != scope) invalid("거래 범위와 차감 예산은 같아야 합니다.")
@@ -268,10 +268,10 @@ class TransactionService(
     }
 
     fun createTransaction(userId: Long, ledgerId: Long, request: CreateTransactionCommand): TransactionResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         // Verify user is a member
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         if (request.amount <= 0) {
             throw WoorilogException("INVALID_REQUEST", "금액은 양수여야 합니다.", HttpStatus.BAD_REQUEST)
         }
@@ -288,7 +288,7 @@ class TransactionService(
             userRepository.findByIdOrNull(userId) ?: throw ForbiddenException("사용자를 찾을 수 없습니다.")
         }
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, payerUser.id!!)
-            ?: throw ForbiddenException("결제자가 장부의 멤버가 아닙니다.")
+            ?: throw ForbiddenException("결제자가 가계부의 멤버가 아닙니다.")
 
         // Resolve category
         val category = if (request.categoryId != null) {
@@ -331,10 +331,10 @@ class TransactionService(
     }
 
     fun quickTransaction(userId: Long, ledgerId: Long, request: QuickTransactionCommand): TransactionResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         // Verify user is a member
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         val amount = parseAmountFromText(request.text)
 
@@ -363,10 +363,10 @@ class TransactionService(
 
     @Transactional(readOnly = true)
     fun getMonthTransactions(userId: Long, ledgerId: Long, budgetMonth: String): List<TransactionResult> {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         // Verify user is a member
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         val yearMonth = parseBudgetMonth(budgetMonth)
         val startDate = yearMonth.atDay(1)
@@ -412,7 +412,7 @@ class TransactionService(
             userRepository.findByIdOrNull(payerUserId) ?: throw NotFoundException("결제자를 찾을 수 없습니다.")
         } ?: transaction.payer
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, payerUser.id!!)
-            ?: throw ForbiddenException("결제자가 장부의 멤버가 아닙니다.")
+            ?: throw ForbiddenException("결제자가 가계부의 멤버가 아닙니다.")
 
         // Resolve category
         val category = if (request.categoryId != null) {
@@ -491,8 +491,8 @@ class TransactionService(
     }
 
     private fun requireActiveLedger(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
-        if (ledgerMemberRepository.findFirstByLedgerIdAndUserIdAndLeftAtIsNullOrderByJoinedAtDesc(ledgerId, userId) == null) throw ForbiddenException("활성 장부 멤버만 사용할 수 있습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
+        if (ledgerMemberRepository.findFirstByLedgerIdAndUserIdAndLeftAtIsNullOrderByJoinedAtDesc(ledgerId, userId) == null) throw ForbiddenException("활성 가계부 멤버만 사용할 수 있습니다.")
         return ledger
     }
     private fun requireLedgerReader(userId: Long, ledgerId: Long): LedgerMember =
@@ -500,7 +500,7 @@ class TransactionService(
             ?: ledgerMemberRepository.findByUserId(userId)
                 .filter { it.ledger.id == ledgerId }
                 .maxByOrNull { it.joinedAt }
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
     private fun visibleInList(transaction: Transaction, userId: Long, membership: LedgerMember): Boolean {
         if (membership.leftAt != null) {
             val joined = membership.joinedAt.atZone(clock.zone).toLocalDate(); val left = membership.leftAt!!.atZone(clock.zone).toLocalDate()
@@ -535,7 +535,7 @@ class TransactionService(
     }
 
     /* V1 은 저장된 카드 없이 자유 텍스트 카드명만으로도 카드 결제를 기록할 수 있어 cardId 는 선택값이다.
-     * 값이 있으면 카드 지출 거래인지와 같은 장부의 카드인지만 확인한다. */
+     * 값이 있으면 카드 지출 거래인지와 같은 가계부의 카드인지만 확인한다. */
     private fun resolveV1Card(ledgerId: Long, type: CategoryType, method: PaymentMethod, cardId: Long?): Card? {
         if (cardId == null) return null
         if (method != PaymentMethod.CARD) invalid("카드는 카드 결제 거래에만 지정할 수 있습니다.")

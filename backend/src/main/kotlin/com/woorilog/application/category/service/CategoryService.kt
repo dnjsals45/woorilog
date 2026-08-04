@@ -36,10 +36,10 @@ class CategoryService(
 
     @Transactional(readOnly = true)
     fun getCategories(userId: Long, ledgerId: Long): List<CategoryResult> {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         // Verify user is a member
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         val categories = ledgerCategoryRepository.findByLedgerIdOrderBySortOrderAsc(ledgerId).filter { it.active }
         return categories.map { it.toResult() }
@@ -53,7 +53,7 @@ class CategoryService(
     fun createCategoryGroup(userId: Long, ledgerId: Long, name: String, type: CategoryType): CategoryGroupResult {
         val ledger = requireLedgerMember(userId, ledgerId)
         if (ledgerCategoryGroupRepository.findByLedgerIdAndName(ledgerId, name) != null) {
-            throw BadRequestException("이미 존재하는 대분류 이름입니다.")
+            throw BadRequestException("이미 존재하는 카테고리 이름입니다.")
         }
         return ledgerCategoryGroupRepository.save(LedgerCategoryGroup(ledger, name, type)).toResult()
     }
@@ -66,18 +66,18 @@ class CategoryService(
         categoryGroupId: Long?,
         groupCode: String? = null,
     ): CategoryResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         // Verify user is a member
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         val group = when {
             groupCode != null -> ledgerCategoryGroupRepository.findByLedgerIdAndCode(ledgerId, groupCode)
             categoryGroupId != null -> ledgerCategoryGroupRepository.findByIdOrNull(categoryGroupId)
             else -> null
-        } ?: throw NotFoundException("대분류를 찾을 수 없습니다.")
+        } ?: throw NotFoundException("카테고리를 찾을 수 없습니다.")
         if (group.ledger.id != ledgerId || (type != null && group.type != type)) {
-            throw BadRequestException("카테고리 유형과 대분류가 일치하지 않습니다.")
+            throw BadRequestException("카테고리 유형과 카테고리가 일치하지 않습니다.")
         }
         val normalizedName = name.trim()
         if (ledgerCategoryRepository.findByLedgerIdAndCategoryGroupIdAndNameAndActiveTrue(
@@ -124,9 +124,9 @@ class CategoryService(
             throw BadRequestException("이미 존재하는 카테고리 이름입니다.")
         }
 
-        val group = ledgerCategoryGroupRepository.findByIdOrNull(targetGroupId) ?: throw NotFoundException("대분류를 찾을 수 없습니다.")
+        val group = ledgerCategoryGroupRepository.findByIdOrNull(targetGroupId) ?: throw NotFoundException("카테고리를 찾을 수 없습니다.")
         if (group.ledger.id != ledgerId || group.type != category.type) {
-            throw BadRequestException("카테고리 유형과 대분류가 일치하지 않습니다.")
+            throw BadRequestException("카테고리 유형과 카테고리가 일치하지 않습니다.")
         }
 
         category.name = normalizedName
@@ -148,15 +148,15 @@ class CategoryService(
     fun updateCategoryGroupVisibility(userId: Long, ledgerId: Long, groupCode: String, hidden: Boolean): CategoryGroupResult {
         requireLedgerMember(userId, ledgerId)
         val group = ledgerCategoryGroupRepository.findByLedgerIdAndCode(ledgerId, groupCode)
-            ?: throw NotFoundException("대분류를 찾을 수 없습니다.")
+            ?: throw NotFoundException("카테고리를 찾을 수 없습니다.")
         group.hidden = hidden
         return ledgerCategoryGroupRepository.save(group).toResult()
     }
 
     private fun requireLedgerMember(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         return ledger
     }
 }

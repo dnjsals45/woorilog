@@ -70,8 +70,8 @@ class V1InsightsService(
 
     fun allocationDetail(userId: Long, ledgerId: Long, startDate: LocalDate, allocationId: Long): AllocationDetailResponse {
         val period = requireReadablePeriod(userId, ledgerId, startDate)
-        val allocation = allocationRepository.findByIdOrNull(allocationId) ?: throw NotFoundException("예산 할당을 찾을 수 없습니다.")
-        if (allocation.budgetPeriod.id != period.id) throw NotFoundException("예산 할당을 찾을 수 없습니다.")
+        val allocation = allocationRepository.findByIdOrNull(allocationId) ?: throw NotFoundException("예산을 찾을 수 없습니다.")
+        if (allocation.budgetPeriod.id != period.id) throw NotFoundException("예산을 찾을 수 없습니다.")
         val isOtherPersonal = allocation.scope == BudgetAllocationScope.PERSONAL && allocation.owner?.id != userId
         val transactions = transactionRepository.findByBudgetAllocationIdAndTransactionDateBetween(allocationId, period.startDate, period.endDate)
             .filter(::isBudgetExpense)
@@ -154,7 +154,7 @@ class V1InsightsService(
     }
 
     private fun requireReadablePeriod(userId: Long, ledgerId: Long, startDate: LocalDate): BudgetPeriod {
-        ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val period = periodRepository.findByLedgerIdAndStartDate(ledgerId, startDate)
             ?: throw NotFoundException("예산 기간을 찾을 수 없습니다.")
         val zone = clock.zone

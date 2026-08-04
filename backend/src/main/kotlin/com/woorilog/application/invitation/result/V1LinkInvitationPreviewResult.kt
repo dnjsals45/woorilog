@@ -13,7 +13,7 @@ data class V1LinkInvitationPreviewResult(
     val authenticationRequired: Boolean,
     val currentMemberCount: Int,
     val viewerAlreadyMember: Boolean?,
-    /** 이 장부를 쓴 적 있는 다른 상대가 있어서 참여가 막히는지. 비로그인 조회면 null. */
+    /** 이 가계부를 쓴 적 있는 다른 상대가 있어서 참여가 막히는지. 비로그인 조회면 null. */
     val viewerIsDifferentPartner: Boolean?,
     val budgetCycle: BudgetCycleResult,
 )

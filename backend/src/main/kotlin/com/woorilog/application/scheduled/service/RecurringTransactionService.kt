@@ -45,10 +45,10 @@ class RecurringTransactionService(
 ) {
 
     fun createTemplate(userId: Long, ledgerId: Long, request: CreateRecurringTemplateCommand): RecurringTransactionTemplateResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         // Validate current user access
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         // Validate positive amount
         if (request.amount <= 0) {
@@ -62,7 +62,7 @@ class RecurringTransactionService(
             userRepository.findByIdOrNull(userId) ?: throw ForbiddenException("사용자를 찾을 수 없습니다.")
         }
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, payerUser.id!!)
-            ?: throw ForbiddenException("결제자가 장부의 멤버가 아닙니다.")
+            ?: throw ForbiddenException("결제자가 가계부의 멤버가 아닙니다.")
 
         // Resolve category
         val category = if (request.categoryId != null) {
@@ -108,9 +108,9 @@ class RecurringTransactionService(
 
     @Transactional(readOnly = true)
     fun getTemplates(userId: Long, ledgerId: Long): List<RecurringTransactionTemplateResult> {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         return templateRepository.findByLedgerIdOrderByIdDesc(ledgerId).map { it.toResult() }
     }
@@ -121,7 +121,7 @@ class RecurringTransactionService(
 
         // Validate member access to template ledger
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         // Validate positive amount
         if (request.amount <= 0) {
@@ -133,7 +133,7 @@ class RecurringTransactionService(
             userRepository.findByIdOrNull(payerUserId) ?: throw NotFoundException("결제자를 찾을 수 없습니다.")
         } ?: template.payer
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, payerUser.id!!)
-            ?: throw ForbiddenException("결제자가 장부의 멤버가 아닙니다.")
+            ?: throw ForbiddenException("결제자가 가계부의 멤버가 아닙니다.")
 
         // Resolve category
         val category = if (request.categoryId != null) {
@@ -187,7 +187,7 @@ class RecurringTransactionService(
     fun deleteTemplate(userId: Long, templateId: Long) {
         val template = templateRepository.findByIdOrNull(templateId) ?: throw NotFoundException("반복 거래 템플릿을 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(template.ledger.id!!, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         generationRepository.deleteByTemplateId(templateId)
         templateRepository.delete(template)
@@ -196,7 +196,7 @@ class RecurringTransactionService(
     fun pauseTemplate(userId: Long, templateId: Long): RecurringTransactionTemplateResult {
         val template = templateRepository.findByIdOrNull(templateId) ?: throw NotFoundException("반복 거래 템플릿을 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(template.ledger.id!!, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         template.paused = true
         val saved = templateRepository.save(template)
@@ -206,7 +206,7 @@ class RecurringTransactionService(
     fun resumeTemplate(userId: Long, templateId: Long): RecurringTransactionTemplateResult {
         val template = templateRepository.findByIdOrNull(templateId) ?: throw NotFoundException("반복 거래 템플릿을 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(template.ledger.id!!, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         template.paused = false
         val saved = templateRepository.save(template)
@@ -215,9 +215,9 @@ class RecurringTransactionService(
 
     @Transactional(readOnly = true)
     fun getDueTemplates(userId: Long, ledgerId: Long, asOf: LocalDate): List<RecurringTransactionDueResult> {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         val activeTemplates = templateRepository.findByLedgerIdAndPausedFalse(ledgerId)
         val dueResponses = mutableListOf<RecurringTransactionDueResult>()
@@ -239,9 +239,9 @@ class RecurringTransactionService(
     }
 
     fun generateTransactions(userId: Long, ledgerId: Long, asOf: LocalDate): List<TransactionResult> {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         return generateTransactionsForLedger(ledgerId, asOf)
     }

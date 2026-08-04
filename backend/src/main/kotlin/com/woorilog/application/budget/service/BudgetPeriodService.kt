@@ -107,7 +107,7 @@ class BudgetPeriodService(
         if (expected.startDate != startDate) {
             throw WoorilogException(
                 "INVALID_BUDGET_PERIOD_START",
-                "장부의 예산 기간 시작일과 일치하지 않습니다.",
+                "가계부의 예산 기간 시작일과 일치하지 않습니다.",
                 HttpStatus.BAD_REQUEST,
             )
         }
@@ -132,14 +132,14 @@ class BudgetPeriodService(
                     (input.source.type == "PERSONAL" && input.source.ownerUserId != userId)
             }
         ) {
-            throw WoorilogException("INVALID_CATEGORY_BUDGET", "설정할 수 없는 대분류 예산입니다.", HttpStatus.BAD_REQUEST)
+            throw WoorilogException("INVALID_CATEGORY_BUDGET", "설정할 수 없는 카테고리 예산입니다.", HttpStatus.BAD_REQUEST)
         }
         val resolvedPersonalInputs = request.personalAllocations.map { input ->
             val categoryTotal = categoryTotals[BudgetSourceResponse("PERSONAL", input.userId)] ?: 0
             if (categoryTotal > input.amount && !request.increaseTotalBudgetIfNeeded) {
                 throw WoorilogException(
                     "TOTAL_BUDGET_INCREASE_CONFIRMATION_REQUIRED",
-                    "대분류 예산 합계에 맞춰 상위 예산을 늘릴지 확인해주세요.",
+                    "카테고리 예산 합계에 맞춰 상위 예산을 늘릴지 확인해주세요.",
                     HttpStatus.CONFLICT,
                 )
             }
@@ -149,7 +149,7 @@ class BudgetPeriodService(
         if (sharedCategoryTotal > request.sharedAllocation && !request.increaseTotalBudgetIfNeeded) {
             throw WoorilogException(
                 "TOTAL_BUDGET_INCREASE_CONFIRMATION_REQUIRED",
-                "대분류 예산 합계에 맞춰 공동 예산을 늘릴지 확인해주세요.",
+                "카테고리 예산 합계에 맞춰 공동 예산을 늘릴지 확인해주세요.",
                 HttpStatus.CONFLICT,
             )
         }
@@ -166,7 +166,7 @@ class BudgetPeriodService(
         } catch (error: BudgetAllocationIncreaseApprovalRequired) {
             throw WoorilogException(
                 "TOTAL_BUDGET_INCREASE_CONFIRMATION_REQUIRED",
-                "배분 합계에 맞춰 전체 예산을 늘릴지 확인해주세요.",
+                "나눈 금액 합계에 맞춰 전체 예산을 늘릴지 확인해주세요.",
                 HttpStatus.CONFLICT,
             )
         }
@@ -210,7 +210,7 @@ class BudgetPeriodService(
         request.categoryBudgets.forEach { input ->
             val allocation = savedAllocations.firstOrNull {
                 it.scope.name == input.source.type && it.owner?.id == input.source.ownerUserId
-            } ?: throw WoorilogException("INVALID_CATEGORY_BUDGET", "대분류 예산의 상위 예산을 찾을 수 없습니다.", HttpStatus.BAD_REQUEST)
+            } ?: throw WoorilogException("INVALID_CATEGORY_BUDGET", "카테고리 예산의 상위 예산을 찾을 수 없습니다.", HttpStatus.BAD_REQUEST)
             allocationCategoryBudgetRepository.save(
                 AllocationCategoryBudget(allocation, input.groupCode, input.amount)
             )
@@ -390,16 +390,16 @@ class BudgetPeriodService(
             ?: throw NotFoundException("예산 기간을 찾을 수 없습니다.")
 
     private fun requireActiveLedger(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findFirstByLedgerIdAndUserIdAndLeftAtIsNullOrderByJoinedAtDesc(ledgerId, userId)
-            ?: throw ForbiddenException("활성 장부 멤버만 변경할 수 있습니다.")
+            ?: throw ForbiddenException("활성 가계부 멤버만 변경할 수 있습니다.")
         return ledger
     }
 
     private fun requireLedgerReader(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         if (ledgerMemberRepository.findByUserId(userId).none { it.ledger.id == ledgerId }) {
-            throw ForbiddenException("장부를 조회할 수 없습니다.")
+            throw ForbiddenException("가계부를 조회할 수 없습니다.")
         }
         return ledger
     }

@@ -52,11 +52,11 @@ class InvitationService(
     private val secureRandom = SecureRandom()
 
     fun createV1InvitationLink(currentUserId: Long, ledgerId: Long): V1InvitationLinkCreatedResult {
-        val ledger = ledgerRepository.findByIdForUpdate(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdForUpdate(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val owner = requireActiveOwner(currentUserId, ledger)
-        if (ledger.type != LedgerType.GROUP) throw BadRequestException("공동 장부만 초대할 수 있습니다.")
+        if (ledger.type != LedgerType.GROUP) throw BadRequestException("공동 가계부만 초대할 수 있습니다.")
         if (ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledgerId).size >= 2) {
-            throw WoorilogException("LEDGER_MEMBER_LIMIT_REACHED", "공동 장부는 두 명까지 참여할 수 있습니다.", HttpStatus.CONFLICT)
+            throw WoorilogException("LEDGER_MEMBER_LIMIT_REACHED", "공동 가계부는 두 명까지 참여할 수 있습니다.", HttpStatus.CONFLICT)
         }
         invitationRepository.findByLedgerIdAndTypeAndStatus(ledgerId, InvitationType.LINK, InvitationStatus.PENDING)
             .forEach { it.status = InvitationStatus.REPLACED }
@@ -78,12 +78,12 @@ class InvitationService(
     fun getV1LinkPreview(rawToken: String, currentUserId: Long?): V1LinkInvitationPreviewResult {
         val invitation = invitationRepository.findByTokenHash(hashToken(rawToken)) ?: throw linkNotFound()
         val ledger = invitation.ledger
-        /* 삭제된 장부는 만료보다 먼저 확인한다. 링크가 만료되기 전에 장부가 지워질 수 있고,
+        /* 삭제된 가계부는 만료보다 먼저 확인한다. 링크가 만료되기 전에 가계부가 지워질 수 있고,
          * 그때 "만료됐어요"라고 하면 초대받은 사람이 링크를 다시 받으러 간다. */
         requireLedgerAlive(ledger)
         requireUsableLink(invitation)
         val activeMembers = ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledger.id!!)
-        /* acceptV1Link 의 페어링 제한을 조회 단계에서 미리 알려준다. 이게 없으면 상대가 나간 장부가
+        /* acceptV1Link 의 페어링 제한을 조회 단계에서 미리 알려준다. 이게 없으면 상대가 나간 가계부가
          * 정상 초대처럼 보이고, 참여를 누른 뒤에야 거부된다. */
         val previousPartnerIds = ledgerMemberRepository.findByLedgerId(ledger.id!!)
             .mapNotNull { it.user.id }
@@ -108,13 +108,13 @@ class InvitationService(
         val invitation = invitationRepository.findLockedByTokenHash(hashToken(rawToken)) ?: throw linkNotFound()
         requireLedgerAlive(invitation.ledger)
         requireUsableLink(invitation)
-        val ledger = ledgerRepository.findByIdForUpdate(invitation.ledger.id!!) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdForUpdate(invitation.ledger.id!!) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         requireLedgerAlive(ledger)
         if (ledgerMemberRepository.existsByLedgerIdAndUserId(ledger.id!!, currentUserId)) {
-            throw WoorilogException("ALREADY_LEDGER_MEMBER", "이미 참여 중인 장부입니다.", HttpStatus.CONFLICT)
+            throw WoorilogException("ALREADY_LEDGER_MEMBER", "이미 참여 중인 가계부입니다.", HttpStatus.CONFLICT)
         }
         if (ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledger.id!!).size >= 2) {
-            throw WoorilogException("LEDGER_MEMBER_LIMIT_REACHED", "공동 장부는 두 명까지 참여할 수 있습니다.", HttpStatus.CONFLICT)
+            throw WoorilogException("LEDGER_MEMBER_LIMIT_REACHED", "공동 가계부는 두 명까지 참여할 수 있습니다.", HttpStatus.CONFLICT)
         }
         val previousPartnerIds = ledgerMemberRepository.findByLedgerId(ledger.id!!)
             .mapNotNull { it.user.id }
@@ -155,14 +155,14 @@ class InvitationService(
 
     @Transactional(readOnly = true)
     fun getInvitableUser(currentUserId: Long, ledgerId: Long, email: String): InvitableUserResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val currentMember = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, currentUserId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         if (currentMember.role != LedgerRole.OWNER) {
-            throw ForbiddenException("장부 소유자만 초대 권한이 있습니다.")
+            throw ForbiddenException("가계부 소유자만 초대 권한이 있습니다.")
         }
         if (ledger.type != LedgerType.GROUP) {
-            throw BadRequestException("공동 장부만 초대가 가능합니다.")
+            throw BadRequestException("공동 가계부만 초대가 가능합니다.")
         }
 
         val targetUser = userRepository.findByEmail(email)
@@ -203,14 +203,14 @@ class InvitationService(
     }
 
     fun inviteUser(currentUserId: Long, ledgerId: Long, targetUserId: Long): InvitationResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val currentMember = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, currentUserId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         if (currentMember.role != LedgerRole.OWNER) {
-            throw ForbiddenException("장부 소유자만 초대 권한이 있습니다.")
+            throw ForbiddenException("가계부 소유자만 초대 권한이 있습니다.")
         }
         if (ledger.type != LedgerType.GROUP) {
-            throw BadRequestException("공동 장부만 초대가 가능합니다.")
+            throw BadRequestException("공동 가계부만 초대가 가능합니다.")
         }
 
         val targetUser = userRepository.findByIdOrNull(targetUserId) ?: throw NotFoundException("존재하지 않는 사용자입니다.")
@@ -220,7 +220,7 @@ class InvitationService(
         }
 
         if (ledgerMemberRepository.existsByLedgerIdAndUserId(ledgerId, targetUserId)) {
-            throw BadRequestException("이미 장부의 멤버입니다.")
+            throw BadRequestException("이미 가계부의 멤버입니다.")
         }
 
         val pendingInvitations = invitationRepository.findByLedgerIdAndInviteeIdAndTypeAndStatus(
@@ -244,8 +244,8 @@ class InvitationService(
         notificationService.notifyUser(
             targetUserId,
             NotificationType.INVITATION,
-            "새 장부 초대가 도착했습니다.",
-            "${ledger.name} 장부에 참여해달라는 초대가 도착했습니다.",
+            "새 가계부 초대가 도착했습니다.",
+            "${ledger.name} 가계부에 참여해달라는 초대가 도착했습니다.",
             "/settings",
             "direct-invitation-${saved.id}",
         )
@@ -253,14 +253,14 @@ class InvitationService(
     }
 
     fun createInvitationLink(currentUserId: Long, ledgerId: Long, expiresInDays: Int?): InvitationResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val currentMember = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, currentUserId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         if (currentMember.role != LedgerRole.OWNER) {
-            throw ForbiddenException("장부 소유자만 초대 권한이 있습니다.")
+            throw ForbiddenException("가계부 소유자만 초대 권한이 있습니다.")
         }
         if (ledger.type != LedgerType.GROUP) {
-            throw BadRequestException("공동 장부만 초대가 가능합니다.")
+            throw BadRequestException("공동 가계부만 초대가 가능합니다.")
         }
 
         val days = expiresInDays ?: 7
@@ -289,11 +289,11 @@ class InvitationService(
 
     @Transactional(readOnly = true)
     fun getLedgerInvitations(currentUserId: Long, ledgerId: Long): List<InvitationResult> {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val currentMember = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, currentUserId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         if (currentMember.role != LedgerRole.OWNER) {
-            throw ForbiddenException("장부 소유자만 초대 내역을 볼 수 있습니다.")
+            throw ForbiddenException("가계부 소유자만 초대 내역을 볼 수 있습니다.")
         }
 
         val list = invitationRepository.findByLedgerIdOrderByIdDesc(ledgerId)
@@ -302,17 +302,17 @@ class InvitationService(
     }
 
     fun cancelInvitation(currentUserId: Long, ledgerId: Long, invitationId: Long) {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val currentMember = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, currentUserId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         if (currentMember.role != LedgerRole.OWNER) {
-            throw ForbiddenException("장부 소유자만 초대를 취소할 수 있습니다.")
+            throw ForbiddenException("가계부 소유자만 초대를 취소할 수 있습니다.")
         }
 
         val invitation = invitationRepository.findByIdOrNull(invitationId) ?: throw NotFoundException("초대를 찾을 수 없습니다.")
 
         if (invitation.ledger.id != ledgerId) {
-            throw BadRequestException("해당 장부의 초대가 아닙니다.")
+            throw BadRequestException("해당 가계부의 초대가 아닙니다.")
         }
 
         if (invitation.status != InvitationStatus.PENDING || invitation.isExpired(clock.instant())) {
@@ -345,7 +345,7 @@ class InvitationService(
             }
         } else if (invitation.type == InvitationType.LINK) {
             if (ledgerMemberRepository.existsByLedgerIdAndUserId(invitation.ledger.id!!, currentUserId)) {
-                throw BadRequestException("이미 장부의 멤버입니다.")
+                throw BadRequestException("이미 가계부의 멤버입니다.")
             }
         }
 
@@ -415,7 +415,7 @@ class InvitationService(
         }
 
         if (ledgerMemberRepository.existsByLedgerIdAndUserId(invitation.ledger.id!!, currentUserId)) {
-            throw BadRequestException("이미 장부의 멤버입니다.")
+            throw BadRequestException("이미 가계부의 멤버입니다.")
         }
 
         val user = userRepository.findByIdOrNull(currentUserId) ?: throw ForbiddenException("사용자를 찾을 수 없습니다.")
@@ -439,8 +439,8 @@ class InvitationService(
 
     private fun requireActiveOwner(userId: Long, ledger: Ledger): LedgerMember {
         val member = ledgerMemberRepository.findByLedgerIdAndUserId(ledger.id!!, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
-        if (member.role != LedgerRole.OWNER) throw ForbiddenException("장부 소유자만 초대할 수 있습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
+        if (member.role != LedgerRole.OWNER) throw ForbiddenException("가계부 소유자만 초대할 수 있습니다.")
         return member
     }
 
@@ -484,10 +484,10 @@ class InvitationService(
 
     private fun linkNotFound() = NotFoundException("초대 링크를 찾을 수 없습니다.")
 
-    /** 링크는 멀쩡한데 장부가 사라진 경우. 만료와 구분해야 초대받은 사람이 링크를 다시 받으러 가지 않는다. */
+    /** 링크는 멀쩡한데 가계부가 사라진 경우. 만료와 구분해야 초대받은 사람이 링크를 다시 받으러 가지 않는다. */
     private fun requireLedgerAlive(ledger: Ledger) {
         if (ledger.deletedAt != null) {
-            throw WoorilogException("LEDGER_DELETED", "삭제된 장부입니다.", HttpStatus.GONE)
+            throw WoorilogException("LEDGER_DELETED", "삭제된 가계부입니다.", HttpStatus.GONE)
         }
     }
 

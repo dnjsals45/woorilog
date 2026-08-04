@@ -75,7 +75,7 @@ class AuthAndLedgerIntegrationTest {
             .andExpect(jsonPath("$.user.timezone").value("Asia/Seoul"))
             .andExpect(jsonPath("$.user.email").doesNotExist())
             .andExpect(jsonPath("$.user.lastUsedLedgerId").doesNotExist())
-            .andExpect(jsonPath("$.currentLedger.name").value("개발자의 개인 장부"))
+            .andExpect(jsonPath("$.currentLedger.name").value("개발자의 개인 가계부"))
             .andExpect(jsonPath("$.currentLedger.type").value("PERSONAL"))
             .andReturn()
 
@@ -89,7 +89,7 @@ class AuthAndLedgerIntegrationTest {
 
         val ledger = ledgerRepository.findByIdOrNull(response.currentLedger.id)
         assertNotNull(ledger)
-        assertEquals("개발자의 개인 장부", ledger!!.name)
+        assertEquals("개발자의 개인 가계부", ledger!!.name)
         assertEquals(LedgerType.PERSONAL, ledger.type)
         assertEquals(user.id, ledger.ownerId)
 

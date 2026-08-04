@@ -183,12 +183,12 @@ class ScheduledPlanService(
             plan.ledger.id!!,
             occurrence.dueDate,
             occurrence.dueDate,
-        ) ?: throw WoorilogException("BUDGET_PERIOD_NOT_FOUND", "예약 실행일의 예산 기간을 찾을 수 없습니다.", HttpStatus.CONFLICT)
+        ) ?: throw WoorilogException("BUDGET_PERIOD_NOT_FOUND", "자동 기록 예정일의 예산 기간을 찾을 수 없습니다.", HttpStatus.CONFLICT)
         val allocation = allocationRepository.findByBudgetPeriodIdAndScopeAndOwnerId(
             period.id!!,
             BudgetAllocationScope.valueOf(plan.scopeType!!.name),
             plan.scopeOwnerUserId,
-        ) ?: throw WoorilogException("BUDGET_ALLOCATION_NOT_FOUND", "예약 실행일의 차감 예산을 찾을 수 없습니다.", HttpStatus.CONFLICT)
+        ) ?: throw WoorilogException("BUDGET_ALLOCATION_NOT_FOUND", "자동 기록 예정일의 차감 예산을 찾을 수 없습니다.", HttpStatus.CONFLICT)
         val transaction = transactionRepository.save(
             Transaction(
                 plan.ledger, category, plan.createdBy, CategoryType.EXPENSE, occurrence.amount,
@@ -213,9 +213,9 @@ class ScheduledPlanService(
         return true
     }
     private fun occurrenceAmount(plan: ScheduledPlan, sequence: Int) = if (plan.type == ScheduledPlanType.INSTALLMENT) InstallmentPolicy.amountForSequence(plan.totalPrincipalAmount!!, plan.installmentTotalCount!!, sequence, plan.monthlyInterestAmount) else plan.amount
-    private fun plan(id: Long) = planRepository.findByIdOrNull(id) ?: throw NotFoundException("예약 계획을 찾을 수 없습니다.")
-    private fun requireActive(userId: Long, ledgerId: Long) { if (memberRepository.findByLedgerIdAndUserId(ledgerId, userId) == null) throw ForbiddenException("장부 접근 권한이 없습니다.") }
-    private fun requirePlanWrite(userId: Long, plan: ScheduledPlan) { requireActive(userId, plan.ledger.id!!); if (plan.scopeType == BudgetScopeType.PERSONAL && plan.scopeOwnerUserId != userId) throw ForbiddenException("본인 개인 예산의 예약 계획만 변경할 수 있습니다.") }
+    private fun plan(id: Long) = planRepository.findByIdOrNull(id) ?: throw NotFoundException("자동 기록을 찾을 수 없습니다.")
+    private fun requireActive(userId: Long, ledgerId: Long) { if (memberRepository.findByLedgerIdAndUserId(ledgerId, userId) == null) throw ForbiddenException("가계부 접근 권한이 없습니다.") }
+    private fun requirePlanWrite(userId: Long, plan: ScheduledPlan) { requireActive(userId, plan.ledger.id!!); if (plan.scopeType == BudgetScopeType.PERSONAL && plan.scopeOwnerUserId != userId) throw ForbiddenException("본인 예산의 자동 기록만 변경할 수 있습니다.") }
     private fun category(userId: Long, ledgerId: Long, id: Long): LedgerCategory { requireActive(userId, ledgerId); return categoryRepository.findByIdOrNull(id)?.takeIf { it.ledger.id == ledgerId && it.active && it.type == CategoryType.EXPENSE } ?: throw WoorilogException("INVALID_CATEGORY", "지출 카테고리가 필요합니다.", HttpStatus.BAD_REQUEST) }
     private fun allocation(userId: Long, ledgerId: Long, date: LocalDate, source: BudgetSource): BudgetAllocation { val period = periodRepository.findFirstByLedgerIdAndStartDateLessThanEqualAndEndDateGreaterThanEqual(ledgerId, date, date) ?: throw WoorilogException("BUDGET_PERIOD_NOT_FOUND", "예산 기간을 찾을 수 없습니다.", HttpStatus.CONFLICT); if (source.type == BudgetScopeType.PERSONAL && source.ownerUserId != userId) throw ForbiddenException("본인 예산만 사용할 수 있습니다."); return allocationRepository.findByBudgetPeriodIdAndScopeAndOwnerId(period.id!!, BudgetAllocationScope.valueOf(source.type.name), source.ownerUserId) ?: throw WoorilogException("BUDGET_ALLOCATION_NOT_FOUND", "차감 예산을 찾을 수 없습니다.", HttpStatus.CONFLICT) }
 }

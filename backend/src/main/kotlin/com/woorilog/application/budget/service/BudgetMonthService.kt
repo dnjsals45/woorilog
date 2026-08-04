@@ -43,9 +43,9 @@ class BudgetMonthService(
 
     @Transactional(readOnly = true)
     fun getBudgetMonthSettings(userId: Long, ledgerId: Long, budgetMonth: String): BudgetMonthSettingsResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         validateBudgetMonth(budgetMonth)
 
@@ -116,9 +116,9 @@ class BudgetMonthService(
         budgetMonth: String,
         request: UpdateBudgetMonthCommand
     ): BudgetMonthSettingsResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         validateBudgetMonth(budgetMonth)
 
@@ -134,7 +134,7 @@ class BudgetMonthService(
         }
         request.memberAllocations.forEach {
             if (it.amount < 0) {
-                throw WoorilogException("INVALID_REQUEST", "멤버 할당 금액은 음수일 수 없습니다.", HttpStatus.BAD_REQUEST)
+                throw WoorilogException("INVALID_REQUEST", "멤버별 예산 금액은 음수일 수 없습니다.", HttpStatus.BAD_REQUEST)
             }
         }
 
@@ -161,7 +161,7 @@ class BudgetMonthService(
             request.categoryBudgets.map { cb ->
                 val category = ledgerCategoryRepository.findByIdOrNull(cb.categoryId) ?: throw NotFoundException("카테고리를 찾을 수 없습니다.")
                 if (category.ledger.id != ledgerId) {
-                    throw WoorilogException("INVALID_REQUEST", "해당 장부의 카테고리가 아닙니다.", HttpStatus.BAD_REQUEST)
+                    throw WoorilogException("INVALID_REQUEST", "해당 가계부의 카테고리가 아닙니다.", HttpStatus.BAD_REQUEST)
                 }
                 CategoryBudget(
                     ledgerMonth = ledgerMonth,
@@ -181,7 +181,7 @@ class BudgetMonthService(
             val memberUser = userRepository.findByIdOrNull(ma.userId) ?: throw NotFoundException("사용자를 찾을 수 없습니다.")
             val exists = ledgerMemberRepository.existsByLedgerIdAndUserId(ledgerId, ma.userId)
             if (!exists) {
-                throw WoorilogException("INVALID_REQUEST", "해당 사용자는 장부의 멤버가 아닙니다.", HttpStatus.BAD_REQUEST)
+                throw WoorilogException("INVALID_REQUEST", "해당 사용자는 가계부의 멤버가 아닙니다.", HttpStatus.BAD_REQUEST)
             }
             MemberAllocation(
                 ledgerMonth = ledgerMonth,
@@ -196,9 +196,9 @@ class BudgetMonthService(
 
     @Transactional
     fun closeBudgetMonth(userId: Long, ledgerId: Long, budgetMonth: String): BudgetMonthSettingsResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         validateBudgetMonth(budgetMonth)
 
@@ -228,9 +228,9 @@ class BudgetMonthService(
 
     @Transactional
     fun reopenBudgetMonth(userId: Long, ledgerId: Long, budgetMonth: String): BudgetMonthSettingsResult {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         validateBudgetMonth(budgetMonth)
 

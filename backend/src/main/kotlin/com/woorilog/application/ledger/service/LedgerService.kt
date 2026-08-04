@@ -66,9 +66,9 @@ class LedgerService(
 
     @Transactional(readOnly = true)
     fun getLedgerMembers(userId: Long, ledgerId: Long): List<LedgerMemberResult> {
-        ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val viewerMemberships = ledgerMemberRepository.findByUserId(userId).filter { it.ledger.id == ledgerId }
-        if (viewerMemberships.isEmpty()) throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+        if (viewerMemberships.isEmpty()) throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         val viewerActive = viewerMemberships.any { it.leftAt == null }
         return ledgerMemberRepository.findByLedgerId(ledgerId)
@@ -147,7 +147,7 @@ class LedgerService(
         }
         val normalizedName = name.trim()
         if (normalizedName.length !in 1..30 || totalBudget < 0) {
-            throw BadRequestException("장부 이름과 전체 예산을 확인해주세요.")
+            throw BadRequestException("가계부 이름과 전체 예산을 확인해주세요.")
         }
         BudgetCyclePolicy(startType, startDay)
 
@@ -183,11 +183,11 @@ class LedgerService(
     fun useLedger(userId: Long, ledgerId: Long): LedgerDto {
         val user = userRepository.findByIdOrNull(userId) ?: throw ForbiddenException("사용자를 찾을 수 없습니다.")
 
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
-        if (ledger.archived) throw BadRequestException("보관된 장부는 사용할 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
+        if (ledger.archived) throw BadRequestException("보관된 가계부는 사용할 수 없습니다.")
 
         val member = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
 
         user.lastUsedLedgerId = ledger.id
         userRepository.save(user)
@@ -206,7 +206,7 @@ class LedgerService(
         val ledger = requireOwner(userId, ledgerId)
         if (name != null) {
             val trimmedName = name.trim()
-            if (trimmedName.isBlank()) throw BadRequestException("장부 이름은 비어 있을 수 없습니다.")
+            if (trimmedName.isBlank()) throw BadRequestException("가계부 이름은 비어 있을 수 없습니다.")
             ledger.name = trimmedName
         }
         if (recurringSummaryClosingDay != null) {
@@ -218,7 +218,7 @@ class LedgerService(
             ledger.budgetStartDay = budgetStartDay
         }
         if (name == null && recurringSummaryClosingDay == null && budgetStartType == null) {
-            throw BadRequestException("변경할 장부 정보가 없습니다.")
+            throw BadRequestException("변경할 가계부 정보가 없습니다.")
         }
         return LedgerDto.from(ledgerRepository.save(ledger))
     }
@@ -238,9 +238,9 @@ class LedgerService(
 
     fun removeMember(userId: Long, ledgerId: Long, targetUserId: Long) {
         val ledger = requireOwnerForUpdate(userId, ledgerId)
-        if (ledger.ownerId == targetUserId) throw BadRequestException("장부 소유자는 내보낼 수 없습니다.")
+        if (ledger.ownerId == targetUserId) throw BadRequestException("가계부 소유자는 내보낼 수 없습니다.")
         val member = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, targetUserId)
-            ?: throw com.woorilog.common.exception.WoorilogException("MEMBER_NOT_ACTIVE", "활성 장부 멤버가 아닙니다.", org.springframework.http.HttpStatus.CONFLICT)
+            ?: throw com.woorilog.common.exception.WoorilogException("MEMBER_NOT_ACTIVE", "활성 가계부 멤버가 아닙니다.", org.springframework.http.HttpStatus.CONFLICT)
         scheduledPlanService.pauseForMembershipChange(ledgerId)
         member.leftAt = clock.instant()
         member.leaveReason = "REMOVED"
@@ -249,29 +249,29 @@ class LedgerService(
         notificationService.notifyUser(
             targetUserId,
             NotificationType.SYSTEM,
-            "공동 장부에서 내보내졌습니다.",
-            "${ledger.name} 장부는 참여 기간 동안 읽기 전용으로 볼 수 있습니다.",
+            "공동 가계부에서 내보내졌습니다.",
+            "${ledger.name} 가계부는 참여 기간 동안 읽기 전용으로 볼 수 있습니다.",
             "/ledgers/$ledgerId",
             "member-removed-$ledgerId-${member.id}",
         )
     }
 
-    /* 장부 삭제는 "나가기"와 다르다. 나가기는 상대에게 장부를 넘기고 빠지는 것이고,
-     * 삭제는 장부 자체를 없애는 것이라 현재 나 말고 활성 멤버가 없을 때만 할 수 있다.
+    /* 가계부 삭제는 "나가기"와 다르다. 나가기는 상대에게 가계부를 넘기고 빠지는 것이고,
+     * 삭제는 가계부 자체를 없애는 것이라 현재 나 말고 활성 멤버가 없을 때만 할 수 있다.
      * 과거에 함께 쓴 사람이 있으면 그 사람의 읽기 전용 접근도 함께 사라지므로,
-     * 화면에서 그 사실을 알리고 장부 이름을 입력받은 뒤 호출한다. */
+     * 화면에서 그 사실을 알리고 가계부 이름을 입력받은 뒤 호출한다. */
     fun deleteLedger(userId: Long, ledgerId: Long) {
         val ledger = requireOwnerForUpdate(userId, ledgerId)
-        if (ledger.deletedAt != null) throw NotFoundException("장부를 찾을 수 없습니다.")
+        if (ledger.deletedAt != null) throw NotFoundException("가계부를 찾을 수 없습니다.")
         if (ledger.type != LedgerType.GROUP) {
-            throw WoorilogException("PERSONAL_LEDGER_NOT_DELETABLE", "개인 장부는 삭제할 수 없습니다.", HttpStatus.CONFLICT)
+            throw WoorilogException("PERSONAL_LEDGER_NOT_DELETABLE", "개인 가계부는 삭제할 수 없습니다.", HttpStatus.CONFLICT)
         }
         val otherActiveMembers = ledgerMemberRepository.findByLedgerIdAndLeftAtIsNullOrderById(ledgerId)
             .filter { it.user.id != userId }
         if (otherActiveMembers.isNotEmpty()) {
             throw WoorilogException(
                 "LEDGER_HAS_ACTIVE_MEMBER",
-                "함께 쓰는 사람이 있는 장부는 삭제할 수 없습니다.",
+                "함께 쓰는 사람이 있는 가계부는 삭제할 수 없습니다.",
                 HttpStatus.CONFLICT,
             )
         }
@@ -285,10 +285,10 @@ class LedgerService(
     }
 
     fun leaveLedger(userId: Long, ledgerId: Long) {
-        val ledger = ledgerRepository.findByIdForUpdate(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
-        if (ledger.ownerId == userId) throw com.woorilog.common.exception.WoorilogException("OWNER_TRANSFER_REQUIRED", "소유권 이전 후 장부를 나갈 수 있습니다.", org.springframework.http.HttpStatus.CONFLICT)
+        val ledger = ledgerRepository.findByIdForUpdate(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
+        if (ledger.ownerId == userId) throw com.woorilog.common.exception.WoorilogException("OWNER_TRANSFER_REQUIRED", "소유권 이전 후 가계부를 나갈 수 있습니다.", org.springframework.http.HttpStatus.CONFLICT)
         val member = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
         scheduledPlanService.pauseForMembershipChange(ledgerId)
         member.leftAt = clock.instant()
         member.leaveReason = "LEFT"
@@ -299,10 +299,10 @@ class LedgerService(
     fun transferOwnership(userId: Long, ledgerId: Long, newOwnerUserId: Long): List<LedgerMemberResult> {
         val ledger = requireOwnerForUpdate(userId, ledgerId)
         if (newOwnerUserId == userId) {
-            throw com.woorilog.common.exception.WoorilogException("ALREADY_OWNER", "이미 장부 소유자입니다.", org.springframework.http.HttpStatus.CONFLICT)
+            throw com.woorilog.common.exception.WoorilogException("ALREADY_OWNER", "이미 가계부 소유자입니다.", org.springframework.http.HttpStatus.CONFLICT)
         }
         val currentOwner = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("장부 소유자 정보를 찾을 수 없습니다.")
+            ?: throw ForbiddenException("가계부 소유자 정보를 찾을 수 없습니다.")
         val newOwner = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, newOwnerUserId)
             ?: throw com.woorilog.common.exception.WoorilogException("ACTIVE_MEMBER_REQUIRED", "활성 멤버에게만 소유권을 이전할 수 있습니다.", org.springframework.http.HttpStatus.CONFLICT)
         currentOwner.role = LedgerRole.MEMBER
@@ -313,18 +313,18 @@ class LedgerService(
     }
 
     private fun requireOwner(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdOrNull(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val member = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
-        if (member.role != LedgerRole.OWNER) throw ForbiddenException("장부 소유자만 변경할 수 있습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
+        if (member.role != LedgerRole.OWNER) throw ForbiddenException("가계부 소유자만 변경할 수 있습니다.")
         return ledger
     }
 
     private fun requireOwnerForUpdate(userId: Long, ledgerId: Long): Ledger {
-        val ledger = ledgerRepository.findByIdForUpdate(ledgerId) ?: throw NotFoundException("장부를 찾을 수 없습니다.")
+        val ledger = ledgerRepository.findByIdForUpdate(ledgerId) ?: throw NotFoundException("가계부를 찾을 수 없습니다.")
         val member = ledgerMemberRepository.findByLedgerIdAndUserId(ledgerId, userId)
-            ?: throw ForbiddenException("해당 장부에 접근 권한이 없습니다.")
-        if (member.role != LedgerRole.OWNER) throw ForbiddenException("장부 소유자만 변경할 수 있습니다.")
+            ?: throw ForbiddenException("해당 가계부에 접근 권한이 없습니다.")
+        if (member.role != LedgerRole.OWNER) throw ForbiddenException("가계부 소유자만 변경할 수 있습니다.")
         return ledger
     }
 
@@ -342,7 +342,7 @@ class LedgerService(
             ?: ledgerMemberRepository.findByUserId(viewerUserId)
                 .filter { it.ledger.id == ledger.id }
                 .maxByOrNull { it.joinedAt }
-            ?: throw ForbiddenException("장부를 조회할 수 없습니다.")
+            ?: throw ForbiddenException("가계부를 조회할 수 없습니다.")
         val partner = activeMembers.firstOrNull { it.user.id != viewerUserId }?.user
         return LedgerSummaryResult(
             id = ledger.id!!,
