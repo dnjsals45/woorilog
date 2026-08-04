@@ -230,14 +230,14 @@ export function RecurringTransactionPage() {
     if (!selected) return
     remove.mutate(
       { planId: selected.id },
-      { onSuccess: () => showToast('반복 거래를 삭제했어요. 기록된 거래는 그대로예요') },
+      { onSuccess: () => showToast('자동 기록을 삭제했어요. 기록된 거래는 그대로예요') },
     )
   }
 
   if (plans.isError) {
     return (
       <>
-        <AppHeader description="예정일이 되면 자동으로 기록되는 지출이에요" title="반복 거래" />
+        <AppHeader description="예정일이 되면 자동으로 기록되는 지출이에요" title="자동 기록" />
         <div className="product-page product-page--wide">
           <ErrorState onRetry={() => plans.refetch()} />
         </div>
@@ -257,13 +257,13 @@ export function RecurringTransactionPage() {
             type="button"
           >
             <Icon name="plus" size="md" />
-            반복 거래 추가
+            반복 지출 추가
           </button>
         }
         description="예정일이 되면 자동으로 기록되는 지출이에요"
         mobileActions={
           <button
-            aria-label="반복 거래 추가"
+            aria-label="반복 지출 추가"
             className="wl-icon-button wl-icon-button--subtle"
             onClick={() => setCreateOpen(true)}
             type="button"
@@ -271,7 +271,7 @@ export function RecurringTransactionPage() {
             <Icon name="plus" size="lg" />
           </button>
         }
-        title="반복 거래"
+        title="자동 기록"
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 26, padding: '28px 32px 140px' }}>
@@ -281,7 +281,7 @@ export function RecurringTransactionPage() {
           <section className="recur-summary">
             <div>
               <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--wl-color-text-secondary)' }}>
-                이번 달 고정비 합계
+                한 달 고정비 합계
               </p>
               <p
                 className="wl-tabular"
@@ -320,7 +320,7 @@ export function RecurringTransactionPage() {
           <section style={{ minWidth: 0 }}>
             <div className="recur-filter-row" style={{ marginBottom: 14 }}>
               <SegmentedControl
-                label="반복 거래 필터"
+                label="자동 기록 필터"
                 onChange={(value) => setFilter(value as Filter)}
                 options={[
                   { value: 'all', label: `전체 ${list.length}` },
@@ -415,8 +415,8 @@ export function RecurringTransactionPage() {
             ) : (
               <div style={{ marginTop: 16 }}>
                 <EmptyState
-                  description="다른 조건을 선택하거나 새 반복 거래를 추가해 보세요."
-                  title="해당하는 반복 거래가 없어요"
+                  description="다른 조건을 선택하거나 새 반복 지출을 추가해 보세요."
+                  title="해당하는 자동 기록이 없어요"
                 />
               </div>
             )}
@@ -630,12 +630,12 @@ export function RecurringTransactionPage() {
                     }}
                     type="button"
                   >
-                    반복 거래 삭제
+                    자동 기록 삭제
                   </button>
                 </div>
               </>
             ) : (
-              <EmptyState description="반복 거래를 추가하면 여기에서 관리할 수 있어요." title="선택된 반복 거래가 없어요" />
+              <EmptyState description="자동 기록을 추가하면 여기에서 관리할 수 있어요." title="선택된 자동 기록이 없어요" />
             )}
           </section>
         </div>
@@ -665,7 +665,7 @@ export function RecurringTransactionPage() {
         onCreated={(planId) => {
           setCreateOpen(false)
           setSelectedId(planId)
-          showToast('반복 거래를 추가했어요')
+          showToast('반복 지출을 추가했어요')
         }}
         open={createOpen}
         period={period.data}
@@ -788,7 +788,7 @@ function CreateRecurringPlanModal({ open, onClose, onCreated, categories, period
   }
 
   return (
-    <Modal onClose={() => { reset(); onClose() }} open={open} title="반복 거래 추가" width={480}>
+    <Modal onClose={() => { reset(); onClose() }} open={open} title="반복 지출 추가" width={480}>
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16, marginTop: 20 }}>
         <Input label="이름" onChange={(event) => setName(event.target.value)} placeholder="예: 월세" required value={name} />
         <AmountInput label="금액" onChange={setAmount} value={amount} />
@@ -859,7 +859,7 @@ function CreateRecurringPlanModal({ open, onClose, onCreated, categories, period
           </p>
         ) : null}
         <Button disabled={pending} fullWidth loading={pending} type="submit">
-          반복 거래 저장
+          반복 지출 저장
         </Button>
       </form>
     </Modal>

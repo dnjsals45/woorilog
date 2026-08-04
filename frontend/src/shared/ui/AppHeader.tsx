@@ -36,7 +36,7 @@ export interface AppHeaderProps {
    * "거래 추가"처럼 모바일에서 FAB 이 대신하는 버튼을 걷어낼 때 씁니다.
    */
   mobileActions?: ReactNode
-  /** 제목을 버튼으로 만들어 장부 전환 같은 시트를 엽니다. 모바일에서만 동작합니다. */
+  /** 제목을 버튼으로 만들어 가계부 전환 같은 시트를 엽니다. 모바일에서만 동작합니다. */
   onTitleClick?: () => void
 }
 

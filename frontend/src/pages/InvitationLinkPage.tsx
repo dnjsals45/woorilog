@@ -18,43 +18,43 @@ const ERROR_CONTENT: Record<ErrorVariant, { title: string; body: string; cta: st
   expired: {
     title: '이 초대 링크는 더 이상 쓸 수 없어요',
     body: '만든 뒤 30분이 지났거나 새 링크로 교체됐어요. 초대한 사람에게 링크를 다시 받아 주세요.',
-    cta: '내 장부로 가기',
+    cta: '내 가계부로 가기',
     href: '/dashboard',
   },
   full: {
-    title: '이 장부는 이미 두 명이 쓰고 있어요',
-    body: '공동 장부는 두 명까지 함께 쓸 수 있어요. 새로 함께 쓰려면 다른 공동 장부를 만들어 주세요.',
-    cta: '공동 장부 만들기',
+    title: '이 가계부는 이미 두 명이 쓰고 있어요',
+    body: '공동 가계부는 두 명까지 함께 쓸 수 있어요. 새로 함께 쓰려면 다른 공동 가계부를 만들어 주세요.',
+    cta: '공동 가계부 만들기',
     href: '/ledgers/new',
   },
   member: {
-    title: '이미 이 장부의 멤버예요',
-    body: '초대를 다시 수락하지 않아도 돼요. 바로 장부로 이동해 계속 기록할 수 있어요.',
-    cta: '장부로 이동',
+    title: '이미 이 가계부의 멤버예요',
+    body: '초대를 다시 수락하지 않아도 돼요. 바로 가계부로 이동해 계속 기록할 수 있어요.',
+    cta: '가계부로 이동',
     href: '/dashboard',
   },
-  /* 한 번이라도 두 사람이 쓴 장부는 원래 상대방만 다시 들어올 수 있습니다.
+  /* 한 번이라도 두 사람이 쓴 가계부는 원래 상대방만 다시 들어올 수 있습니다.
    * 남은 거래 기록이 처음부터 함께하지 않은 사람에게 넘어가지 않게 하기 위한 제한입니다.
    * 링크는 멀쩡하므로 "만료" 문구로 뭉뚱그리면 사용자가 링크를 다시 받으러 갑니다. */
-  /* 링크는 멀쩡한데 장부가 지워진 경우입니다. '만료'로 뭉뚱그리면 초대받은 사람이
-   * 링크를 다시 받으러 가는데, 다시 받을 장부가 없습니다. */
+  /* 링크는 멀쩡한데 가계부가 지워진 경우입니다. '만료'로 뭉뚱그리면 초대받은 사람이
+   * 링크를 다시 받으러 가는데, 다시 받을 가계부가 없습니다. */
   deletedLedger: {
-    title: '이 장부는 삭제됐어요',
-    body: '초대한 사람이 장부를 삭제했어요. 링크를 다시 받아도 참여할 수 없어요. 함께 쓰려면 새 공동 장부를 만들어 달라고 해주세요.',
-    cta: '내 장부로 가기',
+    title: '이 가계부는 삭제됐어요',
+    body: '초대한 사람이 가계부를 삭제했어요. 링크를 다시 받아도 참여할 수 없어요. 함께 쓰려면 새 공동 가계부를 만들어 달라고 해주세요.',
+    cta: '내 가계부로 가기',
     href: '/dashboard',
   },
   differentPartner: {
-    title: '이 장부는 다른 분과 함께 쓰던 장부예요',
-    body: '이미 기록된 거래가 남아 있어서 처음 함께 쓰던 분만 다시 들어올 수 있어요. 새로 시작하려면 공동 장부를 새로 만들어 주세요.',
-    cta: '공동 장부 만들기',
+    title: '이 가계부는 다른 분과 함께 쓰던 곳이에요',
+    body: '이미 기록된 거래가 남아 있어서 처음 함께 쓰던 분만 다시 들어올 수 있어요. 새로 시작하려면 공동 가계부를 새로 만들어 주세요.',
+    cta: '공동 가계부 만들기',
     href: '/ledgers/new',
   },
 }
 
 const VALID_NOTES = [
   '공동 예산 거래는 두 사람이 함께 기록하고 수정할 수 있어요.',
-  '내 할당 예산 거래는 기본적으로 상대방에게 보이지 않아요.',
+  '내 예산 거래는 기본적으로 상대방에게 보이지 않아요.',
   '참여 전에 저장된 공동 예산과 거래도 볼 수 있어요.',
 ]
 
@@ -64,7 +64,7 @@ function remainingMinutesLabel(expiresAt: string) {
   return `남은 시간 ${minutes}분`
 }
 
-/** 공동 장부는 두 명까지 참여할 수 있다(백엔드 LEDGER_MEMBER_LIMIT_REACHED 기준). */
+/** 공동 가계부는 두 명까지 참여할 수 있다(백엔드 LEDGER_MEMBER_LIMIT_REACHED 기준). */
 const MAX_LEDGER_MEMBERS = 2
 
 function budgetCycleLabel(budgetCycle: { startType: string; startDay: number | null }) {
@@ -111,9 +111,9 @@ export function InvitationLinkPage() {
   }
 
   /* 조회(GET) 실패는 404(없음/타입 오류)·409 INVITATION_ALREADY_PROCESSED(이미 처리됨)·
-   * 410 INVITATION_EXPIRED(진짜 만료)·410 LEDGER_DELETED(장부 삭제됨)로 나뉜다.
+   * 410 INVITATION_EXPIRED(진짜 만료)·410 LEDGER_DELETED(가계부 삭제됨)로 나뉜다.
    * 앞의 셋은 "링크를 다시 받으면 된다"는 점이 같아 한 화면으로 묶고,
-   * 장부 삭제는 다시 받아도 소용없으므로 따로 보여준다. */
+   * 가계부 삭제는 다시 받아도 소용없으므로 따로 보여준다. */
   const previewErrorVariant: ErrorVariant | null = !previewQuery.isError
     ? null
     : previewQuery.error instanceof ApiClientError && previewQuery.error.code === 'LEDGER_DELETED'
@@ -333,7 +333,7 @@ function InvitationAcceptedCard({ ledgerName }: { ledgerName: string }) {
       </span>
       <h1 className="wl-page-title" style={{ margin: '18px 0 0', fontSize: 22 }}>{ledgerName}에 참여했어요</h1>
       <p className="wl-body" style={{ margin: '8px 0 0', lineHeight: 1.6, color: 'var(--wl-color-text-secondary)', wordBreak: 'keep-all' }}>
-        참여 이전에 저장된 공동 예산과 거래도 모두 볼 수 있어요. 다음으로 두 사람의 예산 배분을 함께 정해요.
+        참여 이전에 저장된 공동 예산과 거래도 모두 볼 수 있어요. 다음으로 두 사람의 예산을 함께 나눠요.
       </p>
       <div
         style={{
@@ -345,7 +345,7 @@ function InvitationAcceptedCard({ ledgerName }: { ledgerName: string }) {
           borderTop: '1px solid var(--wl-color-border)',
         }}
       >
-        <Link className="wl-button wl-button--primary wl-button--lg" to="/budget">예산 배분 정하기</Link>
+        <Link className="wl-button wl-button--primary wl-button--lg" to="/budget">예산 나누기</Link>
         <Link className="wl-button wl-button--text wl-button--lg" to="/dashboard">먼저 둘러보기</Link>
       </div>
     </div>

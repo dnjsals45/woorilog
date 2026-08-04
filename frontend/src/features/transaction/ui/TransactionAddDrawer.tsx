@@ -130,7 +130,7 @@ export function TransactionAddDrawer({ open, onClose }: TransactionAddDrawerProp
         {
           onSuccess: (plan) => {
             if (keepOpen) {
-              showToast('반복 거래로 저장했어요. 이어서 입력할 수 있어요', { kind: 'plan', id: plan.id })
+              showToast('반복 지출로 저장했어요. 이어서 입력할 수 있어요', { kind: 'plan', id: plan.id })
               setResetSignal((value) => value + 1)
             } else {
               onClose()

@@ -48,7 +48,7 @@ export function SharedLedgerCreateRoute() {
   }
 
   return <SharedLedgerCreatePage
-    createError={createLedger.isError ? '장부 이름, 예산과 시작일을 확인해주세요.' : null}
+    createError={createLedger.isError ? '가계부 이름, 예산과 시작일을 확인해주세요.' : null}
     invitation={invitation}
     invitationError={invitationFailed || regenerateInvitation.isError ? '초대 링크를 만들지 못했습니다. 다시 시도해주세요.' : null}
     isCreating={createLedger.isPending}

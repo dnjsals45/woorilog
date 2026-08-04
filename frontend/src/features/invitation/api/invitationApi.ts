@@ -41,7 +41,7 @@ export type LinkInvitationPreview = {
   currentMemberCount: number
   /** 비로그인 조회면 null. */
   viewerAlreadyMember: boolean | null
-  /** 이 장부를 쓴 적 있는 다른 상대가 있어 참여가 막히는지. 비로그인 조회면 null. */
+  /** 이 가계부를 쓴 적 있는 다른 상대가 있어 참여가 막히는지. 비로그인 조회면 null. */
   viewerIsDifferentPartner: boolean | null
   budgetCycle: BudgetCycle
 }

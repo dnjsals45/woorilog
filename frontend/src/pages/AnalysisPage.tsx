@@ -14,7 +14,7 @@ import { StatBlock } from '../shared/ui/StatBlock'
 import { TransactionRow } from '../shared/ui/TransactionRow'
 
 /* 카테고리 색은 대시보드(DashboardPage.tsx)의 CATEGORY_PALETTE와 같은 순서·같은 토큰을 씁니다.
- * 카테고리 수는 장부마다 다르므로 항목마다 색을 고정하지 않고 데이터 색 토큰을 순서대로 돌려 씁니다. */
+ * 카테고리 수는 가계부마다 다르므로 항목마다 색을 고정하지 않고 데이터 색 토큰을 순서대로 돌려 씁니다. */
 const CATEGORY_PALETTE = [
   'var(--wl-data-coral)',
   'var(--wl-data-violet)',
@@ -161,7 +161,7 @@ export function AnalysisPage() {
   }))
 
   /* previousAmount가 null이면 지난 기간 자체가 없는 카테고리라 비교 대상에서 뺍니다 (0과는 다른 의미).
-   * 색은 대분류별 지출 도넛과 같은 순서를 쓰기 위해 원래 categoryRows 인덱스를 함께 들고 다닙니다. */
+   * 색은 카테고리별 지출 도넛과 같은 순서를 쓰기 위해 원래 categoryRows 인덱스를 함께 들고 다닙니다. */
   const comparableCategoryRows = categoryRows
     .map((row, paletteIndex) => ({ ...row, paletteIndex }))
     .filter((row): row is typeof row & { previousAmount: number } => row.previousAmount !== null)
@@ -263,7 +263,7 @@ export function AnalysisPage() {
 
             <section className="analysis-category-detail">
               <SurfaceCard labelledBy="analysis-category-title">
-                <CardHeading eyebrow="" id="analysis-category-title" title="대분류별 지출" />
+                <CardHeading eyebrow="" id="analysis-category-title" title="카테고리별 지출" />
                 <div style={{ marginTop: 16 }}>
                   <DonutChart onSelect={setSelectedCategory} segments={categorySegments} selected={selectedCategory} size={150} />
                 </div>
@@ -298,7 +298,7 @@ export function AnalysisPage() {
                 )}
                 {!selectedCategory ? (
                   <p className="wl-meta" style={{ borderTop: '1px solid var(--wl-color-border)', marginTop: 14, paddingTop: 12 }}>
-                    왼쪽에서 대분류를 누르면 그 대분류의 거래만 모아서 보여드려요.
+                    왼쪽에서 카테고리를 누르면 그 카테고리의 거래만 모아서 보여드려요.
                   </p>
                 ) : null}
               </SurfaceCard>

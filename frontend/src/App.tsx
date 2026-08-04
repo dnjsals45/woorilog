@@ -19,7 +19,7 @@ import { OnboardingRoute, SharedLedgerCreateRoute } from './pages/V1RouteBinding
 
 /* 라우트는 확정된 디자인 14화면을 기준으로 한다.
  * 디자인에서 오버레이가 된 화면은 라우트를 갖지 않는다 — 거래 추가(우측 드로어),
- * 알림함(대시보드 헤더 팝오버), 이미지 업로드(중앙 모달), 거래 상세(가계부 내 모달).
+ * 알림함(대시보드 헤더 팝오버), 이미지 업로드(중앙 모달), 거래 상세(거래 내역 내 모달).
  * 사라진 화면의 기존 링크는 404 대신 대체 화면으로 흘려보낸다. */
 export default function App() {
   return (
@@ -46,11 +46,11 @@ export default function App() {
             <Route path="/help" element={<HelpPage />} />
 
             {/* 아래는 디자인에서 독립 화면이 사라진 경로들이다. */}
-            {/* 이미지 업로드는 중앙 모달(TransactionImportModal)로, 거래 상세는 가계부 내 모달로 바뀌었다. */}
+            {/* 이미지 업로드는 중앙 모달(TransactionImportModal)로, 거래 상세는 거래 내역 내 모달로 바뀌었다. */}
             <Route path="/transactions/import" element={<Navigate replace to="/transactions" />} />
             <Route path="/transactions/uncategorized" element={<Navigate replace to="/transactions" />} />
             <Route path="/transactions/:transactionId" element={<Navigate replace to="/transactions" />} />
-            {/* 장부 설정과 카테고리 관리는 설정 화면의 탭으로 흡수됐다. */}
+            {/* 가계부 설정과 카테고리 관리는 설정 화면의 탭으로 흡수됐다. */}
             <Route path="/ledgers/:ledgerId/settings" element={<Navigate replace to="/settings" />} />
             <Route path="/categories" element={<Navigate replace to="/settings" />} />
             {/* 알림함은 대시보드 헤더 종 아이콘이 여는 팝오버(NotificationInbox)다. */}

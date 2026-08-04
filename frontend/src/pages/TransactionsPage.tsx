@@ -192,7 +192,7 @@ export function TransactionsPage() {
             <Icon name="camera" size="lg" />
           </button>
         }
-        title="가계부"
+        title="거래 내역"
       />
 
       <div className="tx-filter-bar">
@@ -353,7 +353,7 @@ export function TransactionsPage() {
                   style={chipStyle(false)}
                   type="button"
                 >
-                  이번 달 전체
+                  이 달 전체
                 </button>
               ) : null}
             </div>

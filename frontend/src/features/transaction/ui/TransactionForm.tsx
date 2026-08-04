@@ -270,7 +270,7 @@ export function TransactionForm({
     setFixedCost(initial.fixedCost)
   }
 
-  // "저장 후 계속 입력하기"로 저장한 다음: 금액·사용처·메모만 비우고 카테고리·날짜·예산·결제수단은 유지합니다.
+  // "저장 후 계속 입력하기"로 저장한 다음: 금액·사용처·메모만 비우고 카테고리·날짜·예산·결제 수단은 유지합니다.
   const resetSignalRef = useRef(resetSignal)
   useEffect(() => {
     if (resetSignal === undefined || resetSignal === resetSignalRef.current) return
@@ -308,11 +308,11 @@ export function TransactionForm({
   const cardsQuery = useCardsQuery(ledgerId)
   const cards = cardsQuery.data ?? []
 
-  let amountHint = isSharedLedger ? '공동 예산 지출은 두 사람 정산에 함께 반영돼요' : ''
+  let amountHint = isSharedLedger ? '공동 예산에서 빠지고, 두 사람 모두에게 보여요' : ''
   if (isTransfer && transferKind === 'OWN_ACCOUNTS') amountHint = '내 계좌 간 이체는 예산과 통계에서 빼고 기록해요'
   else if (isTransfer && transferKind === 'INBOUND') amountHint = '외부 입금은 수입으로 기록하고 예산은 그대로예요'
   else if (effectiveType === 'INCOME') amountHint = '수입은 통계에만 반영되고 예산은 자동으로 늘지 않아요'
-  else if (deductsBudget && isSharedLedger && budgetSourceType === 'PERSONAL') amountHint = '내 할당 예산에서만 차감돼요'
+  else if (deductsBudget && isSharedLedger && budgetSourceType === 'PERSONAL') amountHint = '내 예산에서만 차감돼요'
 
   const transferNote =
     transferKind === 'OWN_ACCOUNTS'
@@ -496,7 +496,7 @@ export function TransactionForm({
           {paymentKind !== 'TRANSFER' ? (
             <div style={{ marginTop: 12 }}>
               <Input
-                label="결제수단 이름 (선택)"
+                label="결제 수단 이름 (선택)"
                 onChange={(event) => setPaymentDisplayName(event.target.value)}
                 placeholder="예: 생활비 카드"
                 value={paymentDisplayName}

@@ -86,7 +86,7 @@ export function TransactionDetailModal({ transactionId, onClose, onSaved, onDele
         paymentMethod: values.paymentMethod,
         cardId: values.cardId,
         occurredAt: transaction.occurredAt ?? null,
-        // 상대방 공개 여부는 이 모달에 토글 필드가 없어 기존 값을 그대로 유지합니다.
+        // 상대방에게 보일지 여부는 이 모달에 토글 필드가 없어 기존 값을 그대로 유지합니다.
         sharedWithPartner: transaction.sharedWithPartner ?? null,
       },
       { onSuccess: onSaved },

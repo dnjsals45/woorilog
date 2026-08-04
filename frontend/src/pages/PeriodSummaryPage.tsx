@@ -83,7 +83,7 @@ function buildResultCard(name: string, allocation: BudgetAllocation | undefined)
 function buildHeadline(cards: BudgetResultCard[]): string {
   if (!cards.length) return '이 기간 예산 결과가 아직 없어요'
   const clause = (card: BudgetResultCard, isLast: boolean) => {
-    const shortName = card.name === '내 할당 예산' ? '내 예산' : card.name
+    const shortName = card.name
     const verb = card.over ? '넘겼' : '남았'
     return `${shortName}은 ${formatWon(card.resultAmount)} ${verb}${isLast ? '어요' : '고,'}`
   }
@@ -153,7 +153,7 @@ export function PeriodSummaryPage() {
   const mineAllocation = period.allocations.find(
     (allocation) => allocation.source.type === 'PERSONAL' && allocation.source.ownerUserId === myUserId,
   )
-  const budgetCards = [buildResultCard('공동 예산', sharedAllocation), buildResultCard('내 할당 예산', mineAllocation)].filter(
+  const budgetCards = [buildResultCard('공동 예산', sharedAllocation), buildResultCard('내 예산', mineAllocation)].filter(
     (card): card is BudgetResultCard => card !== null,
   )
   const headline = buildHeadline(budgetCards)
@@ -163,7 +163,7 @@ export function PeriodSummaryPage() {
   const scopeNote =
     scope === 'SHARED'
       ? '공동 예산에서 차감한 거래만 집계했어요.'
-      : '내 할당 예산에서 차감한 거래만 집계했어요. 상대방 개인 지출은 들어 있지 않아요.'
+      : '내 예산에서 차감한 거래만 집계했어요. 상대방 개인 지출은 들어 있지 않아요.'
 
   const showCopyCard = Boolean(nextStartDate) && !nextPeriod.isLoading && nextPeriod.data?.prepared !== true
   const daysUntilNext = nextStartDate ? daysBetween(todayIso(), nextStartDate) : null
@@ -241,12 +241,12 @@ export function PeriodSummaryPage() {
             ))}
           </section>
         ) : (
-          <EmptyState description="이 기간에는 배분된 예산이 없어요." title="예산 결과가 없습니다." />
+          <EmptyState description="이 기간에는 나눈 예산이 없어요." title="예산 결과가 없습니다." />
         )}
 
         <section className="wl-period-summary-rise dashboard-card">
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '-.015em' }}>대분류별 지출</h3>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '-.015em' }}>카테고리별 지출</h3>
             <SegmentedControl label="지출 범위" onChange={(value) => setScope(value as Scope)} options={SCOPE_OPTIONS} value={scope} />
           </div>
           {analytics.isLoading ? (
@@ -343,7 +343,7 @@ export function PeriodSummaryPage() {
               }}
               to="/recurring"
             >
-              반복 거래에서 관리하기
+              자동 기록에서 관리하기
             </Link>
           </div>
         </section>

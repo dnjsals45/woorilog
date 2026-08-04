@@ -23,7 +23,7 @@ const CATEGORY_PALETTE = [
 ]
 
 export interface BudgetDetailModalProps {
-  /** 공동 예산인지 내 할당 예산인지 — 디자인 원본의 openShared/openMine 두 진입점과 대응합니다. */
+  /** 공동 예산인지 내 예산인지 — 디자인 원본의 openShared/openMine 두 진입점과 대응합니다. */
   scope: 'shared' | 'mine'
   budget: DashboardBudget
   periodLabel?: string
@@ -126,7 +126,7 @@ export function BudgetDetailModal({
     : []
 
   return (
-    <Modal onClose={onClose} subtitle={periodLabel} title={scope === 'shared' ? '공동 예산 상세' : '내 할당 예산 상세'} width={760}>
+    <Modal onClose={onClose} subtitle={periodLabel} title={scope === 'shared' ? '공동 예산 상세' : '내 예산 상세'} width={760}>
       <div className="budget-detail-stats">
         <StatBlock amount={formatWon(budget.availableAmount)} label="남은 금액" size="lg" />
         <StatBlock amount={formatWon(budget.spentAmount)} label="사용 금액" size="sm" />
@@ -226,7 +226,7 @@ export function BudgetDetailModal({
             }}
             to="/transactions"
           >
-            가계부에서 전체 보기
+            거래 내역에서 전체 보기
           </Link>
         </div>
       </div>

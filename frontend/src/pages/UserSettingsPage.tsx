@@ -40,7 +40,7 @@ import { Toast } from '../shared/ui/Toast'
 
 const TABS = [
   { id: 'profile', label: '프로필' },
-  { id: 'ledger', label: '장부' },
+  { id: 'ledger', label: '가계부' },
   { id: 'members', label: '멤버' },
   { id: 'categories', label: '카테고리' },
   { id: 'notices', label: '알림' },
@@ -111,7 +111,7 @@ export function UserSettingsPage() {
   const members = useLedgerMembersQuery(currentLedgerId)
   const viewer = members.data?.find((member) => member.userId === me.data?.user.id)
   const partner = members.data?.find((member) => member.userId !== me.data?.user.id && member.status === 'ACTIVE')
-  /* 과거에 함께 쓴 사람. 장부를 지우면 이 사람들의 읽기 전용 접근도 함께 사라지므로 확인 모달에서 알립니다. */
+  /* 과거에 함께 쓴 사람. 가계부를 지우면 이 사람들의 읽기 전용 접근도 함께 사라지므로 확인 모달에서 알립니다. */
   const formerMembers = (members.data ?? []).filter((member) => member.userId !== me.data?.user.id && member.status === 'FORMER')
   const isOwner = viewer?.role === 'OWNER'
   const isShared = isSharedLedgerType(currentLedger?.type)
@@ -222,13 +222,13 @@ export function UserSettingsPage() {
     }
     if (confirm.kind === 'delete') {
       deleteLedger.mutate(undefined, {
-        onSuccess: () => { setConfirm(null); setConfirmText(''); showToast('장부를 삭제했어요') },
-        onError: () => showToast('장부를 삭제하지 못했어요. 함께 쓰는 사람이 있는지 확인해주세요'),
+        onSuccess: () => { setConfirm(null); setConfirmText(''); showToast('가계부를 삭제했어요') },
+        onError: () => showToast('가계부를 삭제하지 못했어요. 함께 쓰는 사람이 있는지 확인해주세요'),
       })
       return
     }
     leaveLedger.mutate(undefined, {
-      onSuccess: () => { setConfirm(null); setConfirmText(''); showToast('장부에서 나갔어요') },
+      onSuccess: () => { setConfirm(null); setConfirmText(''); showToast('가계부에서 나갔어요') },
     })
   }
 
@@ -287,7 +287,7 @@ export function UserSettingsPage() {
     const nextHidden = !group.hidden
     updateGroupVisibility.mutate(
       { groupCode: group.code, hidden: nextHidden },
-      { onSuccess: () => showToast(nextHidden ? `${group.name}을 이 장부에서 숨겼어요` : `${group.name}을 다시 보이게 했어요`) },
+      { onSuccess: () => showToast(nextHidden ? `${group.name}을 이 가계부에서 숨겼어요` : `${group.name}을 다시 보이게 했어요`) },
     )
   }
 
@@ -326,7 +326,7 @@ export function UserSettingsPage() {
 
   return (
     <>
-      <AppHeader description={`프로필과 ${savedName || '내 장부'}의 장부, 멤버, 카테고리, 알림을 관리해요`} title="설정" />
+      <AppHeader description={`프로필과 ${savedName || '내 가계부'} 설정, 멤버, 카테고리, 알림을 관리해요`} title="설정" />
 
       <div className="settings-layout">
         <nav className="settings-tabs">
@@ -350,7 +350,7 @@ export function UserSettingsPage() {
           {!isLoading && !hasError && tab === 'profile' ? (
             <section style={{ maxWidth: 760 }}>
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '-.015em' }}>프로필</h2>
-              <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--wl-color-text-secondary)' }}>공동 장부에서 상대방에게 보이는 이름이에요.</p>
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--wl-color-text-secondary)' }}>공동 가계부에서 상대방에게 보이는 이름이에요.</p>
 
               <div style={{ marginTop: 20, maxWidth: 420 }}>
                 <Input
@@ -369,12 +369,12 @@ export function UserSettingsPage() {
 
           {!isLoading && !hasError && tab === 'ledger' ? (
             <section style={{ maxWidth: 760 }}>
-              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '-.015em' }}>장부</h2>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '-.015em' }}>가계부</h2>
 
               <div style={{ marginTop: 20, maxWidth: 420 }}>
                 <Input
                   id="settings-ledger-name"
-                  label="장부 이름"
+                  label="가계부 이름"
                   maxLength={30}
                   onChange={(event) => setNameDraft(event.target.value)}
                   value={nameValue}
@@ -422,17 +422,17 @@ export function UserSettingsPage() {
 
               {isShared ? (
                 <div style={{ marginTop: 32, paddingTop: 22, borderTop: '1px solid var(--wl-color-border)' }}>
-                  <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: 'var(--wl-color-danger)' }}>장부에서 나가기</h3>
+                  <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: 'var(--wl-color-danger)' }}>가계부에서 나가기</h3>
                   <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.6, color: 'var(--wl-color-text-secondary)' }}>
                     {isOwner
                       ? partner
                         ? `소유자는 바로 나갈 수 없어요. ${partner.nickname}님에게 소유권을 넘기면 탈퇴할 수 있어요.`
                         : '소유자는 바로 나갈 수 없어요. 넘길 멤버가 없으면 탈퇴할 수 없어요.'
-                      : '나가면 이 장부에 거래를 기록하거나 예산을 바꿀 수 없어요. 참여했던 기간은 읽기 전용으로 볼 수 있어요.'}
+                      : '나가면 이 가계부에 거래를 기록하거나 예산을 바꿀 수 없어요. 참여했던 기간은 읽기 전용으로 볼 수 있어요.'}
                   </p>
                   {isOwner && !partner ? (
                     <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: 1.6, color: 'var(--wl-color-text-secondary)' }}>
-                      함께 쓰는 사람이 없으면 장부를 삭제할 수 있어요. 나가기와 달리 장부 자체가 사라져요.
+                      함께 쓰는 사람이 없으면 가계부를 삭제할 수 있어요. 나가기와 달리 가계부 자체가 사라져요.
                     </p>
                   ) : null}
                   <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
@@ -462,7 +462,7 @@ export function UserSettingsPage() {
                       }}
                       type="button"
                     >
-                      장부 탈퇴
+                      가계부 탈퇴
                     </button>
                     {isOwner && !partner ? (
                       <button
@@ -479,7 +479,7 @@ export function UserSettingsPage() {
                         }}
                         type="button"
                       >
-                        장부 삭제
+                        가계부 삭제
                       </button>
                     ) : null}
                   </div>
@@ -491,7 +491,7 @@ export function UserSettingsPage() {
           {!isLoading && !hasError && tab === 'members' ? (
             <section style={{ maxWidth: 760 }}>
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '-.015em' }}>멤버</h2>
-              <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--wl-color-text-secondary)' }}>공동 장부는 두 명까지 함께 써요.</p>
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--wl-color-text-secondary)' }}>공동 가계부는 두 명까지 함께 써요.</p>
 
               {members.isLoading ? <Skeleton height={140} radius={12} /> : null}
               {members.isError ? <ErrorState description="멤버 정보를 다시 불러와주세요." onRetry={() => members.refetch()} /> : null}
@@ -552,7 +552,7 @@ export function UserSettingsPage() {
                   {isOwner ? (
                     <>
                       <p style={{ margin: '7px 0 0', fontSize: 12.5, lineHeight: 1.6, color: 'var(--wl-color-text-secondary)' }}>
-                        링크는 만든 뒤 30분 동안만 쓸 수 있고, 장부마다 한 개만 살아 있어요. 새로 만들면 이전 링크는 바로 끊겨요.
+                        링크는 만든 뒤 30분 동안만 쓸 수 있고, 가계부마다 한 개만 살아 있어요. 새로 만들면 이전 링크는 바로 끊겨요.
                       </p>
                       {invitation ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, animation: 'wl-fade-up 200ms var(--ease-out-strong) both' }}>
@@ -600,7 +600,7 @@ export function UserSettingsPage() {
                       </div>
                     </>
                   ) : (
-                    <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>초대 링크는 장부 소유자만 만들 수 있어요.</p>
+                    <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>초대 링크는 가계부 소유자만 만들 수 있어요.</p>
                   )}
                 </div>
               ) : null}
@@ -612,7 +612,7 @@ export function UserSettingsPage() {
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: '-.015em' }}>카테고리</h2>
-                  <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--wl-color-text-secondary)' }}>대분류를 선택해서 원하는 소분류를 추가할 수 있어요.</p>
+                  <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--wl-color-text-secondary)' }}>카테고리를 선택해서 원하는 세부 카테고리를 추가할 수 있어요.</p>
                 </div>
               </div>
 
@@ -649,13 +649,13 @@ export function UserSettingsPage() {
                           >
                             <span style={{ minWidth: 0, textAlign: 'left' }}>
                               <strong style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</strong>
-                              <span style={{ display: 'block', marginTop: 3, fontSize: 11.5, color: 'var(--wl-color-text-secondary)' }}>{kindLabel(group.type)} · 소분류 {count}개</span>
+                              <span style={{ display: 'block', marginTop: 3, fontSize: 11.5, color: 'var(--wl-color-text-secondary)' }}>{kindLabel(group.type)} · 세부 카테고리 {count}개</span>
                             </span>
                           </button>
                         </li>
                       )
                     })}
-                    {!groups.length ? <EmptyState description="장부에 카테고리 대분류가 아직 없어요." title="대분류가 없어요" /> : null}
+                    {!groups.length ? <EmptyState description="가계부에 카테고리가 아직 없어요." title="카테고리가 없어요" /> : null}
                   </ul>
 
                   {activeGroup ? (
@@ -663,7 +663,7 @@ export function UserSettingsPage() {
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
                         <div style={{ minWidth: 0 }}>
                           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{activeGroup.name}</h3>
-                          <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>{kindLabel(activeGroup.type)} 대분류예요. 대분류 이름과 개수는 바꿀 수 없어요.</p>
+                          <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>{kindLabel(activeGroup.type)} 카테고리예요. 카테고리 이름과 개수는 바꿀 수 없어요.</p>
                         </div>
                         <button
                           aria-pressed={activeGroup.hidden}
@@ -673,7 +673,7 @@ export function UserSettingsPage() {
                           type="button"
                         >
                           <SwitchTrack on={activeGroup.hidden} />
-                          이 장부에서 숨기기
+                          이 가계부에서 숨기기
                         </button>
                       </div>
 
@@ -684,7 +684,7 @@ export function UserSettingsPage() {
                             key={category.id}
                           >
                             <input
-                              aria-label="소분류 이름"
+                              aria-label="세부 카테고리 이름"
                               className="wl-input"
                               defaultValue={category.name}
                               key={category.id}
@@ -692,7 +692,7 @@ export function UserSettingsPage() {
                               style={{ minWidth: 0, height: 40, padding: '0 8px', marginLeft: -8, border: '1px solid transparent', borderRadius: 9, background: 'transparent', fontSize: 14, fontWeight: 600 }}
                               type="text"
                             />
-                            {/* TODO(api): 소분류별 거래 건수는 GET /api/ledgers/{ledgerId}/categories 응답에 필드가 없어 표시할 수 없습니다. */}
+                            {/* TODO(api): 세부 카테고리별 거래 건수는 GET /api/ledgers/{ledgerId}/categories 응답에 필드가 없어 표시할 수 없습니다. */}
                             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, color: 'var(--wl-color-text-secondary)', whiteSpace: 'nowrap' }}>
                               <input
                                 checked={Boolean(applyPastByCategoryId[category.id])}
@@ -712,15 +712,15 @@ export function UserSettingsPage() {
                             </button>
                           </li>
                         ))}
-                        {!subs.length ? <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>아직 소분류가 없어요.</p> : null}
+                        {!subs.length ? <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>아직 세부 카테고리가 없어요.</p> : null}
                       </ul>
 
                       <div style={{ display: 'flex', gap: 8, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--wl-color-border)' }}>
                         <input
-                          aria-label="새 소분류 이름"
+                          aria-label="새 세부 카테고리 이름"
                           className="wl-input"
                           onChange={(event) => { setNewSubName(event.target.value); setDupWarning(false) }}
-                          placeholder="소분류 추가"
+                          placeholder="세부 카테고리 추가"
                           style={{ flex: 1, minWidth: 0, height: 44, padding: '0 12px', fontSize: 14 }}
                           type="text"
                           value={newSubName}
@@ -729,7 +729,7 @@ export function UserSettingsPage() {
                       </div>
                       {dupWarning ? (
                         <p role="alert" style={{ margin: '9px 0 0', fontSize: 12.5, color: 'var(--wl-color-danger)', animation: 'wl-fade-up 180ms var(--ease-out-strong) both' }}>
-                          같은 대분류 안에는 이름이 같은 소분류를 둘 수 없어요.
+                          같은 카테고리 안에는 이름이 같은 세부 카테고리를 둘 수 없어요.
                         </p>
                       ) : null}
                     </div>
@@ -752,7 +752,7 @@ export function UserSettingsPage() {
                   {[
                     { id: 'warn80' as const, label: '예산 사용률 80% 주의', note: '공동 예산과 내 예산이 80%에 닿으면 알려드려요.', locked: false, on: preferences.data.budgetWarning80Enabled },
                     { id: 'over100' as const, label: '예산 소진과 초과', note: '다 쓰거나 초과하면 반드시 알려요. 이 알림은 끌 수 없어요.', locked: true, on: true },
-                    { id: 'weekly' as const, label: '일요일 주간 예산 가이드', note: '매주 일요일 저녁에 다음 주 권장액을 정리해 드려요.', locked: false, on: preferences.data.weeklyGuideEnabled },
+                    { id: 'weekly' as const, label: '일요일 주간 권장액', note: '매주 일요일 저녁에 다음 주 권장액을 정리해 드려요.', locked: false, on: preferences.data.weeklyGuideEnabled },
                     { id: 'change' as const, label: '공동 예산 변경', note: '상대방이 예산을 바꾸면 반드시 알려요. 이 알림은 끌 수 없어요.', locked: true, on: true },
                   ].map((notice) => (
                     <li key={notice.id}>
@@ -793,9 +793,9 @@ export function UserSettingsPage() {
           nicknameDirty
             ? `'${(nicknameDraft ?? '').trim()}'(으)로 닉네임이 바뀌어요`
             : nameDirty && budgetCycleDirty
-              ? '장부 이름과 예산 기간 시작일이 바뀌어요'
+              ? '가계부 이름과 예산 기간 시작일이 바뀌어요'
               : nameDirty
-                ? `'${(nameDraft ?? '').trim()}'(으)로 장부 이름이 바뀌어요`
+                ? `'${(nameDraft ?? '').trim()}'(으)로 가계부 이름이 바뀌어요`
                 : budgetCycleDirty
                   ? '예산 기간 시작일이 바뀌어요'
                   : undefined
@@ -827,7 +827,7 @@ export function UserSettingsPage() {
           </span>
           <h2 style={{ margin: '16px 0 0', fontSize: 19, fontWeight: 800, letterSpacing: '-.025em', lineHeight: 1.35, wordBreak: 'keep-all' }}>
             {confirm.kind === 'remove'
-              ? `${confirm.memberName}님을 이 장부에서 내보낼까요?`
+              ? `${confirm.memberName}님을 이 가계부에서 내보낼까요?`
               : confirm.kind === 'delete'
                 ? `'${savedName}'을 삭제할까요?`
                 : `'${savedName}'에서 나갈까요?`}
@@ -836,8 +836,8 @@ export function UserSettingsPage() {
             {confirm.kind === 'remove'
               ? `'${savedName}'에서 ${confirm.memberName}님을 내보내면 다시 초대하기 전에는 함께 기록할 수 없어요.`
               : confirm.kind === 'delete'
-                ? '삭제하면 이 장부의 거래, 예산, 반복 거래가 모두 사라져요. 되돌릴 수 없어요.'
-                : '나가면 이 장부에 거래를 기록하거나 예산을 바꿀 수 없어요. 참여했던 기간은 읽기 전용으로 볼 수 있어요.'}
+                ? '삭제하면 이 가계부의 거래, 예산, 자동 기록이 모두 사라져요. 되돌릴 수 없어요.'
+                : '나가면 이 가계부에 거래를 기록하거나 예산을 바꿀 수 없어요. 참여했던 기간은 읽기 전용으로 볼 수 있어요.'}
           </p>
           <ul style={{ display: 'grid', gap: 9, margin: '18px 0 0', padding: 16, borderRadius: 'var(--wl-radius-md)', background: 'var(--wl-color-surface-subtle)', listStyle: 'none' }}>
             {(confirm.kind === 'delete'
@@ -845,19 +845,19 @@ export function UserSettingsPage() {
                   ...(formerMembers.length > 0
                     ? [`${formerMembers.map((member) => member.nickname).join(', ')}님이 참여했던 기간을 더 이상 볼 수 없게 돼요.`]
                     : []),
-                  '아직 살아 있는 초대 링크가 있으면 끊겨요. 링크를 받은 사람에게는 삭제된 장부라고 안내해요.',
-                  '삭제한 뒤에는 다른 장부로 이동해요. 개인 장부는 그대로 남아요.',
+                  '아직 살아 있는 초대 링크가 있으면 끊겨요. 링크를 받은 사람에게는 삭제된 가계부라고 안내해요.',
+                  '삭제한 뒤에는 다른 가계부로 이동해요. 개인 가계부는 그대로 남아요.',
                 ]
               : confirm.kind === 'remove'
               ? [
                   `내보낸 뒤에도 ${confirm.memberName}님은 함께했던 기간을 읽기 전용으로 볼 수 있어요.`,
-                  '고정비, 할부와 반복 거래의 자동 등록이 모두 일시정지되고 알림으로 알려드려요.',
+                  '반복 지출과 할부의 자동 기록이 모두 일시정지되고 알림으로 알려드려요.',
                   `${confirm.memberName}님에게도 알림이 가요. 기록된 거래와 예산은 지워지지 않아요.`,
                 ]
               : [
                   '나간 뒤에도 내가 참여했던 기간은 읽기 전용으로 볼 수 있어요.',
-                  '공개하지 않았던 내 개인 거래는 이후에도 상대방에게 보이지 않아요.',
-                  '고정비, 할부와 반복 거래의 자동 등록은 일시정지되고 남은 사람이 다시 켜야 해요.',
+                  '나만 보기로 한 거래는 이후에도 상대방에게 보이지 않아요.',
+                  '반복 지출과 할부의 자동 기록은 일시정지되고 남은 사람이 다시 켜야 해요.',
                 ]
             ).map((text) => (
               <li key={text} style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.6, color: 'var(--wl-color-text-body)' }}>
@@ -886,7 +886,7 @@ export function UserSettingsPage() {
               size="lg"
               variant="danger"
             >
-              {confirm.kind === 'remove' ? '내보내기' : confirm.kind === 'delete' ? '장부 삭제' : '장부에서 나가기'}
+              {confirm.kind === 'remove' ? '내보내기' : confirm.kind === 'delete' ? '가계부 삭제' : '가계부에서 나가기'}
             </Button>
           </div>
         </Modal>

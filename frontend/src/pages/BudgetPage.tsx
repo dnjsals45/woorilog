@@ -136,7 +136,7 @@ export function BudgetPage() {
       <div>
         <AppHeader title="예산 설정" />
         <div style={{ padding: '60px 32px', display: 'flex', justifyContent: 'center' }}>
-          <EmptyState description="현재 장부의 예산 기간을 먼저 준비해주세요." title="예산 기간이 없습니다." />
+          <EmptyState description="현재 가계부의 예산 기간을 먼저 준비해주세요." title="예산 기간이 없습니다." />
         </div>
       </div>
     )
@@ -347,7 +347,7 @@ function BudgetConfigurationBody({
     ? localOver > 0
       ? raiseConfirmed
         ? `전체 예산을 ${won(sumAllocated)}으로 올려서 저장해요`
-        : '배분 합계가 전체 예산을 넘어서 저장할 수 없어요'
+        : '나눈 금액 합계가 전체 예산을 넘어서 저장할 수 없어요'
       : `예비비는 ${won(availableReserve)}으로 저장돼요`
     : undefined
 
@@ -461,7 +461,7 @@ function BudgetConfigurationBody({
             <Icon name="circle-alert" size="md" />
             <div style={{ minWidth: 0 }}>
               <strong style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--wl-warning)' }}>
-                배분 합계가 전체 예산보다 {won(localOver)} 많아요
+                나눈 금액 합계가 전체 예산보다 {won(localOver)} 많아요
               </strong>
               <button
                 aria-checked={raiseConfirmed}
@@ -514,7 +514,7 @@ function BudgetConfigurationBody({
             role="alert"
           >
             <strong style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--wl-warning)' }}>
-              대분류 예산 합계가 배분보다 많아 전체 예산을 올려야 해요
+              카테고리 예산 합계가 나눈 금액보다 많아 전체 예산을 올려야 해요
             </strong>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--wl-warning)' }}>
               <input checked={raiseConfirmed} onChange={(event) => setRaiseConfirmed(event.target.checked)} type="checkbox" />
@@ -524,13 +524,13 @@ function BudgetConfigurationBody({
         ) : null}
       </section>
 
-      {/* 예산 배분 */}
+      {/* 예산 나누기 */}
       <section>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
           <h2 className="wl-section-title" style={{ margin: 0 }}>
-            예산 배분
+            예산 나누기
           </h2>
-          {isSharedLedger ? <span className="wl-meta">상대방 할당액도 함께 정할 수 있어요</span> : null}
+          {isSharedLedger ? <span className="wl-meta">상대방 몫도 함께 정할 수 있어요</span> : null}
         </div>
 
         <div
@@ -653,14 +653,14 @@ function BudgetConfigurationBody({
                 {won(availableReserve)}
               </p>
               <p style={{ margin: '12px 0 0', fontSize: 12, lineHeight: 1.5, color: 'var(--wl-color-text-secondary)' }}>
-                전체 예산에서 배분하고 남은 금액이에요
+                전체 예산에서 나누고 남은 금액이에요
               </p>
             </div>
           ) : null}
         </div>
       </section>
 
-      {/* 대분류 예산 + 예비비 옮기기 */}
+      {/* 카테고리 예산 + 예비비 옮기기 */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div
           style={{
@@ -673,7 +673,7 @@ function BudgetConfigurationBody({
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }}>
             <h2 className="wl-list-title" style={{ margin: 0 }}>
-              {isSharedLedger ? '공동 예산의 대분류 예산' : '내 예산의 대분류 예산'}
+              {isSharedLedger ? '공동 예산의 카테고리 예산' : '내 예산의 카테고리 예산'}
             </h2>
             <span className="wl-tabular wl-meta">
               {isSharedLedger ? '공동 예산' : '내 예산'} {won(catBase)} 중 {won(catSum)}
@@ -711,7 +711,7 @@ function BudgetConfigurationBody({
             </ul>
           ) : (
             <div style={{ marginTop: 14 }}>
-              <EmptyState description="대분류 예산이 아직 없어요." title="대분류 예산이 없어요" />
+              <EmptyState description="카테고리 예산이 아직 없어요." title="카테고리 예산이 없어요" />
             </div>
           )}
         </div>

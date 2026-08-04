@@ -17,26 +17,26 @@ import { Icon } from '../../shared/ui/Icon'
  * react-router 클라이언트 라우팅으로 넘깁니다. */
 const NAVIGATION: (NavItem & { to: string })[] = [
   { id: 'dashboard', label: '홈', icon: 'house', to: '/dashboard', href: '/dashboard' },
-  { id: 'transactions', label: '가계부', icon: 'receipt', to: '/transactions', href: '/transactions' },
-  { id: 'recurring', label: '반복 거래', icon: 'rotate-ccw', to: '/recurring', href: '/recurring' },
+  { id: 'transactions', label: '거래 내역', icon: 'receipt', to: '/transactions', href: '/transactions' },
+  { id: 'recurring', label: '자동 기록', icon: 'rotate-ccw', to: '/recurring', href: '/recurring' },
   { id: 'budget', label: '예산 설정', icon: 'wallet', to: '/budget', href: '/budget' },
   { id: 'analysis', label: '분석', icon: 'chart-pie', to: '/analysis', href: '/analysis' },
 ]
 
 /* 모바일 바텀 탭바는 5칸입니다. 데스크톱 사이드바 5종을 그대로 넣으면
- * 설정·장부 전환·도움말이 갈 곳이 없어져서, 하루에 여러 번 오가는 네 화면만 탭으로 두고
- * 나머지는 "더보기" 시트로 모읍니다. 반복 거래는 한 번 만들어두고 가끔 고치는 관리 화면이라
+ * 설정·가계부 전환·도움말이 갈 곳이 없어져서, 하루에 여러 번 오가는 네 화면만 탭으로 두고
+ * 나머지는 "더보기" 시트로 모읍니다. 자동 기록은 한 번 만들어두고 가끔 고치는 관리 화면이라
  * 여기로 내렸습니다 — 사라진 게 아니라 시트 맨 위에 있습니다. */
 const MOBILE_TABS: MobileTab[] = [
   { id: 'dashboard', label: '홈', icon: 'house', href: '/dashboard' },
-  { id: 'transactions', label: '가계부', icon: 'receipt', href: '/transactions' },
+  { id: 'transactions', label: '거래 내역', icon: 'receipt', href: '/transactions' },
   { id: 'budget', label: '예산', icon: 'wallet', href: '/budget' },
   { id: 'analysis', label: '분석', icon: 'chart-pie', href: '/analysis' },
   { id: 'more', label: '더보기', icon: 'ellipsis' },
 ]
 
 /* FAB 은 "거래 추가"입니다. 거래를 적을 맥락이 아닌 화면에서는 쓸모가 없고,
- * 화면 아래쪽 버튼과 겹쳐 그걸 누르지 못하게 만듭니다(장부 만들기의 '링크 다시 만들기'). */
+ * 화면 아래쪽 버튼과 겹쳐 그걸 누르지 못하게 만듭니다(가계부 만들기의 '링크 다시 만들기'). */
 const FAB_HIDDEN_PREFIXES = ['/ledgers', '/settings', '/help']
 
 /* 탭 하나에 여러 경로가 걸립니다. 시트에서만 갈 수 있는 화면도 어떤 탭을 밝힐지 정해둡니다. */
@@ -92,7 +92,7 @@ export function AppShell() {
   }
 
   const isShared = (type: string | undefined) => type === 'GROUP' || type === 'SHARED'
-  // 나간 사람까지 세면 혼자 쓰는 장부가 '공동 · 2명'으로 보입니다.
+  // 나간 사람까지 세면 혼자 쓰는 가계부가 '공동 · 2명'으로 보입니다.
   const memberCount = membersQuery.data?.filter((member) => member.status === 'ACTIVE').length ?? 0
   const memberNames = membersQuery.data?.map((member) => member.nickname).join(' · ')
 
@@ -100,7 +100,7 @@ export function AppShell() {
     ? {
         name: currentLedger.name,
         initials: initialsOf(currentLedger.name),
-        members: isShared(currentLedger.type) ? `공동 · ${memberCount}명` : '개인 장부',
+        members: isShared(currentLedger.type) ? `공동 · ${memberCount}명` : '개인 가계부',
       }
     : undefined
 
@@ -158,7 +158,7 @@ export function AppShell() {
               meQuery.data
                 ? {
                     name: meQuery.data.user.nickname,
-                    role: isShared(currentLedger?.type) ? '공동 장부' : '개인 장부',
+                    role: isShared(currentLedger?.type) ? '공동 가계부' : '개인 가계부',
                     initials: initialsOf(meQuery.data.user.nickname),
                   }
                 : undefined
@@ -225,7 +225,7 @@ export function AppShell() {
                 <button className="wl-sheet-option" onClick={() => goto('/recurring')} type="button">
                   <Icon name="rotate-ccw" size="lg" />
                   <span>
-                    <strong>반복 거래</strong>
+                    <strong>자동 기록</strong>
                     <small>고정비와 할부를 한 곳에서 관리해요</small>
                   </span>
                 </button>
@@ -241,8 +241,8 @@ export function AppShell() {
                 >
                   <Icon name="users" size="lg" />
                   <span>
-                    <strong>장부 전환</strong>
-                    <small>{ledgerChip ? `${ledgerChip.name} · ${ledgerChip.members}` : '장부를 불러오는 중'}</small>
+                    <strong>가계부 전환</strong>
+                    <small>{ledgerChip ? `${ledgerChip.name} · ${ledgerChip.members}` : '가계부를 불러오는 중'}</small>
                   </span>
                   <Icon name="chevron-right" size="sm" />
                 </button>
@@ -286,7 +286,7 @@ export function AppShell() {
               <span style={{ flex: 1, minWidth: 0 }}>
                 <strong style={{ display: 'block', fontSize: 14, fontWeight: 650 }}>{meQuery.data?.user.nickname}</strong>
                 <small style={{ color: 'var(--wl-color-text-secondary)', fontSize: 11.5 }}>
-                  {isShared(currentLedger?.type) ? '공동 장부' : '개인 장부'}
+                  {isShared(currentLedger?.type) ? '공동 가계부' : '개인 가계부'}
                 </small>
               </span>
               <button
@@ -303,7 +303,7 @@ export function AppShell() {
         ) : null}
 
         {isMobile && ledgerSheetOpen ? (
-          <Sheet onClose={() => setLedgerSheetOpen(false)} title="장부 전환">
+          <Sheet onClose={() => setLedgerSheetOpen(false)} title="가계부 전환">
             <ul className="wl-sheet-list">
               {(ledgerOptions ?? []).map((ledger) => (
                 <li key={ledger.name}>
@@ -336,7 +336,7 @@ export function AppShell() {
             >
               <Icon name="plus" size="lg" />
               <span>
-                <strong>새 공동 장부 만들기</strong>
+                <strong>새 공동 가계부 만들기</strong>
               </span>
             </button>
           </Sheet>

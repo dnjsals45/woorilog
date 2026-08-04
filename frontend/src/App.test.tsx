@@ -7,7 +7,7 @@ import App from './App'
 import { clearAccessToken, setAccessToken } from './shared/api/client'
 
 const user = { id: 1, nickname: '개발자', nicknameConfirmed: true, timezone: 'Asia/Seoul' }
-const ledger = { id: 1, name: '내 장부', type: 'PERSONAL', role: 'OWNER', status: 'ACTIVE' }
+const ledger = { id: 1, name: '내 가계부', type: 'PERSONAL', role: 'OWNER', status: 'ACTIVE' }
 
 function response(body: unknown, status = 200) {
   return Promise.resolve(new Response(body === undefined ? null : JSON.stringify(body), {
@@ -86,7 +86,7 @@ describe('App V1 routes', () => {
   it('shows a public invitation preview before login', async () => {
     installApiMock((url) => url.pathname === '/api/invitations/links/invite-token' ? response({
       invitationId: 2,
-      ledgerName: '우리 공동 장부',
+      ledgerName: '우리 공동 가계부',
       inviter: { id: 2, nickname: '초대한 사람' },
       status: 'PENDING',
       expiresAt: '2026-07-31T23:59:00+09:00',
@@ -96,7 +96,7 @@ describe('App V1 routes', () => {
       budgetCycle: { startType: 'DAY_OF_MONTH', startDay: 1 },
     }) : undefined)
     renderApp('/invitations/invite-token')
-    expect(await screen.findByRole('heading', { level: 2, name: '우리 공동 장부' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 2, name: '우리 공동 가계부' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '로그인하고 확인하기' })).toHaveAttribute('href', '/login')
   })
 
@@ -113,8 +113,8 @@ describe('App V1 routes', () => {
     renderApp('/dashboard')
     expect(await screen.findByRole('navigation', { name: '주요 메뉴' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('href', '/dashboard')
-    expect(screen.getByRole('link', { name: '가계부' })).toHaveAttribute('href', '/transactions')
-    expect(screen.getByRole('link', { name: '반복 거래' })).toHaveAttribute('href', '/recurring')
+    expect(screen.getByRole('link', { name: '거래 내역' })).toHaveAttribute('href', '/transactions')
+    expect(screen.getByRole('link', { name: '자동 기록' })).toHaveAttribute('href', '/recurring')
     expect(screen.getByRole('link', { name: '예산 설정' })).toHaveAttribute('href', '/budget')
     expect(screen.getByRole('link', { name: '분석' })).toHaveAttribute('href', '/analysis')
     expect(screen.queryByRole('link', { name: '캘린더' })).not.toBeInTheDocument()

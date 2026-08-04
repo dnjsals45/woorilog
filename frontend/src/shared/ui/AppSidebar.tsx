@@ -5,7 +5,7 @@ import type { IconName } from './Icon'
 import woorilogLogo from '../../assets/logo/woorilog-logo.svg'
 
 /* 데스크톱 좌측 사이드바. 폭 232px 고정, 화면 전체 높이에 sticky.
- * ledgers를 넘기면 장부 칩이 스위처(드롭다운)가 되고, 안 넘기면 정적 칩입니다. */
+ * ledgers를 넘기면 가계부 칩이 스위처(드롭다운)가 되고, 안 넘기면 정적 칩입니다. */
 const NAV_BASE: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -67,13 +67,13 @@ export interface NavItem {
 }
 
 /**
- * 데스크톱 좌측 사이드바 — 로고 · 장부 칩 · 내비 · 설정 · 사용자.
+ * 데스크톱 좌측 사이드바 — 로고 · 가계부 칩 · 내비 · 설정 · 사용자.
  * 폭 232px 고정이며 화면 높이에 sticky합니다. 모든 제품 화면의 첫 요소입니다.
  */
 export interface AppSidebarProps {
   logoSrc?: string
   ledger?: LedgerRef
-  /** 넘기면 장부 칩이 드롭다운 스위처가 됩니다. 화면이 장부를 못 바꾸면 생략하세요. */
+  /** 넘기면 가계부 칩이 드롭다운 스위처가 됩니다. 화면이 가계부를 못 바꾸면 생략하세요. */
   ledgers?: LedgerRef[]
   onSelectLedger?: (ledger: LedgerRef) => void
   createLedgerHref?: string
@@ -82,7 +82,7 @@ export interface AppSidebarProps {
   onNavigate?: (id: string) => void
   settingsHref?: string
   user?: { name: string; role?: string; initials?: string }
-  /* 아래 둘은 이 저장소에서 추가한 prop 입니다. 원본은 설정과 장부 생성을 <a href> 로만 그리는데
+  /* 아래 둘은 이 저장소에서 추가한 prop 입니다. 원본은 설정과 가계부 생성을 <a href> 로만 그리는데
    * react-router SPA 에서는 전체 새로고침이 일어납니다. 넘기면 같은 모양의 <button> 으로 그립니다. */
   onSettings?: () => void
   onCreateLedger?: () => void
@@ -293,7 +293,7 @@ export function AppSidebar({
                     fontWeight: 700,
                   }}
                 >
-                  <Icon name="plus" size="sm" />새 공동 장부 만들기
+                  <Icon name="plus" size="sm" />새 공동 가계부 만들기
                 </ChipAction>
               ) : null}
             </div>

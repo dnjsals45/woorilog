@@ -43,7 +43,7 @@ export function LoginPage() {
           <Link className="inline-flex items-center gap-2 text-sm font-bold text-[var(--wl-color-primary-dark)]" to="/"><ArrowLeft size={18} aria-hidden="true" />처음으로</Link>
           <div className="mt-12 flex items-center gap-2 text-[var(--wl-color-primary-dark)]"><WalletCards size={30} aria-hidden="true" /><span className="text-xl font-bold">우리로그</span></div>
           <h1 className="mt-8 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">함께 쓰는 돈을<br />가볍게 기록하세요.</h1>
-          <p className="mt-5 text-base leading-7 text-slate-600">공동 장부, 월 예산, 반복 거래를 한 흐름으로. 내 소비와 우리의 생활비를 더 선명하게 살펴볼 수 있어요.</p>
+          <p className="mt-5 text-base leading-7 text-slate-600">공동 가계부, 예산, 자동 기록을 한 흐름으로. 내 소비와 우리의 생활비를 더 선명하게 살펴볼 수 있어요.</p>
         </div>
         <form className="auth-card p-6 sm:p-8" onSubmit={handleSubmit}>
           <h2 className="text-2xl font-bold text-slate-950">우리로그 시작하기</h2><p className="mt-2 text-sm leading-6 text-slate-500">카카오 계정으로 안전하고 간편하게 로그인하세요.</p>

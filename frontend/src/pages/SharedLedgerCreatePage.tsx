@@ -14,7 +14,7 @@ export type CreatedSharedLedger = { id: number; name: string }
 export type SharedLedgerInvitation = { url: string; expiresAt: string }
 
 export type SharedLedgerCreatePageProps = {
-  /** 장부가 만들어지면 초대 링크 단계로 전환합니다. */
+  /** 가계부가 만들어지면 초대 링크 단계로 전환합니다. */
   ledger?: CreatedSharedLedger | null
   isCreating?: boolean
   createError?: string | null
@@ -25,7 +25,7 @@ export type SharedLedgerCreatePageProps = {
   onRegenerateInvitation?: () => void | Promise<void>
   /** 복사 성공 여부를 돌려줍니다. false면 "길게 눌러 복사하세요" 안내를 띄웁니다. */
   onCopyInvitation?: (url: string) => boolean | Promise<boolean>
-  /** '장부로 이동' 클릭 시 호출합니다. */
+  /** '가계부로 이동' 클릭 시 호출합니다. */
   onDone?: () => void
 }
 
@@ -135,17 +135,17 @@ function FormStep({
   return (
     <div>
       <h1 className="wl-page-title" style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-.03em' }}>
-        공동 장부 만들기
+        공동 가계부 만들기
       </h1>
       <p style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.6, color: 'var(--wl-color-text-secondary)' }}>
-        한 기간에 함께 쓸 전체 예산과 예산 기간을 먼저 정해요. 배분은 상대방이 참여한 뒤 함께 정합니다.
+        한 기간에 함께 쓸 전체 예산과 예산 기간을 먼저 정해요. 예산 나누기는 상대방이 참여한 뒤 함께 정합니다.
       </p>
 
       <div style={{ display: 'grid', gap: 22, marginTop: 26 }}>
         <Input
           hint="둘이 함께 볼 이름이에요. 나중에 설정에서 바꿀 수 있어요."
           id="shared-ledger-name"
-          label="장부 이름"
+          label="가계부 이름"
           maxLength={30}
           onChange={(event) => onNameChange(event.target.value)}
           placeholder="예: 우리 생활비"
@@ -247,7 +247,7 @@ function FormStep({
           취소
         </Link>
         <Button disabled={disabled || isCreating} loading={isCreating} onClick={onSubmit} size="lg">
-          장부 만들고 초대하기
+          가계부 만들고 초대하기
         </Button>
       </div>
     </div>
@@ -291,7 +291,7 @@ function DoneStep({
         <Icon name="check" size="lg" />
       </span>
       <h1 className="wl-page-title" style={{ margin: '18px 0 0', fontSize: 22, fontWeight: 800, letterSpacing: '-.03em' }}>
-        {ledgerName} 장부를 만들었어요
+        {ledgerName} 가계부를 만들었어요
       </h1>
       <p style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.6, color: 'var(--wl-color-text-secondary)' }}>
         이제 함께 쓸 상대방을 초대하세요. 링크는 만든 뒤 30분 동안만 쓸 수 있어요.
@@ -357,7 +357,7 @@ function DoneStep({
       >
         <li>새 링크를 만들면 이전 링크는 바로 쓸 수 없게 돼요.</li>
         <li>상대방이 수락하면 링크가 즉시 만료돼요.</li>
-        <li>예산 배분은 두 사람이 모두 참여한 뒤에 함께 정해요.</li>
+        <li>예산 나누기는 두 사람이 모두 참여한 뒤에 함께 정해요.</li>
       </ul>
 
       <div className="ledger-create-footer ledger-create-footer--between">
@@ -378,7 +378,7 @@ function DoneStep({
           링크 다시 만들기
         </button>
         <Button onClick={onDone} size="lg">
-          장부로 이동
+          가계부로 이동
         </Button>
       </div>
     </div>
@@ -450,9 +450,9 @@ export function SharedLedgerCreatePage({
     <div>
       <AppHeader
         description={
-          isDone ? '이제 함께 쓸 상대방을 초대해요.' : '예산 기간과 전체 예산을 먼저 정하고, 배분은 나중에 함께 정해요.'
+          isDone ? '이제 함께 쓸 상대방을 초대해요.' : '예산 기간과 전체 예산을 먼저 정하고, 예산 나누기는 나중에 함께 정해요.'
         }
-        title="공동 장부 만들기"
+        title="공동 가계부 만들기"
       />
       <div className="ledger-create-shell">
         <div

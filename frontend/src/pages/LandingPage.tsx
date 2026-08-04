@@ -22,7 +22,7 @@ const BUDGET_SPLIT = [
 const COMPARISON_ROWS = [
   { label: '혼자 쓰면', body: '한 사람이 영수증을 모으고, 나머지 한 사람은 결과만 듣습니다.', tone: 'muted' },
   { label: '합치면', body: '개인 소비까지 다 보여서 기록을 줄이거나 숨기게 됩니다.', tone: 'muted' },
-  { label: '우리로그', body: '공동은 함께 보고 개인은 각자 봅니다. 공개할 거래는 직접 고릅니다.', tone: 'brand' },
+  { label: '우리로그', body: '공동 예산은 함께 보고, 내 예산 거래는 나만 볼지 직접 고릅니다.', tone: 'brand' },
 ] as const
 
 const SHARED_ROWS = [
@@ -34,19 +34,19 @@ const SHARED_ROWS = [
 
 const PERSONAL_ROWS = [
   '내 예산에서 차감한 거래의 사용처와 메모',
-  '내가 공개하지 않기로 한 개인 거래',
+  '내가 나만 보기로 한 거래',
   '내 카드의 식별 정보',
-  '내 개인 예산의 주간 기준액 알림',
+  '내 예산의 주간 권장액 알림',
 ]
 
 const FLOW_ROWS = [
   { verb: '기록해요', body: '금액 키패드가 먼저 열립니다. 사용처를 입력하면 지난 기록을 보고 카테고리를 먼저 채워 둡니다.' },
   { verb: '나눠요', body: '이 지출을 공동에서 뺄지 내 예산에서 뺄지 저장 전에 확인합니다. 상대방 예산은 선택지에 없습니다.' },
-  { verb: '돌아봐요', body: '기간이 끝나면 사용액과 남은 돈, 대분류별 지출, 다음 기간에 이어지는 고정비를 한 장으로 정리합니다.' },
+  { verb: '돌아봐요', body: '기간이 끝나면 사용액과 남은 돈, 카테고리별 지출, 다음 기간에 이어지는 고정비를 한 장으로 정리합니다.' },
 ]
 
 const FAQ_ROWS = [
-  { question: '개인 지출까지 상대방에게 다 보이나요?', answer: '아니요. 내 예산에서 차감한 거래는 기본적으로 나만 봅니다. 상대방에게는 예산 총액과 사용액만 보이고, 개별 거래는 내가 공개를 선택한 것만 보입니다.' },
+  { question: '개인 지출까지 상대방에게 다 보이나요?', answer: '아니요. 내 예산에서 차감한 거래는 기본적으로 나만 봅니다. 상대방에게는 예산 총액과 사용액만 보이고, 개별 거래는 내가 함께 보기로 한 것만 보입니다.' },
   { question: '남은 예산은 다음 기간으로 넘어가나요?', answer: '넘기지 않습니다. 남은 돈과 초과한 돈은 끝난 기간의 결과로만 남고, 다음 기간 예산은 이번 기간 설정을 그대로 복사해 시작합니다.' },
   { question: '한 명이 그만두면 기록은 어떻게 되나요?', answer: '함께 쓴 기간의 기록은 두 사람 모두 읽을 수 있게 남습니다. 다만 고정비와 할부 자동 등록은 잠시 멈추고, 남은 사람이 필요한 것만 다시 켭니다.' },
   { question: '수입을 기록하면 예산이 늘어나나요?', answer: '자동으로 늘지 않습니다. 수입은 수입 내역과 통계에만 반영하고, 쓸 수 있는 돈을 늘리려면 예산 설정에서 직접 전체 예산을 바꿉니다.' },
@@ -141,7 +141,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
         style={{ width: 'min(420px, 100%)' }}
       >
         <h2 className="text-xl font-extrabold tracking-[-0.025em] text-[var(--wl-color-text-main)]">카카오로 시작하기</h2>
-        <p className="mt-2.5 text-[14.5px] leading-relaxed text-[var(--wl-color-text-body)]">처음이면 닉네임을 정하고 개인 장부가 만들어져요. 이미 계정이 있으면 바로 대시보드로 들어갑니다.</p>
+        <p className="mt-2.5 text-[14.5px] leading-relaxed text-[var(--wl-color-text-body)]">처음이면 닉네임을 정하고 개인 가계부가 만들어져요. 이미 계정이 있으면 바로 대시보드로 들어갑니다.</p>
         <button
           className="wl-landing-cta mt-5 inline-flex h-13 w-full items-center justify-center gap-2.5 rounded-[var(--wl-radius-md)] bg-[#FEE500] text-base font-bold text-[#191600]"
           onClick={handleKakaoLogin}
@@ -173,7 +173,7 @@ export function LandingPage() {
 
   function renderCta(size: 'md' | 'lg', className?: string) {
     return isAuthenticated ? (
-      <AuthedCta className={className} label="내 장부로 가기" size={size} />
+      <AuthedCta className={className} label="내 가계부로 가기" size={size} />
     ) : (
       <KakaoCta className={className} label="카카오로 시작하기" onClick={() => setLoginOpen(true)} size={size} />
     )
@@ -188,7 +188,7 @@ export function LandingPage() {
         <nav className="flex items-center gap-4 sm:gap-5.5">
           <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] sm:inline" href="#budget">예산 구조</a>
           <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] sm:inline" href="#features">기능</a>
-          <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] md:inline" href="#privacy">공개 범위</a>
+          <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] md:inline" href="#privacy">보이는 범위</a>
           <a className="hidden text-sm font-semibold text-[var(--wl-color-text-body)] md:inline" href="#faq">자주 묻는 질문</a>
           {renderCta('md')}
         </nav>
@@ -405,7 +405,7 @@ export function LandingPage() {
           <Reveal className="mx-auto grid max-w-[720px] justify-items-center gap-5.5 px-6 py-22 text-center">
             <h2 className="m-0 font-extrabold leading-[1.26] tracking-[-0.03em]" style={{ fontSize: 'clamp(27px, 3.2vw, 36px)' }}>이번 기간부터 같이 기록해요</h2>
             <p className="m-0 max-w-[44ch] text-[16.5px] leading-[1.7] text-[var(--wl-color-text-body)]">
-              카카오로 로그인하면 개인 장부가 먼저 생기고, 링크 하나로 상대방을 공동 장부에 초대할 수 있습니다.
+              카카오로 로그인하면 개인 가계부가 먼저 생기고, 링크 하나로 상대방을 공동 가계부에 초대할 수 있습니다.
             </p>
             {renderCta('lg', 'w-full sm:w-auto')}
           </Reveal>
@@ -417,7 +417,7 @@ export function LandingPage() {
           <img alt="우리로그" className="block h-auto w-28 opacity-75" src={logo} />
           <div className="flex items-center gap-5 text-[13.5px] text-[var(--wl-color-text-secondary)]">
             <a className="text-[var(--wl-color-text-secondary)]" href="#faq">자주 묻는 질문</a>
-            <a className="text-[var(--wl-color-text-secondary)]" href="#privacy">공개 범위</a>
+            <a className="text-[var(--wl-color-text-secondary)]" href="#privacy">보이는 범위</a>
             <span>문의 hello@woorilog.kr</span>
           </div>
         </div>

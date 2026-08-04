@@ -19,7 +19,7 @@ import { TransactionRow } from '../shared/ui/TransactionRow'
 import { useTransactionEntry } from '../shared/ui/TransactionEntryContext'
 
 /* 카테고리 도넛과 구성원 지출 막대는 원본 목데이터(CATEGORIES)처럼 항목마다 색을 고정하지 않고,
- * 데이터 색 토큰을 순서대로 돌려 씁니다 — 실제 카테고리·구성원 수는 장부마다 다르기 때문입니다. */
+ * 데이터 색 토큰을 순서대로 돌려 씁니다 — 실제 카테고리·구성원 수는 가계부마다 다르기 때문입니다. */
 const CATEGORY_PALETTE = [
   'var(--wl-data-coral)',
   'var(--wl-data-violet)',
@@ -37,9 +37,9 @@ const GUIDES: Record<'INVITE_PARTNER' | 'ALLOCATE_BUDGET' | 'ADD_FIRST_TRANSACTI
     cta: '초대 링크 만들기',
   },
   ALLOCATE_BUDGET: {
-    title: '두 사람의 예산 배분을 정해주세요',
-    body: '전체 예산을 각자의 할당 예산과 공동 예산으로 나누면 남은 금액과 주간 권장액을 볼 수 있어요.',
-    cta: '예산 배분 정하기',
+    title: '두 사람의 예산을 나눠주세요',
+    body: '전체 예산을 각자의 내 예산과 공동 예산으로 나누면 남은 금액과 주간 권장액을 볼 수 있어요.',
+    cta: '예산 나누기',
   },
   ADD_FIRST_TRANSACTION: {
     title: '첫 거래를 기록해 볼까요?',

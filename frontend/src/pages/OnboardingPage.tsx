@@ -75,15 +75,15 @@ export function OnboardingPage({
     ? [
         {
           title: '초대 확인하기',
-          body: inviterNickname ? `${inviterNickname}님의 공동 장부` : '공동 장부 초대',
+          body: inviterNickname ? `${inviterNickname}님의 공동 가계부` : '공동 가계부 초대',
           href: inviteHref,
           primary: true,
         },
-        { title: '개인 장부로 들어가기', body: '나만 보는 장부에서 먼저 기록하기', href: '/dashboard', primary: false },
+        { title: '개인 가계부로 들어가기', body: '나만 보는 가계부에서 먼저 기록하기', href: '/dashboard', primary: false },
       ]
     : [
-        { title: '개인 장부로 들어가기', body: '오늘 쓴 돈부터 기록해 보기', href: '/dashboard', primary: true },
-        { title: '공동 장부 만들기', body: '예산을 정하고 상대방을 초대하기', href: '/ledgers/new', primary: false },
+        { title: '개인 가계부로 들어가기', body: '오늘 쓴 돈부터 기록해 보기', href: '/dashboard', primary: true },
+        { title: '공동 가계부 만들기', body: '예산을 정하고 상대방을 초대하기', href: '/ledgers/new', primary: false },
       ]
 
   return (
@@ -119,7 +119,7 @@ export function OnboardingPage({
               <p className="mt-2.5 text-[14.5px] leading-[1.68] text-[var(--wl-color-text-body)] [text-wrap:balance]">
                 카카오 이름을 그대로 가져왔어요.
                 <br />
-                공동 장부에서 상대방에게 보이는 이름이라 지금 바꿀 수 있어요.
+                공동 가계부에서 상대방에게 보이는 이름이라 지금 바꿀 수 있어요.
               </p>
 
               <form className="mt-6 w-full" onSubmit={handleSubmit}>
@@ -159,7 +159,7 @@ export function OnboardingPage({
                   size="lg"
                   type="submit"
                 >
-                  {isLoading ? '장부를 만들고 있어요' : '이 이름으로 시작하기'}
+                  {isLoading ? '가계부를 만들고 있어요' : '이 이름으로 시작하기'}
                 </Button>
               </form>
             </section>
@@ -169,19 +169,19 @@ export function OnboardingPage({
                 <Icon name="check" size="lg" />
               </span>
               <h1 className="mt-[18px] text-2xl font-extrabold tracking-[-0.03em] text-[var(--wl-color-text-main)]">
-                {trimmedNickname}님, 개인 장부가 준비됐어요
+                {trimmedNickname}님, 개인 가계부가 준비됐어요
               </h1>
               <p className="mt-2.5 text-[14.5px] leading-[1.68] text-[var(--wl-color-text-body)]">
                 {isInvited
-                  ? '개인 장부는 언제든 쓸 수 있어요. 받은 초대를 먼저 확인해 볼까요?'
-                  : '먼저 혼자 기록해 보고, 함께 쓸 준비가 되면 공동 장부를 만들어 상대방을 초대해요.'}
+                  ? '개인 가계부는 언제든 쓸 수 있어요. 받은 초대를 먼저 확인해 볼까요?'
+                  : '먼저 혼자 기록해 보고, 함께 쓸 준비가 되면 공동 가계부를 만들어 상대방을 초대해요.'}
               </p>
 
               {isInvited ? (
                 <div className="mt-[22px] flex animate-[wl-onboarding-hint_200ms_var(--ease-out-strong)_both] gap-3 rounded-xl border border-[var(--wl-brand-200)] bg-[var(--wl-brand-50)] p-4">
                   <p className="min-w-0 text-[13.5px] leading-[1.66] text-[var(--wl-color-text-body)]">
                     {inviterNickname ? `${inviterNickname}님이 보낸 초대가 기다리고 있어요.` : '보낸 초대가 기다리고 있어요.'} 초대를
-                    확인하고 수락하면 공동 장부로 바로 들어가요.
+                    확인하고 수락하면 공동 가계부로 바로 들어가요.
                   </p>
                 </div>
               ) : null}
@@ -218,7 +218,7 @@ export function OnboardingPage({
           )}
 
           <p className="mt-5 px-0.5 text-xs leading-[1.7] text-[var(--wl-color-text-secondary)]">
-            개인 장부는 나만 보는 장부예요. 공동 장부를 만들거나 초대를 수락하면 장부를 바꿔가며 쓸 수 있어요.
+            개인 가계부는 나만 보는 곳이에요. 공동 가계부를 만들거나 초대를 수락하면 가계부를 바꿔가며 쓸 수 있어요.
           </p>
         </div>
       </div>

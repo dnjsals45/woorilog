@@ -4,7 +4,7 @@ import { CategoryBadge } from './CategoryBadge'
 
 /**
  * 거래 한 줄 — 카테고리 마크 · 사용처 · 메타 · 금액. `<li>`를 그리므로 `<ul>` 안에 넣습니다.
- * 가계부 목록과 대시보드의 최근 거래가 같은 행을 씁니다.
+ * 거래 내역 목록과 대시보드의 최근 거래가 같은 행을 씁니다.
  * spacious는 대시보드용(68px, 15.5px)이고 기본값은 목록용(56px, 15px)입니다.
  */
 export interface TransactionRowProps {

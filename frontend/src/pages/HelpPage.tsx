@@ -2,8 +2,8 @@ import { BookOpenCheck, Mail, ScanText, WalletCards } from 'lucide-react'
 import { PageHeader, SurfaceCard } from '../shared/ui/DesignPrimitives'
 
 const guides = [
-  { icon: WalletCards, title: '장부와 거래', description: '상단 장부 선택기에서 장부를 바꾸고, 중앙 + 버튼으로 지출과 수입을 기록합니다.' },
-  { icon: BookOpenCheck, title: '예산 설정', description: '예산 화면에서 월 총예산과 개인 카테고리 또는 공동 멤버별 할당을 관리합니다.' },
+  { icon: WalletCards, title: '가계부와 거래', description: '상단 가계부 선택기에서 가계부를 바꾸고, 중앙 + 버튼으로 지출과 수입을 기록합니다.' },
+  { icon: BookOpenCheck, title: '예산 설정', description: '예산 화면에서 전체 예산을 정하고 공동 예산과 내 예산으로 나눕니다.' },
   { icon: ScanText, title: '거래 가져오기', description: '거래 추가에서 영수증 또는 문자 내역을 선택하면 저장할 거래 후보를 확인할 수 있습니다.' },
 ]
 
