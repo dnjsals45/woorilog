@@ -4,11 +4,11 @@
 
 ## 완료된 V1 기준 문서
 
-- [Domain Model](../engineering/domain-model.md): 예산 기간, 배분, 거래 snapshot, 공개 범위와 예약 모델
+- [Domain Model](../engineering/domain-model.md): 예산 기간, 예산 나누기, 거래 snapshot, 보이는 범위와 자동 기록 모델
 - [API Contract](../engineering/api-contract.md): 목표 endpoint, DTO, 오류, 권한과 구형 API 전환
 - [Permissions](../engineering/permissions.md): active/former member와 개인·공동 거래 권한
-- [Privacy](../engineering/privacy.md): 개인 거래, 결제수단, OCR 이미지와 로그 원칙
-- [Data Migration](../engineering/data-migration.md): 월 예산·카테고리·장부·legacy 기능의 단계별 전환
+- [Privacy](../engineering/privacy.md): 개인 거래, 결제 수단, OCR 이미지와 로그 원칙
+- [Data Migration](../engineering/data-migration.md): 월 예산·카테고리·가계부·legacy 기능의 단계별 전환
 - [Transaction Import](../engineering/transaction-import.md): 후보 품질, 중복 판정과 batch 저장
 - [Scheduled Transactions](../engineering/scheduled-transactions.md): 할부·반복·고정비·주간 가이드 중복 방지
 - [Testing Strategy](../engineering/testing-strategy.md): 두 사용자 권한, 기간 경계, 개인정보와 자동 거래 검증
@@ -31,9 +31,9 @@
 ## 검수 기록
 
 - 접근성: keyboard, focus, screen reader label, reduced motion
-- 반응형: 긴 장부명, 큰 금액, 많은 거래와 category
-- 개인정보: 상대방 비공개 거래가 목록·홈·분석·알림·API에 노출되지 않는지 확인
-- 경계 조건: 예산 기간 시작일, 월말 반복 거래, 기간 전환과 재알림
+- 반응형: 긴 가계부명, 큰 금액, 많은 거래와 category
+- 개인정보: 상대방이 나만 보는 거래가 목록·홈·분석·알림·API에 노출되지 않는지 확인
+- 경계 조건: 예산 기간 시작일, 월말 반복 지출, 기간 전환과 재알림
 - OCR: 저신뢰 후보 숨김, 중복 후보 기본 제외, batch 수정·저장
 - migration: 전후 거래 수·금액 합계, 멤버십과 snapshot 무결성
 

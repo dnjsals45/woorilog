@@ -59,7 +59,7 @@ Frontend decisions:
 - Simple filters and local-only controls can use component state without React Hook Form.
 - 거래 이미지 OCR은 backend의 Native Tesseract로 수행하고 frontend는 multipart 업로드와 preview 편집을 담당합니다.
 - Chart library adoption is deferred until dashboard/statistics implementation. Recharts is the default candidate for simple budget and spending charts.
-- 새 V1의 서버 상태 query key는 사용자·장부·예산 기간을 구분해 개인정보가 다른 cache entry에 섞이지 않게 합니다.
+- 새 V1의 서버 상태 query key는 사용자·가계부·예산 기간을 구분해 개인정보가 다른 cache entry에 섞이지 않게 합니다.
 
 ## Local Infrastructure
 

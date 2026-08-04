@@ -85,14 +85,14 @@ frontend/src/
 - `styles/tokens/`가 Crisp Calm foundation, data accent, radius, elevation과 motion의 런타임 원본입니다.
   `colors.css`(foundation·semantic·data accent), `typography.css`, `spacing.css`(간격과 radius), `elevation.css`,
   `motion.css`, `fonts.css`, `layers.css`로 나뉘고 `index.css`가 이 순서로 import합니다.
-- `AppSidebar.tsx`(232px 고정, sticky)와 `AppShell.tsx`가 데스크톱 좌측 sidebar, 장부 선택기(스위처)와 본문 레이아웃을 담당합니다. 모바일 navigation은 앱 셸 교체 과정에서 제거됐습니다.
+- `AppSidebar.tsx`(232px 고정, sticky)와 `AppShell.tsx`가 데스크톱 좌측 sidebar, 가계부 선택기(스위처)와 본문 레이아웃을 담당합니다. 모바일 navigation은 앱 셸 교체 과정에서 제거됐습니다.
 - `base/globals.css`, `patterns/controls.css`, `patterns/overlay.css`, `patterns/page-layout.css`가 전역 기본값, control, overlay(모달·드로어·팝오버), 페이지 레이아웃 규칙을 나눠 담당합니다.
-- 거래 추가는 `TransactionAddDrawer`(우측 560px 드로어, `TransactionForm` 직접 입력)로 처리합니다. 영수증·카드사 앱 캡처 검토는 가계부 화면의 `TransactionImportModal`(중앙 모달)이 별도로 담당합니다.
-- 가계부 화면(`TransactionsPage`)은 날짜순 목록과 필터(미분류 필터 칩 포함)를 제공하고, 행 클릭은 `TransactionDetailModal`을 엽니다.
+- 거래 추가는 `TransactionAddDrawer`(우측 560px 드로어, `TransactionForm` 직접 입력)로 처리합니다. 영수증·카드사 앱 캡처 검토는 거래 내역 화면의 `TransactionImportModal`(중앙 모달)이 별도로 담당합니다.
+- 거래 내역 화면(`TransactionsPage`)은 날짜순 목록과 필터(미분류 필터 칩 포함)를 제공하고, 행 클릭은 `TransactionDetailModal`을 엽니다.
 - 알림함은 `NotificationInbox`로 대시보드 헤더의 종 아이콘이 여는 팝오버입니다. 다른 화면에는 진입점이 없습니다.
 - 분석 화면과 대시보드의 예산 상세(`BudgetDetailModal`)는 `DonutChart` 공용 컴포넌트와 인라인 SVG 꺾은선·막대 차트를 함께 사용합니다.
-- 예산 설정 화면은 총예산, 실제·예정 지출, 개인 카테고리 예산 또는 공동 멤버 할당에 집중합니다.
-- 설정 화면(`UserSettingsPage`)은 프로필·장부·멤버·카테고리·알림 5개 탭입니다.
+- 예산 설정 화면은 전체 예산, 실제·예정 지출, 개인 카테고리 예산 또는 공동 멤버별 개인 예산에 집중합니다.
+- 설정 화면(`UserSettingsPage`)은 프로필·가계부·멤버·카테고리·알림 5개 탭입니다.
 
 ## Responsive Mapping
 

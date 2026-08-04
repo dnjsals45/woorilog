@@ -10,7 +10,7 @@
 - 인증 API와 공개 초대 조회를 제외한 API는 `Authorization: Bearer <accessToken>`을 요구합니다.
 - access token은 response body, refresh token은 `HttpOnly`, `SameSite=Lax` cookie로 전달합니다.
 - HTTPS 운영 환경의 refresh cookie는 `Secure`를 사용합니다.
-- resource id만 받는 endpoint도 resource가 속한 장부의 권한을 다시 검사합니다.
+- resource id만 받는 endpoint도 resource가 속한 가계부의 권한을 다시 검사합니다.
 
 ### 형식
 
@@ -68,7 +68,7 @@
 | --- | --- | --- |
 | 400 | `INVALID_REQUEST` | body, query 또는 상태 전이 validation 실패 |
 | 401 | `UNAUTHORIZED` | 인증 필요 또는 access token 오류 |
-| 403 | `FORBIDDEN` | 알려진 장부 자원에 대한 동작 권한 없음 |
+| 403 | `FORBIDDEN` | 알려진 가계부 자원에 대한 동작 권한 없음 |
 | 404 | `RESOURCE_NOT_FOUND` | 자원이 없거나 조회 사실을 숨겨야 함 |
 | 409 | `CONFLICT` | 현재 상태와 충돌하거나 중복 요청 |
 | 410 | `RESOURCE_EXPIRED` | 초대·import session 등 만료된 임시 자원 |
@@ -108,9 +108,9 @@
 ```
 
 - `type`: `PERSONAL`, `SHARED`
-- `role`: `OWNER`, `MEMBER`; 개인 장부 소유자는 `OWNER`
+- `role`: `OWNER`, `MEMBER`; 개인 가계부 소유자는 `OWNER`
 - `accessState`: `ACTIVE`, `FORMER_READ_ONLY`
-- `partner`는 상대방이 없거나 개인 장부면 `null`입니다.
+- `partner`는 상대방이 없거나 개인 가계부면 `null`입니다.
 - `startType`: `DAY_OF_MONTH`, `LAST_DAY_OF_MONTH`; 후자는 `startDay=null`입니다.
 
 ### BudgetSource
@@ -128,7 +128,7 @@
 
 ### TransactionScope
 
-구조와 enum은 `BudgetSource`와 같습니다. 공동 장부의 모든 거래에 적용하며, 예산을 차감하지 않는 수입과 이체도 개인·공동 공개 범위를 잃지 않게 합니다. 개인 장부는 항상 소유자의 `PERSONAL` scope입니다.
+구조와 enum은 `BudgetSource`와 같습니다. 공동 가계부의 모든 거래에 적용하며, 예산을 차감하지 않는 수입과 이체도 개인·공동 구분을 잃지 않게 합니다. 개인 가계부는 항상 소유자의 `PERSONAL` scope입니다.
 
 ### CategorySnapshot
 
@@ -191,8 +191,8 @@
 - `type`: `EXPENSE`, `INCOME`, `TRANSFER`
 - `transferType`: `OWN_ACCOUNTS`, `OUTBOUND`, `INBOUND`; `TRANSFER`가 아니면 `null`
 - `budgetSource`: 예산을 차감하지 않는 수입과 일부 이체면 `null`
-- `scope`: 공동 장부의 개인·공동 공개 범위입니다. 개인 장부는 소유자의 `PERSONAL`입니다.
-- `sharedWithPartner`: 공동 장부의 개인 scope 거래면 boolean, 공동 scope와 개인 장부 거래면 `null`
+- `scope`: 공동 가계부의 개인·공동 구분입니다. 개인 가계부는 소유자의 `PERSONAL`입니다.
+- `sharedWithPartner`: 공동 가계부의 개인 scope 거래면 boolean, 공동 scope와 개인 가계부 거래면 `null`
 - `schedule`: 일반 거래면 `null`, 자동 거래면 `{kind, planId, sequence, totalSequences}`
 - `installment`: 할부 거래가 아니면 `null`, 할부 거래면 `{planId, sequence, totalCount, monthlyInterest}`.
   `monthlyInterest`는 예약 할부 계획(`ScheduledPlan.monthlyInterestAmount`)이 있을 때만 값이 채워지고, 없으면 `null`입니다.
@@ -229,7 +229,7 @@
 ### `POST /api/auth/kakao/callback`
 
 - public
-- authorization code를 한 번 교환하고 기본 개인 장부를 보장합니다.
+- authorization code를 한 번 교환하고 기본 개인 가계부를 보장합니다.
 
 ```json
 {
@@ -251,7 +251,7 @@
   },
   "currentLedger": {
     "id": 1,
-    "name": "민지의 개인 장부",
+    "name": "민지의 개인 가계부",
     "type": "PERSONAL",
     "role": "OWNER",
     "accessState": "ACTIVE",
@@ -308,19 +308,19 @@
 - `200 OK`: 갱신된 user
 - 닉네임은 공백 제거 후 1~20자입니다.
 
-## 장부와 멤버십
+## 가계부와 멤버십
 
 ### `GET /api/ledgers`
 
 - authenticated
-- 기본 개인 장부를 먼저, 활성 공동 장부를 최근 사용 순으로, 과거 읽기 전용 장부를 마지막에 반환합니다.
+- 기본 개인 가계부를 먼저, 활성 공동 가계부를 최근 사용 순으로, 과거 읽기 전용 가계부를 마지막에 반환합니다.
 
 ```json
 {
   "items": [
     {
       "id": 1,
-      "name": "민지의 개인 장부",
+      "name": "민지의 개인 가계부",
       "type": "PERSONAL",
       "role": "OWNER",
       "accessState": "ACTIVE",
@@ -337,7 +337,7 @@
 ### `POST /api/ledgers/shared`
 
 - authenticated, nickname confirmed
-- 공동 장부를 만들고 요청 사용자를 `OWNER`로 추가하며 현재 기간 전체 예산을 생성합니다.
+- 공동 가계부를 만들고 요청 사용자를 `OWNER`로 추가하며 현재 기간 전체 예산을 생성합니다.
 
 ```json
 {
@@ -357,7 +357,7 @@
 ### `POST /api/ledgers/{ledgerId}/use`
 
 - active 또는 former read-only member
-- 마지막 사용 장부를 바꾸고 `{ "currentLedger": LedgerSummary }`를 반환합니다.
+- 마지막 사용 가계부를 바꾸고 `{ "currentLedger": LedgerSummary }`를 반환합니다.
 
 ### `PATCH /api/ledgers/{ledgerId}`
 
@@ -410,7 +410,7 @@
 ### `DELETE /api/ledgers/{ledgerId}/members/{userId}`
 
 - owner only; owner 본인은 대상으로 지정할 수 없습니다.
-- 멤버를 내보내고 예약 거래를 일시정지합니다.
+- 멤버를 내보내고 자동 기록를 일시정지합니다.
 - `204 No Content`
 - `409 MEMBER_NOT_ACTIVE`
 
@@ -467,10 +467,10 @@
 }
 ```
 
-- `currentMemberCount`: 링크가 걸린 장부의 현재 활성 멤버 수. 2명이면 참여 버튼을 누르기 전에 정원 초과를 안내할 수 있습니다.
-- `viewerAlreadyMember`: 비로그인 조회(`authenticationRequired: true`)에서는 판별 불가이므로 `null`입니다. 로그인 상태에서는 뷰어가 해당 장부의 활성 멤버인지 여부(`true`/`false`)입니다.
-- `viewerIsDifferentPartner`: 한 번이라도 두 사람이 쓴 장부에는 원래 상대방만 다시 참여할 수 있습니다. 그 제한에 걸리는 뷰어면 `true`이고, 수락을 시도하면 `409 DIFFERENT_PARTNER_NOT_ALLOWED`가 납니다. 비로그인 조회에서는 `null`입니다.
-- `budgetCycle`: 장부의 예산 기간 시작 규칙(`BudgetCycleResponse`, `ledger.budgetCycle`과 동일 형식).
+- `currentMemberCount`: 링크가 걸린 가계부의 현재 활성 멤버 수. 2명이면 참여 버튼을 누르기 전에 정원 초과를 안내할 수 있습니다.
+- `viewerAlreadyMember`: 비로그인 조회(`authenticationRequired: true`)에서는 판별 불가이므로 `null`입니다. 로그인 상태에서는 뷰어가 해당 가계부의 활성 멤버인지 여부(`true`/`false`)입니다.
+- `viewerIsDifferentPartner`: 한 번이라도 두 사람이 쓴 가계부에는 원래 상대방만 다시 참여할 수 있습니다. 그 제한에 걸리는 뷰어면 `true`이고, 수락을 시도하면 `409 DIFFERENT_PARTNER_NOT_ALLOWED`가 납니다. 비로그인 조회에서는 `null`입니다.
+- `budgetCycle`: 가계부의 예산 기간 시작 규칙(`BudgetCycleResponse`, `ledger.budgetCycle`과 동일 형식).
 - 상태 판별은 조회 단계에서 세 가지로 구분합니다.
 
 | status | code | 조건 |
@@ -482,7 +482,7 @@
 ### `POST /api/invitations/links/{token}/accept`
 
 - authenticated, nickname confirmed
-- 수락과 멤버십 생성, 마지막 사용 장부 변경을 한 트랜잭션에서 처리합니다.
+- 수락과 멤버십 생성, 마지막 사용 가계부 변경을 한 트랜잭션에서 처리합니다.
 - `200 OK`: `{ "ledger": LedgerSummary }`
 - 조회와 같은 token 상태 검증(`requireUsableLink`)을 공유하므로 아래 404/409/410 코드도 동일하게 발생합니다.
 
@@ -542,9 +542,9 @@
 
 - `status`: `UPCOMING`, `CURRENT`, `PAST`
 - allocation은 상위 금액이므로 상대방 개인 allocation도 포함합니다.
-- 상대방 개인 allocation의 대분류 예산과 거래 상세는 포함하지 않습니다.
-- 첫 배분 전에는 `allocations=[]`, `reserveAmount=null`, `prepared=false`입니다.
-- 개인 장부에서는 소유자의 personal allocation이 `totalBudget`과 같고 shared allocation과 예비비를 사용하지 않습니다.
+- 상대방 개인 allocation의 카테고리 예산과 거래 상세는 포함하지 않습니다.
+- 처음 나누기 전에는 `allocations=[]`, `reserveAmount=null`, `prepared=false`입니다.
+- 개인 가계부에서는 소유자의 personal allocation이 `totalBudget`과 같고 shared allocation과 예비비를 사용하지 않습니다.
 
 ### `GET /api/ledgers/{ledgerId}/budget-periods/current`
 
@@ -592,9 +592,9 @@
 
 개인 category budget은 본인 것만 반환합니다.
 
-- `previousSpentAmount`는 같은 장부에서 이 기간 바로 이전 기간의 같은 대분류·source 사용액입니다.
+- `previousSpentAmount`는 같은 가계부에서 이 기간 바로 이전 기간의 같은 카테고리·source 사용액입니다.
 - 이전 기간이 없거나(첫 기간), 이전 기간에 같은 scope/owner의 allocation 자체가 없었으면 `null`입니다.
-- 이전 기간에 해당 allocation은 있었지만 그 대분류 지출이 없었으면 `0`입니다.
+- 이전 기간에 해당 allocation은 있었지만 그 카테고리 지출이 없었으면 `0`입니다.
 
 ### `PUT /api/ledgers/{ledgerId}/budget-periods/{startDate}`
 
@@ -627,7 +627,7 @@
 ```
 
 - 상대방 개인 category budget은 요청할 수 없습니다.
-- 배분 합계가 전체 예산보다 크고 `increaseTotalBudgetIfNeeded=false`이면 `409 TOTAL_BUDGET_INCREASE_CONFIRMATION_REQUIRED`입니다.
+- 나눈 금액 합계가 전체 예산보다 크고 `increaseTotalBudgetIfNeeded=false`이면 `409 TOTAL_BUDGET_INCREASE_CONFIRMATION_REQUIRED`입니다.
 - category budget 합계가 allocation보다 큰 경우도 같은 방식으로 명시적 증액이 필요합니다.
 - `200 OK`: 갱신된 `BudgetPeriodDetail`
 
@@ -641,7 +641,7 @@
 }
 ```
 
-- 전체·개인·공동·대분류 예산 설정만 복사하고 잔액·초과액은 복사하지 않습니다.
+- 전체·개인·공동·카테고리 예산 설정만 복사하고 잔액·초과액은 복사하지 않습니다.
 - 이미 준비된 기간이면 `409 BUDGET_PERIOD_ALREADY_PREPARED`입니다.
 
 ### `POST /api/ledgers/{ledgerId}/budget-periods/{startDate}/reserve-transfers`
@@ -668,7 +668,7 @@
 ### `GET /api/ledgers/{ledgerId}/budget-periods/{startDate}/summary`
 
 - active 또는 해당 기간 former member
-- 공동·본인 allocation 결과, 대분류 지출, 미분류 건수와 다음 기간 예정 고정비·할부를 반환합니다.
+- 공동·본인 allocation 결과, 카테고리 지출, 미분류 건수와 다음 기간 예정 고정비·할부를 반환합니다.
 - 상대방 개인 allocation 세부 내역은 반환하지 않습니다.
 
 ## 카테고리
@@ -735,7 +735,7 @@
 }
 ```
 
-- `applyNameToPastTransactions=true`이면 접근 가능한 해당 장부 거래 snapshot도 변경합니다.
+- `applyNameToPastTransactions=true`이면 접근 가능한 해당 가계부 거래 snapshot도 변경합니다.
 
 ### `DELETE /api/categories/{categoryId}`
 
@@ -756,17 +756,17 @@
 | `periodStart` | date | 예산 기간 시작일 |
 | `query` | string | 사용처·메모 검색 |
 | `types` | comma enum | `EXPENSE,INCOME,TRANSFER` |
-| `categoryGroupCodes` | comma string | 대분류 filter |
+| `categoryGroupCodes` | comma string | 카테고리 filter |
 | `scopes` | comma enum | `PERSONAL,SHARED` |
 | `kinds` | comma enum | `NORMAL,FIXED_EXPENSE,INSTALLMENT` |
 | `shared` | boolean | 개인 거래 공유 여부 |
 | `unclassified` | boolean | 미분류만 조회 |
 | `cursor`, `limit` | pagination | cursor paging |
 
-- 공동 장부에서 공동 거래와 본인 개인 거래를 반환합니다.
+- 공동 가계부에서 공동 거래와 본인 개인 거래를 반환합니다.
 - 상대방 개인 거래는 예산 상세의 전용 endpoint에서 공유 건만 반환합니다.
 - former member는 참여 기간의 본인 거래와 공동 거래만 반환합니다.
-- 응답에는 현재 장부의 `unclassifiedCount`를 별도 필드로 포함해 분류 배지를 갱신합니다.
+- 응답에는 현재 가계부의 `unclassifiedCount`를 별도 필드로 포함해 분류 배지를 갱신합니다.
 
 ### `POST /api/ledgers/{ledgerId}/transactions`
 
@@ -799,10 +799,10 @@
 - `cardId`는 선택입니다. 저장된 카드를 고른 경우에만 보내며, 카드 결제 지출 거래에서만 허용합니다. 이 값이 있어야 대시보드의 `cardPaymentSummaries` 집계에 잡힙니다. 저장된 카드 없이 `paymentMethod.displayName`에 카드 이름만 적는 것도 가능합니다.
 - `EXPENSE`와 `TRANSFER/OUTBOUND`는 budget source가 필수입니다.
 - `INCOME`, `TRANSFER/OWN_ACCOUNTS`, `TRANSFER/INBOUND`는 budget source가 `null`입니다.
-- 공동 장부에서는 `scope`가 필수이고, 예산 차감 거래의 scope와 budget source는 같아야 합니다.
+- 공동 가계부에서는 `scope`가 필수이고, 예산 차감 거래의 scope와 budget source는 같아야 합니다.
 - 개인 source이면 `ownerUserId`는 인증 사용자여야 합니다.
-- 개인 거래의 `sharedWithPartner` 생략 시 장부별 공유 기본값을 사용합니다.
-- 저장 성공 시 이 거래의 유효한 budget source를 사용자·장부별 마지막 차감 대상으로 기억합니다.
+- 개인 거래의 `sharedWithPartner` 생략 시 가계부별 공유 기본값을 사용합니다.
+- 저장 성공 시 이 거래의 유효한 budget source를 사용자·가계부별 마지막 차감 대상으로 기억합니다.
 - `201 Created`: `TransactionSummary`
 
 할부 request:
@@ -824,13 +824,13 @@
 ### `GET /api/transactions/{transactionId}`
 
 - 거래 조회 권한
-- `TransactionSummary`와 계획·공개 상태 상세를 반환합니다.
-- 상대방 공유 개인 거래에서는 민감 결제수단 식별 필드를 생략합니다.
+- `TransactionSummary`와 계획·보임 상태 상세를 반환합니다.
+- 상대방 공유 개인 거래에서는 민감 결제 수단 식별 필드를 생략합니다.
 
 ### `PUT /api/transactions/{transactionId}`
 
 - 개인 거래는 소유자, 공동 거래는 active member
-- create body와 같은 최종 상태를 받습니다. 자동 생성 거래의 plan 수정은 이 endpoint가 아니라 예약 거래 API를 사용합니다.
+- create body와 같은 최종 상태를 받습니다. 자동 생성 거래의 plan 수정은 이 endpoint가 아니라 자동 기록 API를 사용합니다.
 - `200 OK`: 갱신된 `TransactionSummary`
 
 ### `PATCH /api/transactions/{transactionId}/visibility`
@@ -870,7 +870,7 @@
 
 - active member
 - query: `query` 1자 이상, `limit` 기본 10·최대 20
-- 인증 사용자와 현재 장부의 확정 거래만 사용합니다.
+- 인증 사용자와 현재 가계부의 확정 거래만 사용합니다.
 
 ```json
 {
@@ -883,7 +883,7 @@
 }
 ```
 
-- 상대방 거래와 다른 장부 거래, 삭제된 category는 추천 근거에서 제외합니다.
+- 상대방 거래와 다른 가계부 거래, 삭제된 category는 추천 근거에서 제외합니다.
 
 ### `DELETE /api/transactions/{transactionId}`
 
@@ -909,8 +909,8 @@
 ### `GET /api/dashboard/current`
 
 - authenticated
-- query: `ledgerId` optional(없으면 현재 장부), `periodStart` optional(없으면 현재 기간)
-- 공동 장부 응답은 공동 allocation, 본인 allocation, 기간 수입 합계, 공동·본인 최근 거래, 최신 주간 가이드와 empty-state code를 반환합니다.
+- query: `ledgerId` optional(없으면 현재 가계부), `periodStart` optional(없으면 현재 기간)
+- 공동 가계부 응답은 공동 allocation, 본인 allocation, 기간 수입 합계, 공동·본인 최근 거래, 최신 주간 가이드와 empty-state code를 반환합니다.
 
 ```json
 {
@@ -932,18 +932,18 @@
 
 - allocation 상세
 - 본인·공동 allocation은 전체 거래를, 상대방 개인 allocation은 공유 거래만 반환합니다.
-- 금액 요약, 대분류 사용액, 일별 흐름, 남은 예약 지출과 거래 cursor page를 반환합니다.
+- 금액 요약, 카테고리 사용액, 일별 흐름, 남은 예약 지출과 거래 cursor page를 반환합니다.
 
 ### `GET /api/ledgers/{ledgerId}/analytics`
 
 - active 또는 former read-only member
 - query: `periodStart`, `scope=ALL|SHARED|MINE`
-- 총지출, 미분류 포함 대분류 분포, 일별·누적 흐름, 이전 기간 증감과 6·12개 기간 추세를 반환합니다.
+- 총지출, 미분류 포함 카테고리 분포, 일별·누적 흐름, 이전 기간 증감과 6·12개 기간 추세를 반환합니다.
 - `ALL`은 공동 거래와 본인 개인 거래만 포함합니다. 상대방 개인 거래는 공유 여부와 관계없이 제외합니다.
 - `INCOME`, `TRANSFER/OWN_ACCOUNTS`, `TRANSFER/INBOUND`는 총지출에서 제외합니다.
 - `categoryDistribution`의 각 항목은 `{ groupCode, groupName, amount, previousAmount }`입니다.
-  `previousAmount`는 조회 중인 기간 바로 이전 기간(같은 `scope` 필터 적용)의 같은 대분류 지출액입니다.
-  이전 기간 자체가 없으면(첫 기간) `null`이고, 이전 기간은 있지만 해당 대분류 지출이 없었으면 `0`입니다.
+  `previousAmount`는 조회 중인 기간 바로 이전 기간(같은 `scope` 필터 적용)의 같은 카테고리 지출액입니다.
+  이전 기간 자체가 없으면(첫 기간) `null`이고, 이전 기간은 있지만 해당 카테고리 지출이 없었으면 `0`입니다.
 
 ## 이미지 가져오기
 
@@ -1021,7 +1021,7 @@
 | 400 | `INVALID_IMPORT_CANDIDATE` | 최종 후보 validation 실패 |
 | 410 | `IMPORT_SESSION_EXPIRED` | 만료 또는 사용할 수 없는 session |
 
-## 반복 거래·고정비·할부
+## 자동 기록 — 반복 지출·고정비·할부
 
 세부 생성 규칙은 [Scheduled Transactions](./scheduled-transactions.md)를 따릅니다.
 
@@ -1029,7 +1029,7 @@
 
 - active member
 - query: `status=ACTIVE|PAUSED`, `kind=RECURRING_EXPENSE|INSTALLMENT`, `fixedExpense`
-- 결제수단 식별 정보는 계획 소유자에게만 반환합니다.
+- 결제 수단 식별 정보는 계획 소유자에게만 반환합니다.
 - 응답 항목은 `categoryId`, `categoryName`, `budgetSource`를 포함합니다.
 - `INSTALLMENT` 계획은 `totalAmount`(할부 전체 원금), `round`(현재까지 발생 처리된 회차), `totalRounds`(총 회차),
   `principalAmount`(현재 회차 원금), `monthlyInterest`(월 이자)를 함께 반환합니다. `RECURRING_EXPENSE` 계획은 이 다섯 필드를 `null`로 반환합니다.
@@ -1154,9 +1154,9 @@
 
 | 현재 endpoint/기능 | V1 처리 |
 | --- | --- |
-| `POST /api/ledgers/personal` | 제거; 기본 개인 장부만 허용 |
+| `POST /api/ledgers/personal` | 제거; 기본 개인 가계부만 허용 |
 | `POST /api/ledgers/group` | `POST /api/ledgers/shared`로 교체 |
-| `POST /api/ledgers/{id}/archive` | 제거; 공동 장부 보관 미지원 |
+| `POST /api/ledgers/{id}/archive` | 제거; 공동 가계부 보관 미지원 |
 | `/api/ledgers/{id}/invitable-user` | 제거; 사용자 검색 미지원 |
 | `/api/ledgers/{id}/invitations/users` | 제거; 직접 초대 미지원 |
 | pending 직접 초대 API | 제거 |
@@ -1178,7 +1178,7 @@
 
 - endpoint마다 인증·권한·상태 코드가 구현과 테스트에 반영됩니다.
 - optional과 nullable이 DTO/OpenAPI schema와 일치합니다.
-- 상대방 비공개 거래와 결제수단 식별 정보가 query 단계에서 제외됩니다.
+- 상대방이 나만 보는 거래와 결제 수단 식별 정보가 query 단계에서 제외됩니다.
 - 예산 기간 경계와 과거 기간 알림 억제가 고정 clock 테스트로 검증됩니다.
-- 초대 수락, import save, 예약 거래 생성은 동시 요청과 재시도에도 중복되지 않습니다.
+- 초대 수락, import save, 자동 기록 생성은 동시 요청과 재시도에도 중복되지 않습니다.
 - 제거 endpoint는 프론트엔드 참조가 사라진 뒤에만 삭제합니다.
