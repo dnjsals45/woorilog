@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect } from 'react'
+import { useState, useRef, useLayoutEffect, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
 import { CalendarGrid } from './CalendarGrid'
@@ -54,6 +54,30 @@ export function DatePicker({
   const [position, setPosition] = useState<PopoverPosition | null>(null)
   const [month, setMonth] = useState(() => (value || toInputValue(new Date())).slice(0, 7))
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  /* 팝오버 밖을 누르거나 Esc 를 누르면 닫습니다. 팝오버는 body 로 포털되므로
+   * 트리거와 팝오버 둘 다를 기준으로 판정해야 합니다. */
+  useEffect(() => {
+    if (!open) return undefined
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node
+      if (triggerRef.current?.contains(target) || popoverRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true)
+      document.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [open])
 
   useLayoutEffect(() => {
     if (!open) return undefined
@@ -110,9 +134,11 @@ export function DatePicker({
         ? createPortal(
             <div
               aria-label={`${ariaLabel} 달력`}
-              className="woorilog-date-picker fixed z-[70] w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] p-3 shadow-[var(--wl-shadow-modal)]"
+              className="woorilog-date-picker fixed w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-[var(--wl-radius-lg)] border border-[var(--wl-color-border)] bg-[var(--wl-color-surface)] p-3 shadow-[var(--wl-shadow-modal)]"
+              ref={popoverRef}
               role="dialog"
-              style={position}
+              /* 모달·시트 안에서도 열리므로 z 사다리(tokens/layers.css)의 맨 위 단을 씁니다. */
+              style={{ ...position, zIndex: 'var(--wl-z-tooltip)' }}
             >
               <CalendarGrid
                 budgetMonth={month}
