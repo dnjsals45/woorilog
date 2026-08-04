@@ -27,10 +27,10 @@ backend/   Kotlin 2.1 / Spring Boot 3.5 / JPA / Flyway / MySQL (JDK 21)
 frontend/  React 19 / Vite / TypeScript / TanStack Query / React Router / Tailwind v4 / RHF + Zod
 docs/      product · design · engineering · planning
 .claude/   Claude Code skill 원본, git 미추적
-.agent/    개인 워크플로(Analysis → Implementation → QA), git 미추적
+.agent/    위임·QA 참조 표(skill 라우팅, QA 체크리스트), git 미추적
 ```
 
-백엔드 패키지는 `com.woorilog` 아래 `controller / service / domain / security / config / exception`,
+백엔드 패키지는 `com.woorilog` 아래 `controller / application / domain / infrastructure` 4계층 + `common`,
 프론트엔드는 `src/pages`, `src/features/<도메인>`, `src/shared/{api,lib,ui}`, `src/components/layout` 구조입니다.
 
 프론트엔드는 확정 디자인(Crisp Calm V1) 14화면 이식이 끝났고 V1 API에 배선되어 있습니다.
