@@ -100,7 +100,8 @@ class ScheduledPlanService(
     fun list(userId: Long, ledgerId: Long, status: ScheduledPlanStatus? = null, kind: ScheduledPlanType? = null, fixedExpense: Boolean? = null): List<ScheduledPlanResult> {
         requireActive(userId, ledgerId)
         return planRepository.findByLedgerIdOrderByIdDesc(ledgerId).asSequence()
-            .filter { status == null || it.status == status }
+            // 삭제는 CANCELLED 로 남기는 soft delete 입니다. 명시적으로 CANCELLED 를 요청하지 않으면 목록에서 제외합니다.
+            .filter { if (status == null) it.status != ScheduledPlanStatus.CANCELLED else it.status == status }
             .filter { kind == null || it.type == kind }
             .filter { fixedExpense == null || it.fixedExpense == fixedExpense }
             .map { toResult(it) }

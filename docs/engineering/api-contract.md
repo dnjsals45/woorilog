@@ -1028,7 +1028,8 @@
 ### `GET /api/ledgers/{ledgerId}/scheduled-plans`
 
 - active member
-- query: `status=ACTIVE|PAUSED`, `kind=RECURRING_EXPENSE|INSTALLMENT`, `fixedExpense`
+- query: `status=ACTIVE|PAUSED|CANCELLED`, `kind=RECURRING_EXPENSE|INSTALLMENT`, `fixedExpense`
+- `status`를 생략하면 삭제된 계획(`CANCELLED`)을 제외합니다. 삭제 이력을 보려면 `status=CANCELLED`를 명시합니다.
 - 결제 수단 식별 정보는 계획 소유자에게만 반환합니다.
 - 응답 항목은 `categoryId`, `categoryName`, `budgetSource`를 포함합니다.
 - `INSTALLMENT` 계획은 `totalAmount`(할부 전체 원금), `round`(현재까지 발생 처리된 회차), `totalRounds`(총 회차),
