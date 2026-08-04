@@ -26,30 +26,6 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 
 번호는 기존 ADR을 따라 3자리(`003-...`)로 이어갑니다.
 
-참고 — 스킬 템플릿의 기본 구조(이 저장소는 쓰지 않음):
-
-```
-/
-├── CONTEXT.md
-├── docs/adr/
-└── src/
-```
-
-Multi-context repo (presence of `CONTEXT-MAP.md` at the root):
-
-```
-/
-├── CONTEXT-MAP.md
-├── docs/adr/                          ← system-wide decisions
-└── src/
-    ├── ordering/
-    │   ├── CONTEXT.md
-    │   └── docs/adr/                  ← context-specific decisions
-    └── billing/
-        ├── CONTEXT.md
-        └── docs/adr/
-```
-
 ## Use the glossary's vocabulary
 
 When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
