@@ -98,16 +98,20 @@ single-context 구성입니다 (루트 `CONTEXT.md` + `docs/engineering/adr/`). 
 | 프론트엔드 React/Vite | `react-vite-frontend` |
 | 테스트 범위 결정 | `testing-strategy` |
 | 커밋/브랜치/PR/CI | `git-workflow` |
-| UI/UX 디자인 판단 | `design-taste-frontend` |
+| 랜딩/마케팅 페이지 디자인 | `design-taste-frontend` |
 | 인터랙션·모션 다듬기 | `emil-design-eng` |
 | 라이브러리 선택 (명시 호출 전용) | `pick-ui-library` |
 
 디자인 계열 skill의 역할 분담은 다음과 같습니다.
 
-- `design-taste-frontend`가 **디자인 작업의 메인 규칙**입니다. 화면 구조, 레이아웃, 타이포, 색 판단은 여기를 기준으로 합니다.
-  단 이 저장소에는 확정된 디자인 시스템이 있으므로, 충돌하면 `docs/design/**`와 `frontend/src/styles/tokens.css`가 우선합니다.
+- **제품 화면(홈, 거래, 예산, 분석, 설정)의 디자인 기준은 skill이 아니라 확정 문서입니다.**
+  `docs/design/**`와 `frontend/src/styles/tokens/`가 화면 구조, 레이아웃, 타이포, 색의 단일 기준입니다.
+- `design-taste-frontend`는 **랜딩/마케팅 페이지에만** 사용합니다. 이 skill은 스스로 적용 범위를
+  landing page, portfolio, redesign으로 한정하고 dashboard, data table, multi-step product UI를 제외합니다.
+  우리로그 제품 화면은 후자에 해당하므로 여기에 적용하지 않습니다. 랜딩 작업에서도 `styles/tokens/`가 우선합니다.
 - `emil-design-eng`는 **인터랙션을 다듬을 때** 사용합니다. 전환, 상태 피드백, 타이밍·이징, 마이크로 인터랙션처럼
   화면이 정해진 뒤의 결을 다룹니다. 새 화면을 처음 설계할 때는 쓰지 않습니다.
+  첫 호출 시 안내 문구만 출력하고 멈추므로, 다듬을 대상을 함께 지정해서 호출합니다.
 - `pick-ui-library`는 `disable-model-invocation: true`라 **사용자가 명시적으로 호출할 때만** 동작합니다.
   기존 코드로 해결이 안 되는 문제(가상 스크롤, 드래그앤드롭, 커맨드 메뉴 등)를 만났을 때 후보를 받는 용도이며,
   결과는 제안일 뿐입니다. 실제 의존성 추가는 아래 "하지 말 것"에 따라 **별도 기술 결정과 사용자 승인**을 거칩니다.
