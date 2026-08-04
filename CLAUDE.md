@@ -74,6 +74,20 @@ API 공백을 판단할 때 프론트 클라이언트의 부재를 백엔드의 
 - 문서는 현재 구현, 확정된 제품 판단, 검증 가능한 계획을 기준으로 작성합니다.
 - 확정되지 않은 내용은 정책처럼 쓰지 않습니다.
 
+## Agent skills
+
+### Issue tracker
+
+이슈와 PRD는 GitHub Issues(`dnjsals45/woorilog`)에서 `gh` CLI로 관리합니다. `docs/agents/issue-tracker.md`를 봅니다.
+
+### Triage labels
+
+기본 5개 라벨(`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`)을 그대로 씁니다. `docs/agents/triage-labels.md`를 봅니다.
+
+### Domain docs
+
+single-context 구성입니다 (루트 `CONTEXT.md` + `docs/engineering/adr/`). `docs/agents/domain.md`를 봅니다.
+
 ## Skill 사용
 
 `.claude/skills/`가 skill 원본입니다. 작업 유형별로 다음 skill을 사용합니다.
