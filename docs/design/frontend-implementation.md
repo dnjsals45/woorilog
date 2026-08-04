@@ -18,7 +18,7 @@
 - Route and navigation: [Information Architecture](./information-architecture.md)
 - Screen-specific behavior: [Screen Specs](./screen-specs.md)
 - Landing direction: [Landing Page Direction](./landing-page.md)
-- Runtime tokens: [`frontend/src/styles/tokens.css`](../../frontend/src/styles/tokens.css)
+- Runtime tokens: [`frontend/src/styles/tokens/`](../../frontend/src/styles/tokens/)
 - Shared UI: [`frontend/src/shared/ui`](../../frontend/src/shared/ui/)
 - Screen implementation: [`frontend/src/pages`](../../frontend/src/pages/)
 
@@ -55,11 +55,18 @@ frontend/src/
     CategoryBadge.tsx
     ...
   styles/
-    tokens.css
+    tokens/colors.css
+    tokens/fonts.css
+    tokens/typography.css
+    tokens/spacing.css
+    tokens/elevation.css
+    tokens/motion.css
+    tokens/layers.css
     base/globals.css
     patterns/controls.css
     patterns/overlay.css
     patterns/page-layout.css
+    ...
   index.css
 ```
 
@@ -67,7 +74,7 @@ frontend/src/
 
 - API client, query hook, form state와 시각 컴포넌트의 책임을 분리합니다.
 - 디자인 이관 중 API 계약, 비즈니스 계산, 데이터 모델을 변경하지 않습니다.
-- 페이지에서 반복되는 raw hex와 radius는 `tokens.css` 또는 공용 variant로 이동합니다.
+- 페이지에서 반복되는 raw hex와 radius는 `styles/tokens/`의 해당 파일 또는 공용 variant로 이동합니다.
 - 한 화면에서만 확인된 레이아웃은 먼저 page style로 유지하고, 반복이 확인되면 공용 컴포넌트로 승격합니다.
 - UI primitive는 raw color 이름보다 `primary`, `secondary`, `danger`, `selected` 같은 의미 variant를 받습니다.
 - icon은 `lucide-react`를 사용하고 category mark만 제한적으로 이모지를 허용합니다.
@@ -75,7 +82,9 @@ frontend/src/
 
 ## Current Implementation
 
-- `tokens.css`가 Crisp Calm foundation, data accent, radius, elevation과 motion의 런타임 원본입니다.
+- `styles/tokens/`가 Crisp Calm foundation, data accent, radius, elevation과 motion의 런타임 원본입니다.
+  `colors.css`(foundation·semantic·data accent), `typography.css`, `spacing.css`(간격과 radius), `elevation.css`,
+  `motion.css`, `fonts.css`, `layers.css`로 나뉘고 `index.css`가 이 순서로 import합니다.
 - `AppSidebar.tsx`(232px 고정, sticky)와 `AppShell.tsx`가 데스크톱 좌측 sidebar, 장부 선택기(스위처)와 본문 레이아웃을 담당합니다. 모바일 navigation은 앱 셸 교체 과정에서 제거됐습니다.
 - `base/globals.css`, `patterns/controls.css`, `patterns/overlay.css`, `patterns/page-layout.css`가 전역 기본값, control, overlay(모달·드로어·팝오버), 페이지 레이아웃 규칙을 나눠 담당합니다.
 - 거래 추가는 `TransactionAddDrawer`(우측 560px 드로어, `TransactionForm` 직접 입력)로 처리합니다. 영수증·카드사 앱 캡처 검토는 가계부 화면의 `TransactionImportModal`(중앙 모달)이 별도로 담당합니다.
@@ -104,7 +113,7 @@ frontend/src/
 
 ## Styling Rules
 
-- 토큰 값은 `frontend/src/styles/tokens.css`를 단일 코드 원본으로 사용합니다.
+- 토큰 값은 `frontend/src/styles/tokens/`를 단일 코드 원본으로 사용합니다. 새 토큰은 성격에 맞는 파일에 추가합니다.
 - 기존 `--wl-color-*` 이름은 마이그레이션 중 호환 alias로 유지할 수 있지만, 신규 코드는 foundation과 semantic token을 우선합니다.
 - `canvas`는 중립적인 `#F6F7F9`, panel과 input은 `surface`를 사용해 회녹색이 화면 전체에 누적되지 않게 합니다.
 - 브랜드 원색과 데이터 원색은 CTA, selected state, progress, chart, 작은 icon 표식에만 사용합니다.

@@ -38,7 +38,7 @@
 
 1. 이 문서의 전역 원칙과 토큰
 2. [Screen Specs](./screen-specs.md)의 화면별 규칙
-3. [`frontend/src/styles/tokens.css`](../../frontend/src/styles/tokens.css)의 실제 토큰
+3. [`frontend/src/styles/tokens/`](../../frontend/src/styles/tokens/)의 실제 토큰
 4. [`frontend/src/shared/ui`](../../frontend/src/shared/ui/)와 화면별 React 구현
 
 화면 전용 배치를 전역 규칙으로 바로 올리지 않습니다. 두 개 이상의 화면에서 반복되거나 재사용 가능성이 명확할 때 공용 컴포넌트 또는 토큰으로 승격합니다.
@@ -47,7 +47,7 @@
 
 - `Crisp`: 중립적인 밝은 배경, 또렷한 글자, 구분되는 데이터 색으로 스캔성을 확보합니다.
 - `Calm`: 넓은 유색 면과 강한 그림자를 피하고, 초록색은 행동과 선택 상태에 제한합니다.
-- Tokens and motion: [`frontend/src/styles/tokens.css`](../../frontend/src/styles/tokens.css)
+- Tokens and motion: [`frontend/src/styles/tokens/`](../../frontend/src/styles/tokens/)
 - Layout and behavior: [Screen Specs](./screen-specs.md)와 실제 React 화면
 
 ## Color
