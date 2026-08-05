@@ -48,7 +48,28 @@ test('real-backend sweep', async ({ page }, info) => {
     await shot(name)
   }
 
-  await page.setViewportSize({ width: 1440, height: 900 })
+  /* 데스크톱은 사이드바, 모바일은 5칸 탭바 + '더보기' 시트라 도달 경로가 다릅니다.
+   * 같은 시나리오를 두 셸에서 그대로 돌리려고 이동만 감싸 둡니다. */
+  const mobile = info.project.name !== 'desktop-chromium'
+  if (!mobile) await page.setViewportSize({ width: 1440, height: 900 })
+
+  const TABS: Record<string, string> = { 홈: '홈', '거래 내역': '거래 내역', 예산: '예산 설정', 분석: '분석' }
+  async function go(target: '홈' | '거래 내역' | '예산' | '분석' | '자동 기록' | '설정') {
+    if (!mobile) {
+      const label = target === '예산' ? '예산 설정' : target
+      if (target === '설정') await page.getByRole('button', { name: '설정', exact: true }).click()
+      else await page.getByRole('link', { name: label, exact: true }).click()
+      return
+    }
+    if (target in TABS) {
+      await page.getByRole('link', { name: target, exact: true }).click()
+      return
+    }
+    /* 자동 기록·설정은 탭바에 없고 '더보기' 시트 안에 있습니다.
+     * 시트 항목의 접근 이름은 제목 + 설명이 합쳐진 문자열이라 부분 일치로 찾습니다. */
+    await page.getByRole('button', { name: '더보기' }).click()
+    await page.getByRole('button', { name: new RegExp(`^${target}`) }).click()
+  }
 
   await at('01-landing', async () => {
     await page.goto('/')
@@ -77,7 +98,7 @@ test('real-backend sweep', async ({ page }, info) => {
   })
 
   await at('05-budget-setup', async () => {
-    await page.getByRole('link', { name: '예산 설정' }).click()
+    await go('예산')
     await expect(page).toHaveURL(/\/budget$/)
     /* 같은 DB 에 반복해서 돌리므로 매번 다른 금액을 넣어 '변경 있음' 상태를 만듭니다. */
     const amount = String(1_000_000 + (Date.now() % 90) * 10_000)
@@ -96,7 +117,7 @@ test('real-backend sweep', async ({ page }, info) => {
   })
 
   await at('07-transaction-add', async () => {
-    await page.getByRole('link', { name: '거래 내역' }).click()
+    await go('거래 내역')
     await page.getByRole('button', { name: '거래 추가' }).first().click()
     const drawer = page.getByRole('dialog', { name: '거래 추가' })
     await expect(drawer).toBeVisible()
@@ -113,7 +134,7 @@ test('real-backend sweep', async ({ page }, info) => {
   })
 
   await at('09-recurring-add', async () => {
-    await page.getByRole('link', { name: '자동 기록' }).click()
+    await go('자동 기록')
     await expect(page).toHaveURL(/\/recurring$/)
     await page.getByRole('button', { name: '반복 지출 추가' }).click()
     const modal = page.getByRole('dialog', { name: '반복 지출 추가' })
@@ -138,28 +159,27 @@ test('real-backend sweep', async ({ page }, info) => {
   })
 
   await at('11-analysis', async () => {
-    await page.getByRole('link', { name: '분석' }).click()
+    await go('분석')
     await expect(page).toHaveURL(/\/analysis$/)
     await page.waitForTimeout(1500)
   })
 
   await at('12-settings-categories', async () => {
-    // 사이드바 '설정'은 onSettings prop 때문에 <a> 가 아니라 <button> 으로 그려집니다.
-    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await go('설정')
     await expect(page).toHaveURL(/\/settings$/)
     await page.getByRole('button', { name: '카테고리' }).first().click()
     await page.waitForTimeout(1000)
   })
 
   await at('13-import-modal', async () => {
-    await page.getByRole('link', { name: '거래 내역' }).click()
+    await go('거래 내역')
     await page.getByRole('button', { name: '이미지로 거래 가져오기' }).first().click()
     await page.waitForTimeout(1000)
   })
 
   await at('14-period-summary', async () => {
     await page.keyboard.press('Escape')
-    await page.getByRole('link', { name: '홈', exact: true }).click()
+    await go('홈')
     await page.waitForTimeout(1500)
   })
 
