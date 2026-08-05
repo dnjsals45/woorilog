@@ -1,6 +1,7 @@
+import { z } from 'zod'
 import { apiRequest } from '../../../shared/api/client'
-import type { LedgerSummary } from '../../ledger/api/ledgerApi'
-import type { TransactionSummary } from '../../transaction/api/transactionApi'
+import { ledgerSummarySchema, type LedgerSummary } from '../../ledger/api/ledgerApi'
+import { transactionSummarySchema, type TransactionSummary } from '../../transaction/api/transactionApi'
 
 export type BudgetCategorySetting = {
   categoryId: number
@@ -98,18 +99,33 @@ type BudgetMonthSettingsResponse = Omit<BudgetMonthSettings, 'categoryBudgets'> 
   }>
 }
 
-type DashboardSummaryResponse = Omit<DashboardSummary, 'categorySpending' | 'memberSpending'> & {
-  categorySpending: Array<{
-    categoryGroupId: number
-    name: string
-    totalSpent: number
-  }>
-  memberSpending: Array<{
-    userId: number
-    nickname: string
-    totalSpent: number
-  }>
-}
+/* 대시보드는 화면이 실제로 쓰는 유일한 legacy 응답이라 schema 로 검증합니다.
+ * 아래 months/ statistics 계열은 지금 어떤 화면도 부르지 않아 그대로 둡니다(legacy 정리 대상).
+ *
+ * 응답의 categorySpending·memberSpending 은 화면이 쓰는 이름과 달라서 adapt* 함수가 한 번 옮깁니다.
+ * schema 는 '옮기기 전' 실제 응답 모양이어야 합니다. */
+const dashboardBudgetSchema = z.object({ allocationId: z.number(), amount: z.number(), spentAmount: z.number(), currentBalance: z.number(), availableAmount: z.number() })
+
+const dashboardSummaryResponseSchema = z.object({
+  currentLedger: ledgerSummarySchema,
+  budgetMonth: z.string(),
+  totalBudgetAmount: z.number(),
+  totalExpenseAmount: z.number(),
+  scheduledRecurringExpenseAmount: z.number(),
+  remainingBudgetAmount: z.number(),
+  recentTransactions: z.array(transactionSummarySchema),
+  categorySpending: z.array(z.object({ categoryGroupId: z.number(), name: z.string(), totalSpent: z.number() })),
+  memberSpending: z.array(z.object({ userId: z.number(), nickname: z.string(), totalSpent: z.number() })),
+  cardPaymentSummaries: z.array(z.object({ cardId: z.number(), cardName: z.string(), statementClosingDate: z.string(), expectedPaymentMonth: z.string(), totalAmount: z.number() })),
+  ledger: z.object({ id: z.number(), name: z.string(), type: z.enum(['PERSONAL', 'SHARED']), role: z.enum(['OWNER', 'MEMBER']), accessState: z.enum(['ACTIVE', 'FORMER']), partner: z.object({ id: z.number(), nickname: z.string() }).nullable() }).nullable(),
+  period: z.object({ id: z.number(), startDate: z.string(), endDate: z.string(), totalBudget: z.number() }).nullable(),
+  sharedBudget: dashboardBudgetSchema.nullable(),
+  myBudget: dashboardBudgetSchema.nullable(),
+  incomeAmount: z.number().nullable(),
+  weeklyGuide: z.object({ weekStartDate: z.string(), recommendedAmount: z.number(), remainingOverageAmount: z.number() }).nullable(),
+  emptyState: z.enum(['INVITE_PARTNER', 'ALLOCATE_BUDGET', 'ADD_FIRST_TRANSACTION', 'READY']).nullable(),
+})
+type DashboardSummaryResponse = z.infer<typeof dashboardSummaryResponseSchema>
 
 type MonthlyStatisticResponse = {
   month: string
@@ -211,7 +227,7 @@ export async function reopenBudgetMonth(ledgerId: number, budgetMonth: string) {
 
 export async function getDashboardSummary(budgetMonth?: string) {
   const query = budgetMonth ? `?budgetMonth=${encodeURIComponent(budgetMonth)}` : ''
-  const response = await apiRequest<DashboardSummaryResponse>(`/api/dashboard/current${query}`)
+  const response = await apiRequest(`/api/dashboard/current${query}`, { schema: dashboardSummaryResponseSchema })
 
   return adaptDashboardSummary(response)
 }

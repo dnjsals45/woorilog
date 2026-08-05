@@ -1,19 +1,21 @@
+import { z } from 'zod'
 import { apiRequest } from '../../../shared/api/client'
-import type { TransactionType } from '../../transaction/api/transactionApi'
+import { transactionTypeSchema, type TransactionType } from '../../transaction/api/transactionApi'
 
-export type CategorySummary = {
-  id: number
-  ledgerId: number
-  name: string
-  type: TransactionType
-  categoryGroupId: number
-  categoryGroupName: string
-  /** 기본 대분류의 안정된 식별자 (FOOD, HOUSING …). 사용자가 만든 그룹은 빈 문자열입니다. */
-  groupCode: string
-  sortOrder: number
-  defaultCategory: boolean
-  active: boolean
-}
+export const categorySummarySchema = z.object({
+  id: z.number(),
+  ledgerId: z.number(),
+  name: z.string(),
+  type: transactionTypeSchema,
+  categoryGroupId: z.number(),
+  categoryGroupName: z.string(),
+  /** 기본 카테고리의 안정된 식별자 (FOOD, HOUSING …). 사용자가 만든 그룹은 빈 문자열입니다. */
+  groupCode: z.string(),
+  sortOrder: z.number(),
+  defaultCategory: z.boolean(),
+  active: z.boolean(),
+})
+export type CategorySummary = z.infer<typeof categorySummarySchema>
 
 export type CreateCategoryRequest = {
   name: string
@@ -28,30 +30,33 @@ export type UpdateCategoryRequest = {
   applyNameToPastTransactions?: boolean
 }
 
-export type CategoryGroupSummary = {
-  id: number
-  ledgerId: number
-  name: string
-  type: TransactionType
-  code: string
-  hidden: boolean
-}
+export const categoryGroupSummarySchema = z.object({
+  id: z.number(),
+  ledgerId: z.number(),
+  name: z.string(),
+  type: transactionTypeSchema,
+  code: z.string(),
+  hidden: z.boolean(),
+})
+export type CategoryGroupSummary = z.infer<typeof categoryGroupSummarySchema>
 
 export function getCategories(ledgerId: number) {
-  return apiRequest<CategorySummary[]>(`/api/ledgers/${ledgerId}/categories`)
+  return apiRequest(`/api/ledgers/${ledgerId}/categories`, { schema: z.array(categorySummarySchema) })
 }
 
 export function createCategory(ledgerId: number, request: CreateCategoryRequest) {
-  return apiRequest<CategorySummary>(`/api/ledgers/${ledgerId}/categories`, {
+  return apiRequest(`/api/ledgers/${ledgerId}/categories`, {
     method: 'POST',
     body: request,
+    schema: categorySummarySchema,
   })
 }
 
 export function updateCategory(categoryId: number, request: UpdateCategoryRequest) {
-  return apiRequest<CategorySummary>(`/api/categories/${categoryId}`, {
+  return apiRequest(`/api/categories/${categoryId}`, {
     method: 'PATCH',
     body: request,
+    schema: categorySummarySchema,
   })
 }
 
@@ -60,12 +65,13 @@ export function deleteCategory(categoryId: number) {
 }
 
 export function getCategoryGroups(ledgerId: number) {
-  return apiRequest<CategoryGroupSummary[]>(`/api/ledgers/${ledgerId}/category-groups`)
+  return apiRequest(`/api/ledgers/${ledgerId}/category-groups`, { schema: z.array(categoryGroupSummarySchema) })
 }
 
 export function updateCategoryGroupVisibility(ledgerId: number, groupCode: string, hidden: boolean) {
-  return apiRequest<CategoryGroupSummary>(`/api/ledgers/${ledgerId}/category-groups/${groupCode}`, {
+  return apiRequest(`/api/ledgers/${ledgerId}/category-groups/${groupCode}`, {
     method: 'PATCH',
     body: { hidden },
+    schema: categoryGroupSummarySchema,
   })
 }

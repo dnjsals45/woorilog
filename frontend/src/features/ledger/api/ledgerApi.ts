@@ -1,54 +1,66 @@
+import { z } from 'zod'
 import { apiRequest } from '../../../shared/api/client'
 
-export type LedgerType = 'PERSONAL' | 'GROUP' | 'SHARED'
+export const ledgerTypeSchema = z.enum(['PERSONAL', 'GROUP', 'SHARED'])
+export type LedgerType = z.infer<typeof ledgerTypeSchema>
 
-export type BudgetCycle = { startType: 'DAY_OF_MONTH' | 'LAST_DAY_OF_MONTH'; startDay: number | null }
+export const budgetCycleSchema = z.object({
+  startType: z.enum(['DAY_OF_MONTH', 'LAST_DAY_OF_MONTH']),
+  startDay: z.number().nullable(),
+})
+export type BudgetCycle = z.infer<typeof budgetCycleSchema>
 
-export type LedgerSummary = {
-  id: number
-  name: string
-  type: LedgerType
-  ownerId: number
-  recurringSummaryClosingDay: number
-  budgetCycle: BudgetCycle
-}
+export const ledgerSummarySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  type: ledgerTypeSchema,
+  ownerId: z.number(),
+  recurringSummaryClosingDay: z.number(),
+  budgetCycle: budgetCycleSchema,
+})
+export type LedgerSummary = z.infer<typeof ledgerSummarySchema>
 
-export type LedgerListResponse = {
-  currentLedgerId: number
-  ledgers: LedgerSummary[]
-}
+export const ledgerListResponseSchema = z.object({
+  currentLedgerId: z.number(),
+  ledgers: z.array(ledgerSummarySchema),
+})
+export type LedgerListResponse = z.infer<typeof ledgerListResponseSchema>
 
-export type LedgerMember = {
-  userId: number
-  nickname: string
-  role: 'OWNER' | 'MEMBER'
-  user: { id: number; nickname: string }
-  status: 'ACTIVE' | 'FORMER'
-  joinedAt: string
-  leftAt: string | null
-}
+export const ledgerMemberSchema = z.object({
+  userId: z.number(),
+  nickname: z.string(),
+  role: z.enum(['OWNER', 'MEMBER']),
+  user: z.object({ id: z.number(), nickname: z.string() }),
+  status: z.enum(['ACTIVE', 'FORMER']),
+  joinedAt: z.string(),
+  leftAt: z.string().nullable(),
+})
+export type LedgerMember = z.infer<typeof ledgerMemberSchema>
 
 export function getLedgers() {
-  return apiRequest<LedgerListResponse>('/api/ledgers')
+  return apiRequest('/api/ledgers', { schema: ledgerListResponseSchema })
 }
 
 export async function getLedgerMembers(ledgerId: number) {
-  const response = await apiRequest<{ items: LedgerMember[] } | LedgerMember[]>(`/api/ledgers/${ledgerId}/members`)
+  const response = await apiRequest(`/api/ledgers/${ledgerId}/members`, {
+    schema: z.union([z.object({ items: z.array(ledgerMemberSchema) }), z.array(ledgerMemberSchema)]),
+  })
   return Array.isArray(response) ? response : response.items
 }
 
 export function switchLedger(ledgerId: number) {
-  return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}/use`, {
+  return apiRequest(`/api/ledgers/${ledgerId}/use`, {
     method: 'POST',
+    schema: ledgerSummarySchema,
   })
 }
 
 export function renameLedger(ledgerId: number, name: string) {
-  return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}`, { method: 'PATCH', body: { name } })
+  return apiRequest(`/api/ledgers/${ledgerId}`, { method: 'PATCH', body: { name }, schema: ledgerSummarySchema })
 }
 
 export function updateLedgerBudgetCycle(ledgerId: number, budgetCycle: BudgetCycle) {
-  return apiRequest<LedgerSummary>(`/api/ledgers/${ledgerId}`, { method: 'PATCH', body: { budgetCycle } })
+  return apiRequest(`/api/ledgers/${ledgerId}`, { method: 'PATCH', body: { budgetCycle }, schema: ledgerSummarySchema })
 }
 
 export function removeLedgerMember(ledgerId: number, userId: number) {
@@ -65,7 +77,16 @@ export function leaveLedger(ledgerId: number) {
 }
 
 /** POST /api/ledgers/shared 와 초대 수락 응답이 쓰는 요약 타입. GET /api/ledgers 의 LedgerSummary 와 모양이 다릅니다. */
-export type V1LedgerSummary = { id: number; name: string; type: 'PERSONAL' | 'SHARED'; role: 'OWNER' | 'MEMBER'; accessState: 'ACTIVE' | 'FORMER'; partner: { id: number; nickname: string } | null; budgetCycle: BudgetCycle }
+export const v1LedgerSummarySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  type: z.enum(['PERSONAL', 'SHARED']),
+  role: z.enum(['OWNER', 'MEMBER']),
+  accessState: z.enum(['ACTIVE', 'FORMER']),
+  partner: z.object({ id: z.number(), nickname: z.string() }).nullable(),
+  budgetCycle: budgetCycleSchema,
+})
+export type V1LedgerSummary = z.infer<typeof v1LedgerSummarySchema>
 export type CreateSharedLedgerRequest = { name: string; totalBudget: number; budgetCycle: BudgetCycle }
-export function createSharedLedger(request: CreateSharedLedgerRequest) { return apiRequest<{ ledger: V1LedgerSummary; currentBudgetPeriod: unknown }>('/api/ledgers/shared', { method: 'POST', body: request }) }
-export async function transferLedgerOwnership(ledgerId: number, newOwnerUserId: number) { const response = await apiRequest<{ items: LedgerMember[] }>(`/api/ledgers/${ledgerId}/ownership-transfer`, { method: 'POST', body: { newOwnerUserId } }); return response.items }
+export function createSharedLedger(request: CreateSharedLedgerRequest) { return apiRequest('/api/ledgers/shared', { method: 'POST', body: request, schema: z.object({ ledger: v1LedgerSummarySchema, currentBudgetPeriod: z.unknown() }) }) }
+export async function transferLedgerOwnership(ledgerId: number, newOwnerUserId: number) { const response = await apiRequest(`/api/ledgers/${ledgerId}/ownership-transfer`, { method: 'POST', body: { newOwnerUserId }, schema: z.object({ items: z.array(ledgerMemberSchema) }) }); return response.items }
