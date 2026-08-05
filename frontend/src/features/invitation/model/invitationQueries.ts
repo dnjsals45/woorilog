@@ -137,11 +137,9 @@ export function useAcceptLinkInvitationMutation(token: string | undefined) {
   return useMutation({
     mutationFn: () => acceptLinkInvitation(token!),
     onSuccess: () => {
-      if (token) {
-        queryClient.invalidateQueries({
-          queryKey: invitationQueryKeys.linkPreview(token),
-        })
-      }
+      /* 수락하면 링크가 즉시 만료되므로(v1-scope.md '상대방 초대') preview 를 다시 부르면
+       * 반드시 409 로 실패합니다. 수락 완료 화면이 캐시된 preview(가계부 이름)를 그대로 쓰므로
+       * 무효화도 제거도 하지 않고 그냥 둡니다. */
       queryClient.invalidateQueries({ queryKey: ledgerQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
     },
