@@ -36,8 +36,10 @@ const MOBILE_TABS: MobileTab[] = [
 ]
 
 /* FAB 은 "거래 추가"입니다. 거래를 적을 맥락이 아닌 화면에서는 쓸모가 없고,
- * 화면 아래쪽 버튼과 겹쳐 그걸 누르지 못하게 만듭니다(가계부 만들기의 '링크 다시 만들기'). */
-const FAB_HIDDEN_PREFIXES = ['/ledgers', '/settings', '/help']
+ * 화면 아래쪽 버튼과 겹쳐 그걸 누르지 못하게 만듭니다(가계부 만들기의 '링크 다시 만들기').
+ * /recurring 은 계획을 관리하는 화면이고 자체 '반복 지출 추가' CTA 가 있어서,
+ * FAB 을 함께 두면 초록 버튼 두 개가 경쟁합니다(design-system.md anti-patterns). */
+const FAB_HIDDEN_PREFIXES = ['/ledgers', '/settings', '/help', '/recurring']
 
 /* 탭 하나에 여러 경로가 걸립니다. 시트에서만 갈 수 있는 화면도 어떤 탭을 밝힐지 정해둡니다. */
 const MOBILE_TAB_ROUTES: { prefix: string; tab: string }[] = [
