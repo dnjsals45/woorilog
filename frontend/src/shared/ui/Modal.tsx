@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 import type { ReactNode } from 'react'
 import { useIsMobileShell } from '../lib/useIsMobileShell'
 import { Icon } from './Icon'
@@ -26,6 +26,7 @@ export interface ModalProps {
 }
 
 export function Modal({ open = true, title, subtitle, width = 760, onClose, children }: ModalProps) {
+  const titleId = useId()
   const isMobile = useIsMobileShell()
   const { panelRef, stateClass, gripProps } = useSheetDrag(isMobile ? onClose : undefined)
   useBodyScrollLock(open)
@@ -45,6 +46,8 @@ export function Modal({ open = true, title, subtitle, width = 760, onClose, chil
       className="wl-modal-scrim"
       role="dialog"
       aria-modal="true"
+      /* 제목이 있으면 그것으로 이름을 잡습니다. 없으면 스크린리더가 이름 없는 대화상자로 읽습니다. */
+      aria-labelledby={title ? titleId : undefined}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose?.()
       }}
@@ -59,7 +62,9 @@ export function Modal({ open = true, title, subtitle, width = 760, onClose, chil
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20 }}>
             <div style={{ minWidth: 0 }}>
               {title ? (
-                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: '-.025em' }}>{title}</h2>
+                <h2 id={titleId} style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: '-.025em' }}>
+                  {title}
+                </h2>
               ) : null}
               {subtitle ? (
                 <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--wl-color-text-secondary)' }}>{subtitle}</p>
