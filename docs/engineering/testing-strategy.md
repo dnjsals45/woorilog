@@ -139,8 +139,46 @@ npm run test:e2e
 - 두 사용자 fixture는 owner와 member를 명시하고 나만 보는 거래와 함께 보는 거래를 모두 포함합니다.
 - 날짜는 달력 월과 다른 10일 시작 기간, 말일 시작, 2월·윤년을 포함합니다.
 - OCR fixture는 정상, 저신뢰, 중복, 일부 실패를 분리하고 실제 카드번호·credential을 포함하지 않습니다.
-- API schema가 안정되면 OpenAPI 또는 contract fixture를 프론트 mock과 backend serialization test가 공유하도록 검토합니다.
-- 알려진 공백: import candidate 타입에서 `id`/`suggestedAllocation`으로 선언했던 필드가 실제 백엔드 응답 키인 `candidateId`/`defaultBudgetSource`와 달랐던 사례가 있었습니다. 프론트 타입과 mock이 서로 일치했고 실제 백엔드 응답을 태우는 테스트가 없어 `tsc`와 기존 unit test 모두 이 불일치를 잡지 못했습니다. 현재는 프론트 타입이 [API Contract](./api-contract.md)의 필드명과 일치하도록 고쳐졌지만, 같은 종류의 필드명 불일치를 자동으로 잡는 검증은 아직 없습니다.
+- API schema가 안정되면 OpenAPI 생성으로 옮길지 검토합니다. 지금은 아래 응답 검증으로 대신합니다.
+
+### 응답 검증
+
+프론트 타입을 손으로 적어 두면 타입과 mock이 서로만 일치해도 `tsc`와 unit test가 통과합니다.
+실제 응답의 필드 이름이 달라도 아무도 모르고 화면에만 값이 비어 보입니다.
+과거 import candidate 타입에서 `id`/`suggestedAllocation`로 선언했던 필드가 실제 응답 키인
+`candidateId`/`defaultBudgetSource`와 달랐던 사례가 이 경우입니다.
+
+그래서 응답 검증을 API client 한 곳(`frontend/src/shared/api/client.ts`)에 두고,
+타입은 zod schema에서 `z.infer`로 뽑습니다. schema가 유일한 출처라 타입과 검증이 따로 놀 수 없습니다.
+동작은 `frontend/src/shared/api/contract.ts`에 있습니다.
+
+- 검사만 하고 원본 응답을 그대로 돌려줍니다. 검증을 켠 것만으로 화면 동작이 달라지지 않습니다.
+- `test`: 던집니다. mock이 실제 응답과 다르면 unit test가 바로 실패합니다.
+- dev·운영: 콘솔에 `[api-contract]`로 남기고 통과시킵니다. 서버가 필드를 하나 더 붙였다고 화면이 죽으면 안 됩니다.
+- 아래 실제 백엔드 점검이 그 콘솔 오류를 모아 단정하므로, 어긋나면 점검이 실패합니다.
+
+새 API를 붙일 때는 `apiRequest`에 `schema`를 함께 넘기고 타입은 `z.infer`로 뽑습니다.
+지금 화면이 부르지 않는 legacy month/statistics 계열에는 schema를 붙이지 않았습니다.
+
+### 실제 백엔드 전 화면 자동 점검
+
+목을 쓰지 않고 `docker compose`로 띄운 백엔드를 상대로 전 화면을 훑습니다.
+목킹된 e2e로는 계약 불일치와 서버 검증 실패를 잡을 수 없어 따로 둡니다.
+
+```bash
+docker compose up -d mysql backend
+cd frontend
+REAL_BACKEND=1 npx playwright test manual-sweep            # 1인 흐름, 데스크톱·모바일
+REAL_BACKEND=1 npx playwright test shared-ledger-sweep --project=desktop-chromium  # 2인 공동 가계부 흐름
+```
+
+- `REAL_BACKEND`가 없으면 건너뜁니다. CI는 백엔드를 띄우지 않습니다.
+- Playwright는 `127.0.0.1:5173`에서 서비스하므로 백엔드 CORS에 이 origin이 있어야 합니다.
+  [environment.md](./environment.md)의 `CORS_ALLOWED_ORIGINS`를 봅니다.
+- 두 점검은 서로 다른 개발자 계정을 씁니다(1인은 개발자3, 공동은 개발자1·2). 같은 계정을 공유하면 현재 가계부가 서로 바뀝니다.
+- 콘솔 오류와 4xx/5xx는 참고용 기록으로 출력하고, 계약 위반만 테스트를 실패시킵니다.
+- 마지막에 실제로 오간 엔드포인트 목록을 함께 출력합니다. 위반이 '없음'인 게 검사 결과인지 아예 안 불러서인지 구분하려는 것입니다.
+- 아직 이 점검이 지나가지 않는 화면: 예산 상세 모달, 기간 종료 요약, OCR 저장, 예비비 옮기기, 멤버 내보내기·탈퇴.
 
 ## CI
 

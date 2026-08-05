@@ -61,7 +61,14 @@ Docker 밖에서 `cd backend && ./gradlew bootRun`으로 이미지 OCR까지 확
 | `JWT_REFRESH_TOKEN_TTL_SECONDS` | auth | `1209600` | refresh token lifetime |
 | `REFRESH_COOKIE_SECURE` | auth | local `false`, production `true` | HTTPS에서만 refresh cookie를 전송할지 여부 |
 | `DEV_LOGIN_ENABLED` | local/test | `true` | local/test-only developer login toggle |
-| `CORS_ALLOWED_ORIGINS` | local | `http://localhost:5173` | backend CORS allowed origins |
+| `CORS_ALLOWED_ORIGINS` | local | `http://localhost:5173` | backend CORS allowed origins. 쉼표로 여러 개를 적습니다 |
+
+실제 백엔드를 상대로 하는 전 화면 자동 점검(`REAL_BACKEND=1 npx playwright test`)은 Playwright가
+`127.0.0.1:5173`에서 서비스하기 때문에 기본값만으로는 CORS에 막힙니다. 그때만 이렇게 띄웁니다.
+
+```bash
+CORS_ALLOWED_ORIGINS="http://localhost:5173,http://127.0.0.1:5173" docker compose up -d mysql backend
+```
 
 ## Frontend Keys
 
