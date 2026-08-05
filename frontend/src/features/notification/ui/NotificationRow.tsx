@@ -7,8 +7,7 @@ import type { UserNotification } from '../api/notificationApi'
 
 type NotificationTone = 'brand' | 'amber' | 'blue' | 'danger'
 
-/* 디자인이 요구하는 알림 종류별 아이콘·톤 매핑입니다 (V1 8종 NotificationType 기준).
- * "예산 변경" · "예비비 이동" 2종은 아직 백엔드 타입이 없어 BUDGET 톤을 그대로 씁니다. */
+/* 디자인이 요구하는 알림 종류별 아이콘·톤 매핑입니다. 백엔드 NotificationType 10종을 모두 덮습니다. */
 const TYPE_PRESENTATION: Record<UserNotification['type'], { icon: IconName; tone: NotificationTone }> = {
   INVITATION: { icon: 'users', tone: 'brand' },
   BUDGET: { icon: 'wallet', tone: 'amber' },
@@ -18,7 +17,13 @@ const TYPE_PRESENTATION: Record<UserNotification['type'], { icon: IconName; tone
   BUDGET_THRESHOLD_100: { icon: 'triangle-alert', tone: 'danger' },
   BUDGET_PERIOD_PREPARATION: { icon: 'wallet', tone: 'amber' },
   WEEKLY_GUIDE: { icon: 'chart-pie', tone: 'blue' },
+  BUDGET_CHANGED: { icon: 'wallet', tone: 'amber' },
+  RESERVE_TRANSFER: { icon: 'wallet', tone: 'brand' },
 }
+
+/* 백엔드가 알림 종류를 새로 추가해도 알림함이 죽지 않게 기본값을 둡니다.
+ * 예전에는 매핑에 없는 종류가 오면 바로 아래 TONE_STYLE 조회에서 TypeError 가 났습니다. */
+const FALLBACK_PRESENTATION = { icon: 'info', tone: 'blue' } as const
 
 const TONE_STYLE: Record<NotificationTone, { background: string; color: string }> = {
   brand: { background: 'var(--wl-color-primary-soft)', color: 'var(--wl-color-primary-dark)' },
@@ -32,7 +37,7 @@ const rowGridStyle: CSSProperties = { gridTemplateColumns: '34px minmax(0, 1fr)'
 /** 알림 한 줄 — 아이콘 칩 · 제목 · 본문 · 시각. 알림함 전체 페이지와 대시보드 팝오버가 같은 행을 씁니다. */
 export function NotificationRow({ item, onRead }: { item: UserNotification; onRead: () => void }) {
   const unread = !item.read
-  const presentation = TYPE_PRESENTATION[item.type]
+  const presentation = TYPE_PRESENTATION[item.type] ?? FALLBACK_PRESENTATION
   const toneStyle = TONE_STYLE[presentation.tone]
   const rowClassName = `grid w-full items-start gap-3 rounded-xl px-2 py-3 text-left ${unread ? 'bg-[var(--wl-brand-50)]' : 'bg-transparent'} hover:bg-[var(--wl-color-surface-subtle)]`
   /* 기간 종료 요약(/periods/:startDate/summary)의 유일한 진입점은 이 알림입니다.
