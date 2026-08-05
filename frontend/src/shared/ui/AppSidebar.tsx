@@ -238,6 +238,11 @@ export function AppSidebar({
                 right: 0,
                 top: 'calc(100% + 6px)',
                 zIndex: 20,
+                /* 가계부가 늘어나면 목록이 화면 밖으로 밀려 맨 아래 '새 공동 가계부 만들기' 를
+                 * 누를 수 없게 됩니다. 목록만 스크롤시키고 만들기 행은 항상 보이게 둡니다. */
+                maxHeight: 'min(60vh, 420px)',
+                display: 'flex',
+                flexDirection: 'column',
                 padding: 6,
                 border: '1px solid var(--wl-color-border)',
                 borderRadius: 'var(--wl-radius-md)',
@@ -245,7 +250,7 @@ export function AppSidebar({
                 boxShadow: 'var(--wl-shadow-overlay, var(--wl-shadow-modal))',
               }}
             >
-              <ul style={{ display: 'grid', gap: 2, margin: 0, padding: 0, listStyle: 'none' }}>
+              <ul style={{ display: 'grid', gap: 2, margin: 0, padding: 0, listStyle: 'none', minHeight: 0, overflowY: 'auto' }}>
                 {ledgers.map((lg) => (
                   <li key={lg.name}>
                     <button
