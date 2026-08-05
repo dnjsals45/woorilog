@@ -12,20 +12,37 @@ import { test, expect, type Browser, type Page, type Request, type Response } fr
 const DIR = process.env.SHOT_DIR ?? 'test-results/shared-sweep'
 type Problem = { step: string; kind: string; detail: string }
 
-async function newSession(browser: Browser, accountIndex: 1 | 2, problems: Problem[], stepRef: { current: string }) {
+async function newSession(
+  browser: Browser,
+  accountIndex: 1 | 2,
+  problems: Problem[],
+  stepRef: { current: string },
+  contractViolations: string[],
+) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   const page = await context.newPage()
+  /* 응답이 프론트 타입과 어긋나면 apiRequest 가 '[api-contract]' 로 남깁니다(shared/api/contract.ts).
+   * 잡음과 섞이지 않게 따로 모으고 마지막에 단정합니다. */
   page.on('console', (m) => {
-    if (m.type() === 'error') problems.push({ step: `${stepRef.current}/dev${accountIndex}`, kind: 'console', detail: m.text().slice(0, 300) })
+    if (m.type() !== 'error') return
+    const text = m.text()
+    if (text.includes('[api-contract]')) {
+      contractViolations.push(`[${stepRef.current}/dev${accountIndex}] ${text.slice(0, 2000)}`)
+      return
+    }
+    problems.push({ step: `${stepRef.current}/dev${accountIndex}`, kind: 'console', detail: text.slice(0, 300) })
   })
   page.on('pageerror', (e) => problems.push({ step: `${stepRef.current}/dev${accountIndex}`, kind: 'pageerror', detail: String(e).slice(0, 300) }))
   page.on('response', (r: Response) => {
     const req: Request = r.request()
-    if (!req.url().includes('/api/') || r.status() < 400) return
+    /* url 전체가 아니라 pathname 앞부분으로 걸러야 합니다.
+     * 'features/analytics/api/...' 같은 vite 모듈 요청에도 '/api/' 가 들어 있습니다. */
+    const { pathname } = new URL(req.url())
+    if (!pathname.startsWith('/api/') || r.status() < 400) return
     problems.push({
       step: `${stepRef.current}/dev${accountIndex}`,
       kind: `http ${r.status()}`,
-      detail: `${req.method()} ${new URL(req.url()).pathname}`,
+      detail: `${req.method()} ${pathname}`,
     })
   })
 
@@ -64,6 +81,9 @@ async function switchLedger(page: Page, name: string) {
 
 test('shared ledger sweep', async ({ browser }, info) => {
   test.skip(!process.env.REAL_BACKEND, 'docker compose 로 띄운 실제 백엔드가 필요합니다.')
+  /* 이 점검은 스스로 데스크톱 뷰포트 컨텍스트를 만들므로 project 별로 돌릴 이유가 없습니다.
+   * 두 project 에서 동시에 돌면 같은 dev1·dev2 계정을 두 실행이 서로 밀어내 결과가 흔들립니다. */
+  test.skip(info.project.name !== 'desktop-chromium', '한 project 에서만 돌립니다.')
   test.setTimeout(480_000)
 
   const problems: Problem[] = []
@@ -81,8 +101,9 @@ test('shared ledger sweep', async ({ browser }, info) => {
   }
   const shot = (page: Page, name: string) => page.screenshot({ path: `${DIR}/${name}.png` }).catch(() => {})
 
-  const owner = await newSession(browser, 1, problems, stepRef)
-  const partner = await newSession(browser, 2, problems, stepRef)
+  const contractViolations: string[] = []
+  const owner = await newSession(browser, 1, problems, stepRef, contractViolations)
+  const partner = await newSession(browser, 2, problems, stepRef, contractViolations)
   let inviteUrl = ''
 
   await at('01-create-shared-ledger', async () => {
@@ -196,5 +217,8 @@ test('shared ledger sweep', async ({ browser }, info) => {
   const report = problems.length
     ? problems.map((p) => `  [${p.step}] ${p.kind}: ${p.detail}`).join('\n')
     : '  (없음)'
-  console.log(`\n===== 공동 가계부 SWEEP (${info.project.name}) =====\n${report}\n===== 끝 =====\n`)
+  console.log(`\n===== 공동 가계부 자동 점검 결과 (${info.project.name}) =====\n${report}\n===== 끝 =====\n`)
+  console.log(`\n===== 응답 계약 위반 =====\n${contractViolations.join('\n') || '  (없음)'}\n===== 끝 =====\n`)
+
+  expect(contractViolations, '서버 응답이 프론트 타입과 어긋났습니다.').toEqual([])
 })

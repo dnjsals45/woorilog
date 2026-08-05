@@ -23,15 +23,33 @@ test('real-backend sweep', async ({ page }, info) => {
   let step = 'boot'
   const runId = String(Date.now()).slice(-6)
 
+  /* 응답이 프론트 타입과 어긋나면 apiRequest 가 '[api-contract]' 로 콘솔에 남깁니다
+   * (shared/api/contract.ts). 이건 다른 콘솔 잡음과 달리 반드시 고쳐야 하므로 따로 모으고,
+   * 여러 줄짜리 메시지가 잘리지 않게 길이도 넉넉히 둡니다. */
+  const contractViolations: string[] = []
   page.on('console', (m) => {
-    if (m.type() === 'error') problems.push({ step, kind: 'console', detail: m.text().slice(0, 300) })
+    if (m.type() !== 'error') return
+    const text = m.text()
+    if (text.includes('[api-contract]')) {
+      contractViolations.push(`[${step}] ${text.slice(0, 2000)}`)
+      return
+    }
+    problems.push({ step, kind: 'console', detail: text.slice(0, 300) })
   })
   page.on('pageerror', (e) => problems.push({ step, kind: 'pageerror', detail: String(e).slice(0, 300) }))
+  /* 계약 위반이 '없음' 인 게 '검사했는데 깨끗하다' 인지 '아예 안 불렀다' 인지 구분하려고
+   * 실제로 오간 엔드포인트를 모아 마지막에 같이 출력합니다. */
+  const touched = new Set<string>()
   page.on('response', (r: Response) => {
     const req: Request = r.request()
-    if (!req.url().includes('/api/')) return
+    /* url 전체가 아니라 pathname 앞부분으로 걸러야 합니다.
+     * 'features/analytics/api/...' 같은 vite 모듈 요청에도 '/api/' 가 들어 있습니다. */
+    const { pathname } = new URL(req.url())
+    if (!pathname.startsWith('/api/')) return
+    const path = pathname.replace(/\/\d+(?=\/|$)/g, '/{id}')
+    touched.add(`${req.method()} ${path}`)
     if (r.status() >= 400) {
-      problems.push({ step, kind: `http ${r.status()}`, detail: `${req.method()} ${new URL(req.url()).pathname}` })
+      problems.push({ step, kind: `http ${r.status()}`, detail: `${req.method()} ${path}` })
     }
   })
 
@@ -189,5 +207,10 @@ test('real-backend sweep', async ({ page }, info) => {
   const report = problems.length
     ? problems.map((p) => `  [${p.step}] ${p.kind}: ${p.detail}`).join('\n')
     : '  (없음)'
-  console.log(`\n===== SWEEP 결과 (${info.project.name}) =====\n${report}\n===== 끝 =====\n`)
+  console.log(`\n===== 전 화면 자동 점검 결과 (${info.project.name}) =====\n${report}\n===== 끝 =====\n`)
+  console.log(`\n===== 응답 계약 위반 =====\n${contractViolations.join('\n') || '  (없음)'}\n===== 끝 =====\n`)
+  console.log(`\n===== 이번에 실제로 오간 엔드포인트 =====\n${[...touched].sort().map((line) => `  ${line}`).join('\n')}\n===== 끝 =====\n`)
+
+  /* 나머지는 참고용 기록이지만 계약 위반은 무조건 고쳐야 하므로 여기서만 실패시킵니다. */
+  expect(contractViolations, '서버 응답이 프론트 타입과 어긋났습니다.').toEqual([])
 })
