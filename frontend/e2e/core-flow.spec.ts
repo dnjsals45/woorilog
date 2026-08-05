@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 
+/* 목은 실제 응답과 같은 모양이어야 합니다. 어긋나면 apiRequest 가 '[api-contract]' 로
+ * 콘솔에 남기므로(shared/api/contract.ts) 브라우저 콘솔에서 바로 드러납니다. */
 const user = { id: 1, email: 'e2e@woorilog.local', nickname: 'E2E 사용자', nicknameConfirmed: true, timezone: 'Asia/Seoul' }
-const ledger = { id: 1, name: 'E2E 개인 가계부', type: 'PERSONAL', ownerId: 1, role: 'OWNER', status: 'ACTIVE' }
+const ledger = { id: 1, name: 'E2E 개인 가계부', type: 'PERSONAL', ownerId: 1, recurringSummaryClosingDay: 25, budgetCycle: { startType: 'DAY_OF_MONTH', startDay: 1 } }
+const dashboardLedger = { id: 1, name: 'E2E 개인 가계부', type: 'PERSONAL', role: 'OWNER', accessState: 'ACTIVE', partner: null }
 
 /* 기본 대분류 두 개와 그 안의 항목들. 카테고리 선택이 타일 → 항목 펼침 구조라
  * 그룹 정보(categoryGroupId·groupCode)가 응답에 있어야 화면이 그려집니다. */
@@ -17,10 +20,11 @@ const budgetPeriod = {
   ledgerId: 1,
   startDate: '2026-08-01',
   endDate: '2026-08-31',
+  status: 'CURRENT',
   totalBudget: 1_000_000,
   reserveAmount: 0,
   prepared: true,
-  allocations: [{ id: 200, source: { type: 'PERSONAL', ownerUserId: 1 }, amount: 1_000_000 }],
+  allocations: [{ id: 200, source: { type: 'PERSONAL', ownerUserId: 1 }, owner: { id: 1, nickname: 'E2E 사용자' }, amount: 1_000_000, spentAmount: 120_000, currentBalance: 880_000, scheduledAmount: 0, availableAmount: 880_000 }],
   categoryBudgets: [],
 }
 
@@ -34,21 +38,30 @@ export async function mockApi(page: Page) {
     if (path === '/api/auth/dev-login') return json({ accessToken: 'e2e-token', expiresInSeconds: 1800, user, currentLedger: ledger })
     if (path === '/api/me') return json({ user, currentLedger: ledger })
     if (path === '/api/ledgers') return json({ currentLedgerId: 1, ledgers: [ledger] })
-    if (path === '/api/ledgers/1/members') return json([{ userId: 1, nickname: user.nickname, role: 'OWNER', status: 'ACTIVE' }])
+    if (path === '/api/ledgers/1/members') return json([{ userId: 1, nickname: user.nickname, role: 'OWNER', user: { id: 1, nickname: user.nickname }, status: 'ACTIVE', joinedAt: '2026-08-01T00:00:00+09:00', leftAt: null }])
     if (path === '/api/ledgers/1/categories') return json(categories)
     if (path === '/api/ledgers/1/cards') return json([])
     if (path === '/api/ledgers/1/budget-periods/current') return json(budgetPeriod)
-    if (path === '/api/notifications') return json({ unreadCount: 0, items: [], notifications: [] })
+    if (path === '/api/notifications') return json({ unreadCount: 0, items: [], nextCursor: null })
     if (path === '/api/dashboard/current') {
       return json({
         currentLedger: ledger,
         budgetMonth: '2026-08',
         totalBudgetAmount: 1_000_000,
         totalExpenseAmount: 120_000,
+        scheduledRecurringExpenseAmount: 0,
         remainingBudgetAmount: 880_000,
         recentTransactions: [],
         categorySpending: [],
         memberSpending: [],
+        cardPaymentSummaries: [],
+        ledger: dashboardLedger,
+        period: { id: 100, startDate: '2026-08-01', endDate: '2026-08-31', totalBudget: 1_000_000 },
+        sharedBudget: null,
+        myBudget: { allocationId: 200, amount: 1_000_000, spentAmount: 120_000, currentBalance: 880_000, availableAmount: 880_000 },
+        incomeAmount: null,
+        weeklyGuide: null,
+        emptyState: 'READY',
       })
     }
     return json({ code: 'NOT_FOUND', message: path }, 404)

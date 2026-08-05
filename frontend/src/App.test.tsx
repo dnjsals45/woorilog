@@ -6,8 +6,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { clearAccessToken, setAccessToken } from './shared/api/client'
 
+/* 목은 실제 응답과 같은 모양이어야 합니다. apiRequest 가 schema 로 응답을 검사하므로
+ * (shared/api/contract.ts) 여기서 필드를 빠뜨리면 테스트가 바로 실패합니다. */
 const user = { id: 1, nickname: '개발자', nicknameConfirmed: true, timezone: 'Asia/Seoul' }
-const ledger = { id: 1, name: '내 가계부', type: 'PERSONAL', role: 'OWNER', status: 'ACTIVE' }
+const ledger = {
+  id: 1,
+  name: '내 가계부',
+  type: 'PERSONAL',
+  ownerId: 1,
+  recurringSummaryClosingDay: 25,
+  budgetCycle: { startType: 'DAY_OF_MONTH', startDay: 1 },
+}
+/** 대시보드 응답의 ledger 는 GET /api/ledgers 의 요약과 모양이 다릅니다. */
+const dashboardLedger = { id: 1, name: '내 가계부', type: 'PERSONAL', role: 'OWNER', accessState: 'ACTIVE', partner: null }
 
 function response(body: unknown, status = 200) {
   return Promise.resolve(new Response(body === undefined ? null : JSON.stringify(body), {
@@ -30,19 +41,25 @@ function installApiMock(overrides?: (url: URL, method: string) => Promise<Respon
     if (url.pathname === '/api/auth/dev-login') return response({ accessToken: 'access-token', expiresInSeconds: 1800, user, currentLedger: ledger })
     if (url.pathname === '/api/me') return response({ user, currentLedger: ledger })
     if (url.pathname === '/api/ledgers') return response({ currentLedgerId: 1, ledgers: [ledger] })
-    if (url.pathname === '/api/notifications') return response({ unreadCount: 0, items: [], notifications: [] })
+    if (url.pathname === '/api/notifications') return response({ unreadCount: 0, items: [], nextCursor: null })
     if (url.pathname === '/api/dashboard/current') return response({
-      ledger: ledger,
-      period: { id: 10, yearMonth: '2026-07', startDate: '2026-07-01', endDate: '2026-07-31' },
-      totalBudget: 500000,
-      sharedExpense: 120000,
-      ownExpense: 30000,
-      remainingBudget: 350000,
-      budgetUsageRate: 30,
-      categoryDistribution: [],
-      memberComparison: [],
+      currentLedger: ledger,
+      budgetMonth: '2026-07',
+      totalBudgetAmount: 500000,
+      totalExpenseAmount: 150000,
+      scheduledRecurringExpenseAmount: 0,
+      remainingBudgetAmount: 350000,
       recentTransactions: [],
-      uncategorizedCount: 0,
+      categorySpending: [],
+      memberSpending: [],
+      cardPaymentSummaries: [],
+      ledger: dashboardLedger,
+      period: { id: 10, startDate: '2026-07-01', endDate: '2026-07-31', totalBudget: 500000 },
+      sharedBudget: null,
+      myBudget: null,
+      incomeAmount: null,
+      weeklyGuide: null,
+      emptyState: 'READY',
     })
     return response({ code: 'NOT_FOUND', message: `Unhandled ${method} ${url.pathname}` }, 404)
   })
@@ -101,6 +118,7 @@ describe('App V1 routes', () => {
       authenticationRequired: true,
       currentMemberCount: 1,
       viewerAlreadyMember: null,
+      viewerIsDifferentPartner: null,
       budgetCycle: { startType: 'DAY_OF_MONTH', startDay: 1 },
     }) : undefined)
     renderApp('/invitations/invite-token')
