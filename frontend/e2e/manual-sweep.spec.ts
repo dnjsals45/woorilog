@@ -77,7 +77,10 @@ test('real-backend sweep', async ({ page }, info) => {
   })
 
   await at('02-login', async () => {
+    /* 공동 가계부 스윕이 dev1·dev2 의 현재 가계부를 바꾸므로, 이 스윕은 dev3 을 따로 씁니다.
+     * 두 스윕이 같은 계정을 공유하면 서로의 상태에 따라 결과가 흔들립니다. */
     await page.getByRole('button', { name: '개발자 로그인 열기' }).click()
+    await page.getByRole('button', { name: '개발자3' }).click()
     await page.getByRole('button', { name: '개발자 로그인', exact: true }).click()
     await page.waitForURL(/\/(dashboard|onboarding)/, { timeout: 15_000 })
   })

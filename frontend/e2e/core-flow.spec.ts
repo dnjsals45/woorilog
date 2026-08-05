@@ -99,8 +99,11 @@ test('picks a category by opening its group tile', async ({ page }) => {
   await drawer.getByRole('button', { name: '장보기' }).click()
   await expect(drawer.getByText('선택: 식비 · 장보기')).toBeVisible()
 
-  // 개인 가계부에는 공동 배분이 없으므로 차감 예산 선택기가 없어야 합니다.
-  await expect(drawer.getByRole('group', { name: '차감 예산' })).toHaveCount(0)
+  /* 개인 가계부에는 공동 배분이 없으므로 차감 예산 선택기가 없어야 합니다.
+   * SegmentedControl 은 role="radiogroup" 입니다 — 'group' 으로 찾으면 늘 0건이라 단정이 무의미해집니다. */
+  await expect(drawer.getByRole('radiogroup', { name: '차감 예산' })).toHaveCount(0)
+  // 선택기가 정말 없는 것이지 role 을 잘못 찾은 게 아님을 함께 확인합니다.
+  await expect(drawer.getByRole('radiogroup', { name: '거래 종류' })).toHaveCount(1)
 })
 
 test('goes home when the sidebar logo is clicked', async ({ page }, testInfo) => {
